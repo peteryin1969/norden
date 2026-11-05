@@ -9,7 +9,7 @@ async function round(body,signal,onDelta,tries=0){let r;const again=async()=>{aw
   const rd=r.body.getReader(),dec=new TextDecoder();let buf='',blocks=[],stop=null;
   try{for(;;){const{done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;while((i=buf.indexOf('\n'))>=0){const line=buf.slice(0,i).trim();buf=buf.slice(i+1);if(!line.startsWith('data:'))continue;let e;try{e=JSON.parse(line.slice(5))}catch(x){continue}
     if(e.type==='content_block_start')blocks[e.index]={...e.content_block,json:''};
-    else if(e.type==='content_block_delta'){const b=blocks[e.index];if(e.delta.type==='text_delta'){b.text=(b.text||'')+e.delta.text;onDelta(e.delta.text)}else if(e.delta.type==='input_json_delta')b.json+=e.delta.partial_json}
+    else if(e.type==='content_block_delta'){const b=blocks[e.index];if(e.delta.type==='text_delta'){b.text=(b.text||'')+e.delta.text;onDelta(e.delta.text)}else if(e.delta.type==='input_json_delta')b.json+=e.delta.partial_json;else if(e.delta.type==='thinking_delta')b.thinking=(b.thinking||'')+e.delta.thinking;else if(e.delta.type==='signature_delta')b.signature=(b.signature||'')+e.delta.signature}
     else if(e.type==='message_delta')stop=e.delta.stop_reason;else if(e.type==='error')throw err(/overload/i.test(e.error&&e.error.type||'')?'overloaded':'failed',(e.error&&e.error.type||'')+' '+(e.error&&e.error.message||''))}}}
   catch(e){if(e&&e.name==='AbortError')throw err('cancelled','cancelled');throw e}
   return{blocks:blocks.filter(Boolean),stop}}
@@ -19,7 +19,7 @@ async function sample(input,o={}){const msgs=(typeof input==='string'?[{role:'us
   for(let n=0;n<6;n++){const body={model:M[o.modelTier]||M.default,max_tokens:1024,messages:msgs};if(tools.length)body.tools=tools;
     const{blocks,stop}=await round(body,o.signal,d=>{all+=d;o.onText&&o.onText({text:all,delta:d})});
     if(stop!=='tool_use')return{text:all,truncated:stop==='max_tokens'};
-    const content=blocks.map(b=>b.type==='text'?{type:'text',text:b.text||''}:{type:'tool_use',id:b.id,name:b.name,input:b.json?JSON.parse(b.json):{}}).filter(b=>b.type!=='text'||b.text);msgs.push({role:'assistant',content});
+    const content=blocks.map(b=>{if(b.type==='tool_use')return{type:'tool_use',id:b.id,name:b.name,input:b.json?JSON.parse(b.json):(b.input||{})};const{json,...o}=b;return o}).filter(b=>b.type!=='text'||b.text);msgs.push({role:'assistant',content});
     const res=[];for(const b of content){if(b.type!=='tool_use')continue;const t=o.tools.find(x=>x.name===b.name);try{res.push({type:'tool_result',tool_use_id:b.id,content:JSON.stringify(await t.execute(b.input))})}catch(e){res.push({type:'tool_result',tool_use_id:b.id,is_error:true,content:String(e&&e.message||e)})}}msgs.push({role:'user',content:res})}
   return{text:all,truncated:true}}
 sample.json=async(input,o={})=>{const r=await sample(typeof input==='string'?input+'\n只输出 JSON，不要其他文字。':input,o),m=r.text.match(/[\[{][\s\S]*[\]}]/);if(!m)throw err('failed','no json');return JSON.parse(m[0])};
