@@ -1,0 +1,18 @@
+<!doctype html><html lang="zh"><head><meta charset="utf8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>声音对比</title><style>
+:root{--bg:#f4f5f2;--ink:#17201c;--mut:#5d6a63;--c:#fff;--ac:#25624b;--ln:#d7dcd6}@media (prefers-color-scheme:dark){:root{--bg:#141815;--ink:#e9ede9;--mut:#a3aea7;--c:#1e2420;--ac:#7fcfae;--ln:#343c37}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans-serif}main{max-width:640px;margin:0 auto;padding:22px 16px 40px}h1{font-size:24px;margin:0}p{color:var(--mut);margin:6px 0 16px;font-size:15px}
+.t{position:sticky;top:0;background:var(--bg);padding:8px 0;display:grid;gap:6px;z-index:2}.t button{text-align:left;padding:9px 10px;border-radius:7px;border:1px solid var(--ln);background:var(--c);color:inherit;font:15px system-ui,sans-serif}.t button[aria-pressed=true]{border-color:var(--ac);box-shadow:inset 0 0 0 1px var(--ac)}
+.v{background:var(--c);border-radius:10px;padding:13px;margin-top:10px}.v h2{font-size:17px;margin:0;color:var(--ac)}.v small{color:var(--mut);display:block;margin:3px 0 10px}.v button{min-height:44px;padding:0 16px;border-radius:7px;border:1px solid var(--ac);background:var(--ac);color:var(--c);font:15px system-ui,sans-serif}.v button:disabled{opacity:.45}.note{font-size:13.5px;color:var(--mut);margin-top:8px}a{color:var(--ac)}</style></head><body><main>
+<a href="./">‹ 选择产品</a><h1>声音对比</h1><p>选一句话，依次试听。全部是真实合成的声音，没有修饰。</p><div class="t" id="L"></div><div id="V"></div></main><script>
+const L=["好，先把横销放进去，对，就是木块上这个孔。别急，放正了再拧。","把钢条搭到框架顶上，有喇叭口的那面朝上。每根钢条两头各拧一颗短螺丝。","快完成了。抬起桌板，把支撑腿转出来，再慢慢放下。"];
+const V=[['A','现在的声音（Piper 女声）','免费，已在手机上运行','p'],['B','Kokoro 女声','免费开源。完整模型约 400 MB，放进手机网页很难','kf'],['C','Kokoro 男声','免费开源。限制同上','km']];
+let cur=0,au=new Audio();const $=i=>document.getElementById(i);
+function list(){$('L').replaceChildren(...L.map((t,i)=>{const b=document.createElement('button');b.textContent=t;b.setAttribute('aria-pressed',i===cur);b.onclick=()=>{cur=i;list()};return b}))}
+function card(k,n,s,f){const d=document.createElement('section');d.className='v';d.innerHTML='<h2></h2><small></small><button>播放</button>';d.querySelector('h2').textContent=k+' · '+n;d.querySelector('small').textContent=s;d.querySelector('button').onclick=f;return d}
+V.forEach(([k,n,s,p])=>$('V').append(card(k,n,s,()=>{speechSynthesis&&speechSynthesis.cancel();au.src='voices/'+p+cur+'.mp3';au.play()})));
+function cloud(){const vs=speechSynthesis?speechSynthesis.getVoices():[],zh=vs.filter(v=>/^(zh|cmn)/i.test(v.lang)),nat=zh.find(v=>/Natural|Online/i.test(v.name))||zh.find(v=>!v.localService)||null;return{nat}}
+const cd=card('D','云端神经语音（浏览器自带）','由浏览器调用：Windows 上用 Edge 打开时是微软云端语音','');const b=cd.querySelector('button'),n=document.createElement('div');n.className='note';cd.append(n);$('V').append(cd);
+function up(){const{nat}=cloud();b.disabled=!nat;n.textContent=nat?'当前声音：'+nat.name:'这个浏览器里没有云端中文语音。请在电脑上用 Microsoft Edge 打开此页。'}
+b.onclick=()=>{au.pause();speechSynthesis.cancel();const{nat}=cloud();const u=new SpeechSynthesisUtterance(L[cur]);u.lang=nat.lang;u.voice=nat;speechSynthesis.speak(u)};
+if(window.speechSynthesis){speechSynthesis.onvoiceschanged=up}up();list();
+</script></body></html>
