@@ -220,7 +220,7 @@ tr:last-child td{border-bottom:none}
 </div>
 
 <script>window.PRODUCT={name:"IKEA NORDEN 折叠桌",steps:11,say:{'1':'先把 8 根木销插进两块连接木块的两端，每端 2 根。把木块放到腿柱下部之间，再把两片框架合拢，让木销对准腿柱内侧的孔。','2':'把两根钢条放到框架顶部，沉孔的喇叭口朝上，说明书里打叉的是装反了。每根钢条两端各拧一颗短螺丝，共 4 颗。','3':'桌面朝下放在软垫上。两块活动桌板上各放一个垫块，每块拧 2 颗木螺丝，共 4 颗。','4':'合页跨在拼缝上，圆轴朝上。每条拼缝装 2 个，共 4 个。每个合页用 8 颗短螺丝，孔要对准桌板上的预钻孔。','5':'把框架倒过来，两片支撑腿贴到框架外侧。先把 4 个横销放进连接木块，用一字螺丝刀调整到位。再用内六角扳手把 4 根长螺栓穿过腿柱，拧进横销。','6':'把倒置的框架放到桌面中段。每根钢条先拧中间的孔，再拧两端的椭圆孔，一共 6 颗。','7':'用锤子把 4 个脚垫敲进腿端，先放正，再轻轻敲到位。','8':'用锤子把 2 个止动垫敲进支撑腿底端。然后折起两侧桌板，两个人一起把桌子翻回正面。','9':'长板的凸条朝外靠上，内侧的槽朝里靠下。把无缺口的端板放到两块长板之间，用锤子从两侧敲入 4 颗抽屉螺栓，这一端上下各一颗。','10':'把底板滑进两块长板的槽里。转入有缺口的端板，缺口朝上。再敲入 4 颗抽屉螺栓，位置是长板另一端的上下两个孔。','11':'从两端各推入 3 个抽屉。抬起桌板，转出支撑腿，再放下桌板，让定位销进入桌板下面的孔。放下前先确认支撑腿到位。'}}</script>
-<script src="../shim.js"></script>
+<script src="../shim.js?v=fa93843d"></script>
 <script>
 /* Drawer animation, steps 35-44. Proportions are estimates: the manual gives no panel sizes. */
 const Anim=(()=>{
@@ -820,8 +820,8 @@ function doneTalking(){if(spoken){lastSaid=spoken;lastEnd=Date.now()}spoken='';i
 /* tools the model can use */
 const TOOLS=[{name:'go_step',description:'翻到下一步或上一步。用户说做好了、要继续时用 next。',inputSchema:{type:'object',properties:{direction:{type:'string',enum:['next','prev']}},required:['direction']},execute:({direction})=>{const b=st.pos;goStep(direction==='prev'?-1:1);return st.pos===b?{note:'已经到头了',...info()}:info()}},
  {name:'jump_step',description:'跳到说明书的第几步。',inputSchema:{type:'object',properties:{step:{type:'number'}},required:['step']},execute:({step})=>{if(!byId[String(step)])throw new Error('没有这一步');jump(String(step));return info()}},
- {name:'animation',description:'控制屏幕上的组装动画：replay 重播，pause 暂停，play 继续，slow 慢放，normal 正常速度。',inputSchema:{type:'object',properties:{action:{type:'string',enum:['replay','pause','play','slow','normal']}},required:['action']},execute:({action})=>{anim(action);return{ok:true}}}];
-function anim(a){const c=id=>$v(id).click(),pl=$v('animPlay').textContent,sl=$v('animSlow').textContent;if(a==='replay')c('animRe');if(a==='pause'&&pl==='暂停')c('animPlay');if(a==='play'&&pl==='播放')c('animPlay');if(a==='slow'&&sl==='慢放')c('animSlow');if(a==='normal'&&sl!=='慢放')c('animSlow')}
+ {name:'animation',description:'控制屏幕上的组装动画：replay 重播，pause 暂停，play 继续，slow 慢放，normal 正常速度，continuous 从当前步开始连续播放后面的步骤。',inputSchema:{type:'object',properties:{action:{type:'string',enum:['replay','pause','play','slow','normal','continuous']}},required:['action']},execute:({action})=>{anim(action);return{ok:true}}}];
+function anim(a){const c=id=>$v(id).click(),pl=$v('animPlay').textContent,sl=$v('animSlow').textContent;if(a==='replay')c('animRe');if(a==='continuous'&&$v('animAuto').textContent==='连续播放')c('animAuto');if(a==='pause'&&pl==='暂停')c('animPlay');if(a==='play'&&pl==='播放')c('animPlay');if(a==='slow'&&sl==='慢放')c('animSlow');if(a==='normal'&&sl!=='慢放')c('animSlow')}
 const CN1={一:1,二:2,两:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9};const cnNum=s=>{if(/^\d+$/.test(s))return +s;if(s==='十')return 10;const m=s.match(/^([一二两三四五六七八九])?十([一二三四五六七八九])?$/);if(m)return (m[1]?CN1[m[1]]:1)*10+(m[2]?CN1[m[2]]:0);return CN1[s]||0};
 /* short exact commands answer at once, without waiting for the model */
 function quick(raw){const t=raw.toLowerCase().replace(/[\s，。！？、,.!?]/g,'').replace(/^(返回到?|回到|跳到|去到?|到|转到|进行|开始|进入|做|看)/,'').replace(/^(第[\d一二两三四五六七八九十]{1,3})$/,'$1步').replace(/^(第.{1,3}|下一|上一)[部布不]$/,'$1步'),m=t.match(/^第(\d+|[一二两三四五六七八九十]{1,3})步$/);
@@ -850,10 +850,10 @@ async function turn(text){const q0=text.trim();if(!q0||!chat)return;const my=++t
   const fastA=quick(q0);if(fastA!==null){bubble('ai',fastA);hist.push({role:'assistant',content:fastA});sayAll(fastA);return}
   if(!sample){const x='这句要设置密钥后才能回答。现在可以说下一步、上一步、第三步、再说一遍、要什么零件、注意什么。';bubble('ai',x);hist.push({role:'assistant',content:x});sayAll(x);return}
   setS('think');startRec();streamDone=false;ctl=new AbortController();let all='',buf='';const b=bubble('ai','');
-  let moved=false;const tools=TOOLS.map(t=>({...t,execute:async i=>{const r=await t.execute(i);if(t.name!=='animation')moved=true;return r}}));const take=d=>{all+=d;spoken=all;buf+=d;b.textContent=all;scroll();let m;while((m=buf.match(/^[\s\S]*?[。！？!?；\n]/))){buf=buf.slice(m[0].length);if(m[0].trim())feed(m[0].trim())}};
+  let moved=false,acted=false;const tools=TOOLS.map(t=>({...t,execute:async i=>{const r=await t.execute(i);acted=true;if(t.name!=='animation')moved=true;return r}}));const take=d=>{all+=d;spoken=all;buf+=d;b.textContent=all;scroll();let m;while((m=buf.match(/^[\s\S]*?[。！？!?；\n]/))){buf=buf.slice(m[0].length);if(m[0].trim())feed(m[0].trim())}};
   try{let images;try{images=[await stepImage()]}catch(e){}const r=await sample([{role:'user',content:PROMPT()},...hist.slice(-12)],{tools,images,modelTier:'quick',cache:false,signal:ctl.signal,onText:({text:t,delta})=>{if(my===turnId)take(delta!=null?delta:t.slice(all.length))}});
     if(my!==turnId)return;if(!all&&r.text)take(r.text);if(buf.trim())feed(buf.trim());buf='';hist.push({role:'assistant',content:all||'好。'});streamDone=true;pump()}
-  catch(e){if(my!==turnId||(e&&e.code==='cancelled'))return;const x=all?'':moved?stepLine():(e&&e.code==='overloaded'?'服务器现在太忙，请再说一次。':msg(e&&e.code));tr('接口错误：'+(e&&(e.message||e.code)));if(x)b.textContent=x+(!moved&&e&&e.message?'（'+e.message+'）':'');if(!all)hist.pop();streamDone=true;if(x)sayAll(x);else pump()}}
+  catch(e){if(my!==turnId||(e&&e.code==='cancelled'))return;const x=all?'':moved?stepLine():acted?'好。':(e&&e.code==='overloaded'?'服务器现在太忙，请再说一次。':msg(e&&e.code));tr('接口错误：'+(e&&(e.message||e.code)));if(x)b.textContent=x+(!acted&&e&&e.message?'（'+e.message+'）':'');if(!all)hist.pop();streamDone=true;if(x)sayAll(x);else pump()}}
 /* speech in */
 let pend='',sendT=0;
 function flushSpeech(){clearTimeout(sendT);const t=pend;pend='';if(live){live.remove();live=null}if(t)turn(t)}

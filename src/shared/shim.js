@@ -19,7 +19,7 @@ async function sample(input,o={}){const msgs=(typeof input==='string'?[{role:'us
   for(let n=0;n<6;n++){const body={model:M[o.modelTier]||M.default,max_tokens:1024,messages:msgs};if(tools.length)body.tools=tools;
     const{blocks,stop}=await round(body,o.signal,d=>{all+=d;o.onText&&o.onText({text:all,delta:d})});
     if(stop!=='tool_use')return{text:all,truncated:stop==='max_tokens'};
-    const content=blocks.map(b=>{if(b.type==='tool_use')return{type:'tool_use',id:b.id,name:b.name,input:b.json?JSON.parse(b.json):(b.input||{})};const{json,...o}=b;return o}).filter(b=>b.type!=='text'||b.text);msgs.push({role:'assistant',content});
+    const content=blocks.map(b=>{if(b.type==='tool_use')return{type:'tool_use',id:b.id,name:b.name,input:b.json?JSON.parse(b.json):(b.input||{})};const{json,...o}=b;return o}).filter(b=>(b.type!=='text'||b.text)&&(b.type!=='tool_use'||b.id));msgs.push({role:'assistant',content});
     const res=[];for(const b of content){if(b.type!=='tool_use')continue;const t=o.tools.find(x=>x.name===b.name);try{res.push({type:'tool_result',tool_use_id:b.id,content:JSON.stringify(await t.execute(b.input))})}catch(e){res.push({type:'tool_result',tool_use_id:b.id,is_error:true,content:String(e&&e.message||e)})}}msgs.push({role:'user',content:res})}
   return{text:all,truncated:true}}
 sample.json=async(input,o={})=>{const r=await sample(typeof input==='string'?input+'\n只输出 JSON，不要其他文字。':input,o),m=r.text.match(/[\[{][\s\S]*[\]}]/);if(!m)throw err('failed','no json');return JSON.parse(m[0])};

@@ -1,6 +1,8 @@
 import shutil,os,re,json
 os.makedirs('site',exist_ok=True);shutil.rmtree('site');os.makedirs('site')
 shutil.copy('shim.js','site/shim.js');shutil.copytree('../tts/tts','site/tts');open('site/.nojekyll','w').close()
+import hashlib
+ver=hashlib.md5(open('shim.js','rb').read()).hexdigest()[:8]
 base=open('norden.html',encoding='utf8').read()
 vbtn=base[base.index('<button class="btn primary vstart"'):base.index('<div class="fullnav">')]
 css=base[base.index('.vstart{margin-top'):base.index('</style>')]
@@ -12,7 +14,7 @@ def page(h,slug,name,steps,sayjs,imgdir,voice):
         h=h.replace('Anim.ui();\n','Anim.ui();\n'+code,1).replace('  save();\n}\nfunction thumb','  save();if(window.VoiceReady)Voice.onStep();\n}\nfunction thumb',1)
     pre='<meta name="robots" content="noindex">'
     h=h.replace('<title>',pre+'<title>',1)
-    h=h.replace('<script>','<script>window.PRODUCT={name:%s,steps:%d,say:%s}</script>\n<script src="../shim.js"></script>\n<script>'%(json.dumps(name,ensure_ascii=False),steps,sayjs),1)
+    h=h.replace('<script>','<script>window.PRODUCT={name:%s,steps:%d,say:%s}</script>\n<script src="../shim.js?v=%s"></script>\n<script>'%(json.dumps(name,ensure_ascii=False),steps,sayjs,ver),1)
     h=h.replace('<header>','<header><a href="../" style="font-size:13px">‹ 选择产品</a>',1)
     os.makedirs('site/'+slug);open('site/%s/index.html'%slug,'w',encoding='utf8').write(h);shutil.copytree(imgdir,'site/%s/img'%slug)
 page(base,'norden','IKEA NORDEN 折叠桌',11,say,'img',False)
