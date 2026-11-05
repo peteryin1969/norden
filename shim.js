@@ -1,4 +1,5 @@
 /* Standalone site: replaces the Claude viewer's sample function with direct API calls using the owner's own key, kept only in this browser. */
+window.NORDEN_TTS='tts/';
 (()=>{let key='';try{key=localStorage.getItem('norden-key')||''}catch(e){}
 const M={quick:'claude-haiku-5-5',default:'claude-sonnet-5-5'};
 async function b64(blob){let bmp=null;if(blob.size>900000&&blob.type!=='image/png'){try{const im=await createImageBitmap(blob),s=Math.min(1,1568/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);bmp=await new Promise(r=>c.toBlob(r,'image/jpeg',.85))}catch(e){}}const b=bmp||blob,a=new Uint8Array(await b.arrayBuffer());let s='';for(let i=0;i<a.length;i+=8192)s+=String.fromCharCode.apply(null,a.subarray(i,i+8192));return{type:'image',source:{type:'base64',media_type:b.type||'image/png',data:btoa(s)}}}
