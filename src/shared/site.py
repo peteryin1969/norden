@@ -12,6 +12,7 @@ def page(h,slug,name,steps,sayjs,imgdir,voice):
     if voice:
         h=h.replace('<div class="fullnav">',vbtn+'<div class="fullnav">',1).replace('</style>',css+'</style>',1)
         h=h.replace('Anim.ui();\n','Anim.ui();\n'+code,1).replace('  save();\n}\nfunction thumb','  save();if(window.VoiceReady)Voice.onStep();\n}\nfunction thumb',1)
+    h=h.replace('Anim.setNext(()=>{','Anim.setNext(()=>{if(window.Voice&&Voice.hold())return false;',1).replace('Anim.stopAuto();return true','Anim.stopAuto();if(window.Voice)Voice.autoEnd();return true',1)
     pre='<meta name="robots" content="noindex">'
     h=h.replace('<title>',pre+'<title>',1)
     h=h.replace('<script>','<script>window.PRODUCT={name:%s,steps:%d,say:%s}</script>\n<script src="../shim.js?v=%s"></script>\n<script>'%(json.dumps(name,ensure_ascii=False),steps,sayjs,ver),1)
