@@ -1,0 +1,7 @@
+const {chromium}=require('playwright');const fs=require('fs');const d=process.cwd()+'/';
+(async()=>{const srv=require('http').createServer((q,s)=>{const f=d+(q.url==='/'?'norden.html':q.url.slice(1));fs.readFile(f,(e,c)=>{if(e){s.writeHead(404);s.end()}else{s.writeHead(200,{'content-type':f.endsWith('.png')?'image/png':'text/html;charset=utf8'});s.end(c)}})}).listen(8790);
+const b=await chromium.launch({args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});const p=await b.newPage({viewport:{width:800,height:390}});const er=[];p.on('pageerror',e=>er.push(e.message));
+await p.addInitScript(()=>{Element.prototype.requestFullscreen=()=>Promise.reject(new Error('no'))});await p.route('**/three.min.js',r=>r.fulfill({body:fs.readFileSync('tv/node_modules/three/build/three.min.js'),contentType:'text/javascript'}));await p.route('**fonts.g**',r=>r.abort());
+await p.goto('http://localhost:8790/');await p.waitForTimeout(1200);console.log('anim shown',await p.isVisible('#animView'),er);await p.click('#fMode').catch(()=>{});await p.click('#animFull');await p.waitForTimeout(500);await p.click('#fMode');await p.waitForTimeout(300);
+for(const id of ['1','2','3','4','5','6','7','8','9','10','11'])for(const t of [.12,.35,.5,.65,.9,1]){await p.evaluate(id=>{P=path();st.pos=P.findIndex(a=>a.id===id);render()},id);await p.waitForTimeout(500);await p.evaluate(([id,t])=>Anim._set(id,t),[id,t]);await p.waitForTimeout(1100);await (await p.$('#animView')).screenshot({path:`audit/${id}_${t}.png`})}
+console.log('err',er);await b.close();srv.close()})();

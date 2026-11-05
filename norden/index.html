@@ -1,0 +1,886 @@
+<meta name="robots" content="noindex"><title>NORDEN 组装助手</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+/* Layout: a workbench job card. The manual drawing stays in view, the instruction sits under it, the controls stay at the thumb. */
+:root{
+  --bg:#ecefec;--panel:#fbfcfa;--ink:#1c2420;--muted:#59655e;--line:#c8d0ca;
+  --accent:#265f4a;--accent-ink:#fff;--warn:#7f4d00;--warn-bg:#f8e8cb;--stop:#97281f;--stop-bg:#f8e0dc;--ask:#e1e9e4;
+  --sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141a17;--panel:#1c2420;--ink:#e6ece8;--muted:#a2afa7;--line:#35423b;
+  --accent:#86cfae;--accent-ink:#0e2119;--warn:#f0c67e;--warn-bg:#3e2f12;--stop:#f4aca3;--stop-bg:#47211d;--ask:#26322c;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141a17;--panel:#1c2420;--ink:#e6ece8;--muted:#a2afa7;--line:#35423b;
+  --accent:#86cfae;--accent-ink:#0e2119;--warn:#f0c67e;--warn-bg:#3e2f12;--stop:#f4aca3;--stop-bg:#47211d;--ask:#26322c;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:16px/1.65 var(--sans)}
+.wrap{max-width:680px;margin:0 auto;padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:14px}
+header{display:grid;gap:2px}
+h1{font-size:25px;line-height:1.25;margin:0}
+.sub{font:500 12px/1.5 var(--mono);color:var(--muted)}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tab{min-height:44px;font:500 15px var(--sans);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:6px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;display:grid;gap:13px;min-width:0}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.no{font:600 30px/1 var(--mono);color:var(--accent)}
+.meta{font:500 12.5px var(--mono);color:var(--muted)}
+.bar{height:5px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent)}
+h2{font-size:20px;line-height:1.35;margin:0}
+.figure{background:#fff;border:1px solid var(--line);border-radius:6px;overflow:auto;max-height:62vh;cursor:zoom-in;padding:0}
+.figure img{display:block;width:100%;height:auto}
+.figure.zoom{cursor:zoom-out}.figure.zoom img{width:210%;max-width:none}
+ol.do{margin:0;padding-left:22px;display:grid;gap:5px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:0;padding:0;list-style:none}
+.chips li{font:600 14px var(--mono);padding:4px 9px;border:1px solid var(--line);border-radius:4px;background:var(--bg)}
+.flag{padding:9px 12px;border-radius:6px;font-size:14.5px}
+.flag.warn{background:var(--stop-bg);color:var(--stop)}
+.flag.unsure{background:var(--warn-bg);color:var(--warn)}
+.flag b{display:block;font-size:13px}
+.btn{display:flex;align-items:center;justify-content:center;min-height:48px;padding:8px 14px;border-radius:6px;font:500 15.5px var(--sans);border:1px solid var(--accent);cursor:pointer;background:transparent;color:var(--accent);text-align:center}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.4;cursor:default}
+.nav{display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
+.choice{display:grid;gap:10px}
+.ask{background:var(--ask);border-radius:6px;padding:12px;display:grid;gap:9px}
+.ask label{font-size:13px;font-weight:700;color:var(--muted)}
+.ask textarea{width:100%;min-height:62px;padding:9px;font:15px/1.5 var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:5px;resize:vertical}
+.askrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.askrow .btn{min-height:44px;font-size:14.5px}
+.file{position:relative;overflow:hidden}
+.file input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}
+.file:focus-within{outline:3px solid var(--accent);outline-offset:2px}
+.answer{white-space:pre-wrap;font-size:15px;padding:10px;background:var(--panel);border-radius:5px}
+.hint{font-size:13.5px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th{font-size:12.5px;text-align:left;color:var(--muted);padding:5px 8px 5px 0;border-bottom:1px solid var(--line)}
+td{padding:8px 8px 8px 0;border-bottom:1px solid var(--line);vertical-align:middle}
+td.c{font:600 14px var(--mono);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+.tw{overflow-x:auto}
+.check{width:22px;height:22px;accent-color:var(--accent)}
+.safety{margin:0;padding-left:20px;display:grid;gap:6px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.picks{display:grid;gap:8px}
+.pick{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;padding:8px;background:var(--ask);border:2px solid var(--accent);border-radius:6px;cursor:pointer;width:100%;text-align:left;color:var(--ink);font:15px var(--sans)}
+.pick.done{opacity:.55;border-style:dashed}
+.thumb{background:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;aspect-ratio:1;padding:4px;min-width:0}
+.thumb img{max-width:100%;max-height:100%;object-fit:contain}
+.pick b{display:block;font-size:15px}.pick small{font:500 12.5px var(--mono);color:var(--muted)}
+.take{font:600 20px var(--mono);color:var(--accent);white-space:nowrap}
+.map{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.map i{aspect-ratio:1;border-radius:3px;background:var(--line);font:600 11px/1 var(--mono);font-style:normal;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.map i.on{background:var(--accent);color:var(--accent-ink)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.cell{display:grid;gap:3px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);min-width:0;color:var(--ink);font:13px var(--sans);text-align:left}
+.cell.need{border:2px solid var(--accent);background:var(--ask)}
+.cell.locked{opacity:.45}
+.cell b{font:600 14px var(--mono)}.cell .q{font:600 13px var(--mono);color:var(--accent)}
+.cell span{overflow-wrap:anywhere}
+.lbl{font-size:13px;font-weight:700;color:var(--muted)}
+.pickrow{display:grid;gap:5px}
+.scan{min-height:42px;font-size:14.5px}
+.result{padding:8px 10px;border-radius:6px;font-size:14.5px;background:var(--ask)}
+.result.correct{background:var(--ask);color:var(--accent);font-weight:500}
+.result.wrong{background:var(--stop-bg);color:var(--stop)}
+.result.unclear{background:var(--warn-bg);color:var(--warn)}
+.scan2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.scan2 .btn{min-height:42px;font-size:14px;padding:6px}
+.find{display:grid;gap:5px}
+.find canvas{width:100%;height:auto;display:block;border-radius:6px;background:#fff}
+.anim{display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:6px}
+.anim-view{height:min(58vw,300px);background:#fff;border-radius:5px;touch-action:none;cursor:grab;overflow:hidden}
+.anim-view canvas{display:block;width:100%!important;height:100%!important}
+.anim-ctl{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.anim-ctl .btn{min-height:42px;font-size:13.5px;padding:6px 3px}
+.anim input[type=range]{width:100%;accent-color:var(--accent)}
+.jump{display:grid;grid-template-columns:1fr auto;gap:6px}
+.jump select{min-width:0;width:100%;min-height:44px;padding:6px 8px;font:15px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px}
+.jump .btn{min-height:44px;font-size:14px;white-space:nowrap}
+.zoombox{position:fixed;inset:0;z-index:40;background:rgba(10,16,13,.62);display:grid;align-items:center;justify-items:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.zoomcard{width:min(100%,520px);background:var(--panel);border-radius:10px;padding:12px;display:grid;gap:10px}
+.zoomview{aspect-ratio:1;max-height:62vh;width:100%;background:#fff;border-radius:6px;overflow:hidden}
+.zoomview canvas{display:block;width:100%!important;height:100%!important}
+.zoomctl{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.zoomctl .btn{min-height:44px;font-size:14px;padding:6px}
+.noscroll,.noscroll body{overflow:hidden}
+.fullnav{display:none}
+.anim.full{position:fixed;inset:0;z-index:30;background:var(--panel);border:0;border-radius:0;grid-template-rows:auto 1fr auto auto auto;padding:max(10px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(10px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));height:100%}
+.anim.full .anim-view{height:auto;min-height:0}
+.anim.full .hint{display:none}
+.anim.full .fullnav{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.anim.full .fullnav .btn{min-height:42px;font-size:14px}
+.anim.full .lbl{font-size:15px;color:var(--ink)}
+@media (orientation:landscape) and (max-height:520px){.anim.full{grid-template-columns:1fr 168px;grid-template-rows:auto 1fr auto}.anim.full .lbl{grid-column:1/3}.anim.full .anim-view{grid-column:1;grid-row:2}.anim.full input[type=range]{grid-column:1;grid-row:3}.anim.full .anim-ctl{grid-column:2;grid-row:2;grid-template-columns:1fr;align-content:start}.anim.full .fullnav{grid-column:2;grid-row:3;grid-template-columns:1fr 1fr 1fr;gap:3px}.anim.full .anim-ctl .btn{min-height:34px}.anim.full .fullnav .btn{min-height:36px;font-size:13px;padding:2px;white-space:nowrap}}
+.anim-view{position:relative}
+.alines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.alines line{stroke:#1b2420;stroke-width:1.2}
+.alabels{position:absolute;inset:0;pointer-events:none;z-index:2;overflow:hidden}
+.alabel{position:absolute;left:0;top:0;max-width:72%;padding:3px 7px;border-radius:4px;background:#1b2420;color:#fff;font:500 12.5px/1.35 var(--sans);opacity:0;transition:opacity .15s;white-space:normal}
+.anim.full .alabel{font-size:14px}
+@media (prefers-reduced-motion:reduce){.alabel{transition:none}}
+.vstart{margin-top:6px;width:100%}.vchat{display:none}.anim.full .vstart{display:none}.anim.full.vc input[type=range],.anim.full.vc .anim-ctl,.anim.full.vc .fullnav{display:none}.anim.full.vc{grid-template-rows:auto minmax(0,1fr) auto}.anim.full.vc .vchat{display:flex;flex-direction:column;gap:8px;min-height:0}.vlog{height:21vh;flex:none;overflow:auto;display:flex;flex-direction:column;gap:6px;padding:2px}.msg{max-width:92%;padding:5px 9px;border-radius:9px;font-size:14px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}.msg.ai{align-self:flex-start;background:var(--panel2,rgba(120,130,125,.14))}.msg.me{align-self:flex-end;background:var(--accent);color:var(--accent-ink)}.msg.live{opacity:.6}.msg.note{font-size:13px;opacity:.8}.vb2{display:flex;gap:6px}.vtrace{font-size:11px;opacity:.55}#vBarge{font-size:12px;padding:4px 6px}.vbar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px}.vbar .btn{min-height:42px;font-size:14px}.vstate{font-size:14px}.orb{width:46px;height:46px;border-radius:50%;border:0;padding:0;background:transparent;cursor:pointer;display:grid;place-items:center}.orb i{display:block;width:34px;height:34px;border-radius:50%;background:var(--accent);transition:transform .2s}.orb.listen i{animation:vb 1.8s ease-in-out infinite}.orb.speak i{animation:vb .55s ease-in-out infinite alternate}.orb.think i{animation:vt 1s ease-in-out infinite}.orb.pause i,.orb.type i{opacity:.35}@keyframes vb{from{transform:scale(.86)}50%{transform:scale(1.14)}to{transform:scale(.92)}}@keyframes vt{50%{transform:scale(.7);opacity:.55}}@media (prefers-reduced-motion:reduce){.orb i{animation:none!important}}.vchat.dictate .vtype input{border-width:2px;min-height:50px;font-size:16px}.vchat .vtype{display:none}.vchat.kb .vtype{display:grid}.vtype{grid-template-columns:minmax(0,1fr) auto;gap:6px}.vtype input{min-width:0;min-height:42px;padding:0 10px;font:15px var(--sans);border:1px solid var(--accent);border-radius:6px;background:transparent;color:inherit}.vtype .btn{min-height:42px;font-size:14px}@media (orientation:landscape) and (max-height:520px){.anim.full.vc{grid-template-columns:minmax(0,1fr) 300px;grid-template-rows:auto minmax(0,1fr)}.anim.full.vc .vchat{grid-column:2;grid-row:1/3}.anim.full.vc .vlog{height:auto;flex:1;min-height:0}.anim.full.vc .lbl{grid-column:1}.anim.full.vc .anim-view{grid-column:1;grid-row:2}}
+</style>
+
+<div class="wrap">
+  <header><a href="../" style="font-size:13px">‹ 选择产品</a>
+    <div class="sub">AA-2580705-1 · 12 页 · 11 步 · 6 个抽屉</div>
+    <h1>NORDEN 组装助手</h1>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" id="t-steps" role="tab" aria-selected="true">组装</button>
+    <button class="tab" id="t-grid" role="tab" aria-selected="false">格子</button>
+    <button class="tab" id="t-parts" role="tab" aria-selected="false">零件</button>
+    <button class="tab" id="t-safe" role="tab" aria-selected="false">安全</button>
+  </div>
+
+  <section id="v-steps" class="card">
+    <div class="jump"><select id="jump" aria-label="跳到某一步"></select><button class="btn" id="toAnim">跳到抽屉</button></div>
+    <div class="head"><div class="no" id="no"></div><div class="meta" id="meta"></div></div>
+    <div class="bar"><i id="bar"></i></div>
+    <h2 id="title"></h2>
+    <div id="pickWrap" style="display:grid;gap:8px">
+      <div class="lbl" id="pickLbl"></div>
+      <div class="picks" id="picks"></div>
+      
+    </div>
+    <div class="anim" id="anim" hidden>
+      <div class="lbl" id="animCap"></div>
+      <div class="anim-view" id="animView" aria-label="组装动画，拖动可旋转"><svg class="alines" id="animLines" aria-hidden="true"></svg><div class="alabels" id="animLabels" aria-hidden="true"></div></div>
+      <input id="animT" type="range" min="0" max="100" value="0" aria-label="动画进度">
+      <div class="anim-ctl"><button class="btn" id="animPlay">暂停</button><button class="btn" id="animRe">重播</button><button class="btn" id="animSlow">慢放</button><button class="btn" id="animAuto">连续播放</button><button class="btn" id="animFull">全屏</button><button class="btn" id="animLbl">隐藏标签</button><button class="btn" id="animLook">线稿模式</button></div>
+      <button class="btn primary vstart" id="vStart">语音对话</button><div class="vchat" id="vChat"><div class="vlog" id="vLog" aria-live="polite"></div><div class="vbar"><button class="orb idle" id="vOrb" aria-label="暂停或打断"><i></i></button><div class="vstate" id="vState" role="status"></div><span class="vb2"><button class="btn primary" id="vInt" hidden>打断</button><button class="btn" id="vKb">打字</button><button class="btn" id="vBarge">开口打断：关</button><button class="btn" id="vEnd">结束</button></span></div><div class="vtrace" id="vTrace"></div><div class="vtype"><input id="vTxt" type="text" enterkeyhint="send" placeholder="也可以打字" aria-label="输入消息"><button class="btn" id="vSend">发送</button></div></div><div class="fullnav"><button class="btn" id="fPrev">上一步</button><button class="btn" id="fMode">看整体</button><button class="btn primary" id="fNext">下一步</button></div>
+      <div class="hint">示意动画，比例为估算，孔位和方向以下方说明书原图为准。拖动画面可旋转，点一下可放大局部。连续播放时，抽屉只演示一次。</div>
+    </div>
+    <div class="figure" id="fig" title="点按放大"><img id="img" alt=""></div>
+    <ol class="do" id="do"></ol>
+        <div id="flags" style="display:grid;gap:8px"></div>
+    <div id="choice" class="choice" hidden>
+      <strong>柜体靠墙的位置有踢脚线吗？</strong>
+      <button class="btn primary" id="noSkirt">没有踢脚线，继续第 32 步</button>
+      <button class="btn" id="yesSkirt">有踢脚线，转到第 33 步</button>
+    </div>
+    <div class="nav" id="nav">
+      <button class="btn" id="prev">上一步</button>
+      <button class="btn primary" id="next">下一步</button>
+    </div>
+    <div class="ask" id="ask" hidden>
+      <label for="q">问问这一步</label>
+      <textarea id="q" placeholder="例如：这颗螺丝怎么分辨？"></textarea>
+      <div class="askrow">
+        <button class="btn primary" id="send">提问</button>
+        <label class="btn file" id="photoWrap">拍照核对<input id="photo" type="file" accept="image/*" capture="environment" aria-label="上传这一步的照片"></label>
+      </div>
+      <div class="hint">回答由 Claude 根据本步原图和说明生成，可能出错。关键位置请再看原图。</div>
+      <div class="answer" id="ans" hidden></div>
+    </div>
+  </section>
+
+  <section id="v-grid" class="card" hidden>
+    <h2>虚拟格子</h2>
+    <div class="hint" id="gridHint"></div>
+    <div class="grid" id="grid"></div>
+    <div class="hint">请把零件按上面的位置摆在软垫或托盘上，不需要实体格子。大板件说明书没有编号，暂不在格子内。</div>
+    <div class="ask" id="gridAsk" hidden>
+      <label class="btn file" id="gridWrap">拍照核对摆放<input id="gridPhoto" type="file" accept="image/*" capture="environment" aria-label="上传零件摆放照片"></label>
+      <div class="answer" id="gridAns" hidden></div>
+    </div>
+  </section>
+
+  <div class="zoombox" id="zoomBox" hidden>
+    <div class="zoomcard" role="dialog" aria-label="放大局部动画">
+      <div class="lbl">局部放大</div>
+      <div class="zoomview" id="zoomView"></div>
+      <div class="zoomctl"><button class="btn" id="zoomOut">缩小</button><button class="btn" id="zoomIn">放大</button><button class="btn" id="zoomPlay">暂停</button><button class="btn primary" id="zoomClose">关闭</button></div>
+    </div>
+  </div>
+
+  <section id="v-parts" class="card" hidden>
+    <h2>开工前清点</h2>
+    <div class="hint">数量来自说明书第 4–6 页。螺丝和连接件已和各步用量逐项核对。勾选后保存在这台设备上。</div>
+    <div class="tw"><table><thead><tr><th>到齐</th><th>编号</th><th>数量</th><th>袋</th><th>用在</th></tr></thead><tbody id="pt"></tbody></table></div>
+    <div class="figure"><img src="img/parts3.png" alt="说明书第 3 页零件图"></div>
+    
+    
+    <div class="figure"><img src="img/parts2.png" alt="说明书第 2 页工具和注意事项"></div>
+  </section>
+
+  <section id="v-safe" class="card" hidden>
+    <h2>开工前先看</h2>
+    <div class="flag warn">说明书的图示建议两人组装。</div>
+    <ul class="safety"><li>工具：锤子、一字螺丝刀、十字螺丝刀。</li><li>在软垫上操作，避免桌面和木件损伤。</li><li>遇到问题，先看说明书或联系宜家。</li><li>放下桌板前，先确认支撑腿到位。</li></ul>
+    <div class="flag unsure"><b>需要留意</b>这份说明书没有文字警告，也没有墙面固定步骤。以上内容来自第 2 页和第 10 页的图示。</div>
+    <div class="hint">本工具不是宜家官方产品，也不能替代随货说明书。</div>
+  </section>
+</div>
+
+<script>window.PRODUCT={name:"IKEA NORDEN 折叠桌",steps:11,say:{'1':'先把 8 根木销插进两块连接木块的两端，每端 2 根。把木块放到腿柱下部之间，再把两片框架合拢，让木销对准腿柱内侧的孔。','2':'把两根钢条放到框架顶部，沉孔的喇叭口朝上，说明书里打叉的是装反了。每根钢条两端各拧一颗短螺丝，共 4 颗。','3':'桌面朝下放在软垫上。两块活动桌板上各放一个垫块，每块拧 2 颗木螺丝，共 4 颗。','4':'合页跨在拼缝上，圆轴朝上。每条拼缝装 2 个，共 4 个。每个合页用 8 颗短螺丝，孔要对准桌板上的预钻孔。','5':'把框架倒过来，两片支撑腿贴到框架外侧。先把 4 个横销放进连接木块，用一字螺丝刀调整到位。再用内六角扳手把 4 根长螺栓穿过腿柱，拧进横销。','6':'把倒置的框架放到桌面中段。每根钢条先拧中间的孔，再拧两端的椭圆孔，一共 6 颗。','7':'用锤子把 4 个脚垫敲进腿端，先放正，再轻轻敲到位。','8':'用锤子把 2 个止动垫敲进支撑腿底端。然后折起两侧桌板，两个人一起把桌子翻回正面。','9':'长板的凸条朝外靠上，内侧的槽朝里靠下。把无缺口的端板放到两块长板之间，用锤子从两侧敲入 4 颗抽屉螺栓，这一端上下各一颗。','10':'把底板滑进两块长板的槽里。转入有缺口的端板，缺口朝上。再敲入 4 颗抽屉螺栓，位置是长板另一端的上下两个孔。','11':'从两端各推入 3 个抽屉。抬起桌板，转出支撑腿，再放下桌板，让定位销进入桌板下面的孔。放下前先确认支撑腿到位。'}}</script>
+<script src="../shim.js"></script>
+<script>
+/* Drawer animation, steps 35-44. Proportions are estimates: the manual gives no panel sizes. */
+const Anim=(()=>{
+const DUR={'5':1.6,'7':2,'8':2.4,'9':1.8,'10':1.8,'11':2.4,'4':1.6};
+const IDS=[];
+const W=76,H=14,D=46,T=1.6;
+let T3,ren,scene,cam,root,inner,parts=[],hammer,table,cab,ready=false,failed=false,loading=null,cur=null,t=0,playing=true,speed=1,last=0,raf=0,az=0,el=0,camPos=null,camTgt=null;
+const lerp=(a,b,k)=>a+(b-a)*k,ease=k=>k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2,clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+const CAMS={def:[[62,78,-144],[0,-2,-10]],'43':[[-70,82,-135],[0,-4,0]],'44':[[130,74,190],[34,-2,-22]]};
+/* Detailed part models. Each is built along +Y with its working end (head or slot) at the top, then pointed along axis*sign. */
+const GC={};const geo=(k,f)=>GC[k]||(GC[k]=f());
+const DARK=0x20282a,STEEL=0xa9b2b6,ZINC=0xc8ccc8,PLAST=0xf1f1ea,WOODP=0xd9b77e;
+const pm=(g,c)=>new T3.Mesh(g,new T3.MeshPhongMaterial({color:c,shininess:60}));
+const cg=(r1,r2,h,n=16)=>geo(`c${r1}_${r2}_${h}_${n}`,()=>new T3.CylinderGeometry(r1,r2,h,n));
+const bg=(a,b,c)=>geo(`b${a}_${b}_${c}`,()=>new T3.BoxGeometry(a,b,c));
+function at(m,x,y,z){m.position.set(x,y,z);return m}
+function helix(r,len,turns,tube){return geo(`h${r}_${len}_${turns}`,()=>{const P=[],N=turns*10;for(let i=0;i<=N;i++){const a=i/10*Math.PI*2;P.push(new T3.Vector3(Math.cos(a)*r,-i/N*len,Math.sin(a)*r))}return new T3.TubeGeometry(new T3.CatmullRomCurve3(P),N,tube,5)})}
+const tag=(o,r)=>{o.userData.hr=r;return o};
+function point(inner,axis,sign){const o=new T3.Group();o.add(inner);if(axis==='x')inner.rotation.z=-sign*Math.PI/2;else if(axis==='z')inner.rotation.x=sign*Math.PI/2;else if(sign<0)inner.rotation.x=Math.PI;return o}
+function cross(g,r,y){g.add(at(pm(bg(r*1.5,r*.25,r*.3),DARK),0,y,0),at(pm(bg(r*.3,r*.25,r*1.5),DARK),0,y,0))}
+function screw(axis='y',sign=1,o={}){const{r=.34,len=2.4,c=0x4a5256,wide=false,nohole=false}=o,g=new T3.Group(),hr=wide?r*2.5:r*1.9,hh=r*.75;
+  g.add(at(pm(cg(hr,r*1.05,hh),c),0,len/2+hh/2,0));cross(g,hr*.75,len/2+hh);g.add(pm(cg(r*.8,r*.8,len),c));
+  g.add(at(pm(helix(r*1.1,len*.92,Math.round(len/(r*.55)),r*.17),c),0,len/2,0));g.add(at(pm(cg(r*.8,.02,r*1.3,10),c),0,-len/2-r*.6,0));return tag(point(g,axis,sign),nohole?0:.42)}
+function conn(axis='y',sign=1){const g=new T3.Group();g.add(at(pm(cg(.62,.5,.5),STEEL),0,2.9,0));cross(g,.5,3.17);g.add(at(pm(cg(.42,.42,.6),STEEL),0,2.35,0),at(pm(cg(.72,.72,2.3,6),ZINC),0,.95,0),at(pm(cg(.85,.85,.28),ZINC),0,-.35,0),at(pm(cg(.45,.45,2.2),STEEL),0,-1.6,0),at(pm(helix(.58,2,5,.13),STEEL),0,-.55,0));return tag(point(g,axis,sign),.62)}
+function dowel(axis='y',sign=1,r=.45,l=3.2){const g=new T3.Group();g.add(pm(cg(r,r,l,10),WOODP),at(pm(cg(r*.72,r,.35,10),WOODP),0,l/2+.17,0),at(pm(cg(r,r*.72,.35,10),WOODP),0,-l/2-.17,0));for(let i=0;i<10;i++){const a=i/10*Math.PI*2;g.add(at(pm(bg(.05,l,.05),0x9a7747),Math.cos(a)*r*.98,0,Math.sin(a)*r*.98))}return tag(point(g,axis,sign),.52)}
+function lock(axis='y',sign=1,kind='a'){const g=new T3.Group(),big=kind==='b',r=big?1.15:.95,h=big?1.5:1.15,c=big?ZINC:STEEL;g.add(pm(cg(r,r,h,22),c));
+  if(big){cross(g,r*.72,h/2+.01);for(let i=0;i<6;i++){const a=i/6*Math.PI*2;g.add(at(pm(bg(.22,h*.75,.32),DARK),Math.cos(a)*r*.98,0,Math.sin(a)*r*.98))}}
+  else{const sl=pm(bg(r*1.45,.1,.22),DARK);sl.rotation.y=.5;g.add(at(sl,0,h/2+.01,0));g.add(at(pm(bg(r*.7,.32,.2),DARK),r*.55,-h*.28,r*.72));if(kind==='a')g.add(at(pm(bg(.2,.34,.7),DARK),r*.96,.05,0));for(let i=0;i<7;i++)g.add(at(pm(bg(.14,.16,.14),DARK),Math.cos(i*.3-1)*r*.97,-h/2+.1,Math.sin(i*.3-1)*r*.97))}return tag(point(g,axis,sign),r*1.08)}
+function pin145(axis='y',sign=1){const g=new T3.Group();g.add(at(pm(cg(.76,.76,.32,20),PLAST),0,3.2,0),at(pm(cg(.62,.42,4.6,8),PLAST),0,.7,0),at(pm(cg(.42,.42,.5),DARK),0,-1.7,0),at(pm(cg(.62,.62,.7),STEEL),0,-2.3,0));for(let i=0;i<4;i++){const a=i/4*Math.PI*2+.4;g.add(at(pm(bg(.1,3.7,.1),DARK),Math.cos(a)*.5,1,Math.sin(a)*.5))}return tag(point(g,axis,sign),.72)}
+function rail(len,axis='z',flip=1){const g=new T3.Group(),plate=pm(bg(.25,1.8,len),STEEL);g.add(plate,at(pm(bg(.95,.22,len),STEEL),.48*flip,.8,0),at(pm(bg(.95,.22,len*.9),STEEL),.48*flip,-.8,0));
+  const w=pm(cg(.92,.92,.5,22),0x2a2f31);w.rotation.z=Math.PI/2;g.add(at(w,.42*flip,0,len/2-.6));const hub=pm(cg(.3,.3,.56,12),ZINC);hub.rotation.z=Math.PI/2;g.add(at(hub,.42*flip,0,len/2-.6));
+  g.add(at(pm(bg(.25,1.8,1.4),ZINC),0,0,-len/2-.7),at(pm(bg(.7,.45,.35),ZINC),.3*flip,.7,-len/2-1.3));
+  let o=g;if(axis==='y'){o=new T3.Group();g.rotation.x=-Math.PI/2;o.add(g)}o.userData.plate=plate;return o}
+function lever(){const s=new T3.Shape();s.moveTo(-1.2,-1.8);s.lineTo(.3,-1.8);s.lineTo(.3,-.2);s.lineTo(.8,-.2);s.lineTo(.8,-1.8);s.lineTo(1.3,-1.8);s.lineTo(1.3,.9);s.quadraticCurveTo(.4,2,-.8,1.6);s.quadraticCurveTo(-1.5,1.1,-1.2,.2);s.closePath();const m=pm(geo('lev',()=>new T3.ExtrudeGeometry(s,{depth:.35,bevelEnabled:false})),GREY);m.rotation.y=Math.PI/2;const o=new T3.Group();o.add(m);return o}
+function bracket(){const g=new T3.Group();g.add(at(pm(bg(2.4,.35,2.4),ZINC),0,.18,0),at(pm(bg(2.4,2.4,.35),ZINC),0,1.5,-1.03));const t=pm(cg(1.2,1.2,.35,20),ZINC);t.rotation.x=Math.PI/2;g.add(at(t,0,2.7,-1.03));const a=pm(cg(.5,.5,.42,14),DARK);g.add(at(a,0,.18,0));const b=pm(cg(.5,.5,.42,14),DARK);b.rotation.x=Math.PI/2;g.add(at(b,0,2.5,-1.03));return g}
+function plug151(axis,sign){const g=new T3.Group();g.add(at(pm(cg(.95,.95,.25,18),PLAST),0,.9,0),pm(cg(.45,.3,1.7,8),PLAST));cross(g,.5,1.04);[-.4,0,.4].forEach(y=>g.add(at(pm(cg(.55,.42,.2,10),PLAST),0,y-.1,0)));return tag(point(g,axis,sign),.5)}
+function clip(axis,sign){const g=new T3.Group();const c=pm(cg(1.05,1.05,.3,20,),PLAST);g.add(at(c,0,.75,0),pm(bg(1.5,1.2,.9),PLAST),at(pm(bg(1,.8,.4),DARK),0,-.1,.3));return tag(point(g,axis,sign),.8)}
+function spacer(){const g=new T3.Group();[-1.05,0,1.05].forEach(x=>{g.add(at(pm(bg(.95,3.2,2),PLAST),x,0,0),at(pm(bg(.55,2.2,.12),DARK),x,0,1.02),at(pm(bg(.55,2.2,.12),DARK),x,0,-1.02))});const h=pm(cg(.7,.7,2.1,14),STEEL);h.rotation.x=Math.PI/2;g.add(h);return g}
+function coverL(){const s=new T3.Shape();s.moveTo(0,0);s.lineTo(1.4,0);s.lineTo(1.4,4);s.lineTo(4.4,4);s.lineTo(4.4,5.4);s.lineTo(0,5.4);s.closePath();const m=pm(geo('cvL',()=>new T3.ExtrudeGeometry(s,{depth:.7,bevelEnabled:true,bevelSize:.14,bevelThickness:.14,bevelSegments:2})),PLAST);m.scale.set(.55,.55,1);m.position.set(-1.2,-1.5,-.3);const o=new T3.Group();o.add(m);return o}
+
+const hd=(r,h)=>geo(`hd${r}_${h}`,()=>new T3.CylinderGeometry(r,r,h,20,1,false,0,Math.PI));
+function plug708(axis,sign){const g=new T3.Group();g.add(at(pm(cg(1,1,.24,20),PLAST),0,1.1,0));cross(g,.55,1.24);[0,1,2,3].forEach(i=>{const a=i*Math.PI/2+.5,l=pm(bg(.24,2.1,.3),PLAST);l.rotation.z=Math.cos(a)*.1;l.rotation.x=-Math.sin(a)*.1;g.add(at(l,Math.cos(a)*.33,0,Math.sin(a)*.33));[-.6,-.1,.4].forEach(y=>g.add(at(pm(bg(.2,.16,.34),PLAST),Math.cos(a)*.5,y,Math.sin(a)*.5)))});return tag(point(g,axis,sign),.55)}
+function pin707(axis,sign){const g=new T3.Group();g.add(at(pm(cg(1.15,1.15,.2,22),PLAST),0,1.6,0),at(pm(cg(.38,.26,3,10),PLAST),0,0,0),at(pm(bg(.08,1.6,.82),DARK),0,-.4,0),at(pm(cg(.12,.12,.8,8),DARK),.12,-.95,0));return point(g,axis,sign)}
+function clipB(axis,sign){const g=new T3.Group();const d=pm(hd(1.1,.32),PLAST);d.rotation.y=Math.PI/2;g.add(at(d,0,1,0),at(pm(bg(1.6,1.5,.16),PLAST),0,0,.55),at(pm(bg(.16,1.5,1.1),PLAST),.72,0,0),at(pm(bg(.16,1.5,1.1),PLAST),-.72,0,0),at(pm(bg(1.8,.2,1.2),PLAST),0,-.8,0));for(let i=0;i<6;i++)g.add(at(pm(bg(.1,.26,.2),DARK),-.9+i*.1,.7-i*.26,-.55));return tag(point(g,axis,sign),.85)}
+function clipC(axis,sign){const g=new T3.Group();const d=pm(hd(1.1,.32),PLAST);d.rotation.y=Math.PI/2;g.add(at(d,0,1.05,0),at(pm(cg(.5,.32,1.7,4),PLAST),0,0,0));g.add(at(pm(bg(.06,1.6,.3),DARK),.22,0,.1),at(pm(bg(.06,1.6,.3),DARK),-.22,0,.1));return point(g,axis,sign)}
+function peg(){const g=new T3.Group();const c=pm(cg(.3,.3,1,10),GREY);g.add(c,at(pm(cg(.36,.36,.14,10),GREY),0,-.2,0));return g}
+function coverL(){const s=new T3.Shape();s.moveTo(0,0);s.lineTo(1.2,0);s.quadraticCurveTo(1.5,0,1.5,.3);s.lineTo(1.5,3.2);s.lineTo(4.2,3.2);s.quadraticCurveTo(4.6,3.2,4.6,3.6);s.lineTo(4.6,4.5);s.lineTo(.5,4.5);s.quadraticCurveTo(0,4.5,0,4);s.closePath();const m=pm(geo('cvL2',()=>new T3.ExtrudeGeometry(s,{depth:.7,bevelEnabled:true,bevelSize:.15,bevelThickness:.15,bevelSegments:3})),PLAST);m.scale.set(.6,.6,1);const o=new T3.Group();o.add(m);const a=peg(),b=peg();a.rotation.x=-Math.PI/2;b.rotation.x=-Math.PI/2;o.add(at(a,.45,.4,-.45),at(b,2.3,2.3,-.45));o.children[0].position.set(0,0,0);const w=new T3.Group();o.position.set(-1.2,-1.4,0);w.add(o);return w}
+function coverS(l){const s=new T3.Shape(),r=.75,w=1.5;s.moveTo(0,0);s.lineTo(l-r,0);s.absarc(l-r,r,r,-Math.PI/2,Math.PI/2);s.lineTo(r,w);s.absarc(r,r,r,Math.PI/2,Math.PI*1.5);const m=pm(geo('cvS'+l,()=>new T3.ExtrudeGeometry(s,{depth:.8,bevelEnabled:true,bevelSize:.14,bevelThickness:.14,bevelSegments:3})),PLAST);m.rotation.y=-Math.PI/2;m.rotation.x=Math.PI/2;const g=new T3.Group();m.position.set(.8,0,l/2);m.rotation.set(Math.PI/2,0,-Math.PI/2);g.add(m);[-l*.25,l*.25].forEach(z=>{const p=peg();p.rotation.x=0;g.add(at(p,0,1,z))});return g}
+function plugW(axis,sign){const g=new T3.Group();g.add(at(pm(cg(1.3,1.3,.3,20),PLAST),0,2.2,0));[0,1].forEach(i=>{const a=pm(bg(.34,4,.9),PLAST);a.position.x=i?.45:-.45;a.rotation.z=i?-.06:.06;g.add(a);[-1.2,-.3,.6].forEach(y=>g.add(at(pm(bg(.2,.3,.95),PLAST),i?.72:-.72,y,0)))});g.add(at(pm(cg(.5,.5,.1,14),DARK),0,2.36,0));return point(g,axis,sign)}
+function fix(){const g=new T3.Group(),s=new T3.Shape();s.moveTo(-1.8,-1.2);s.lineTo(1.2,-1.8);s.lineTo(1.8,-1.8);s.lineTo(1.8,1.8);s.lineTo(1.2,1.8);s.lineTo(-1.8,1.2);s.closePath();const m=pm(geo('fx',()=>new T3.ExtrudeGeometry(s,{depth:.25,bevelEnabled:false})),STEEL);g.add(m);const sl=pm(bg(.7,2,.3),DARK);g.add(at(sl,-.2,0,.05));[-1,1].forEach(a=>{const b=pm(cg(.3,.3,1,10),ZINC);g.add(at(b,1.9,a*1.3,.1))});return g}
+function hole(r,axis,dark=DARK){const m=new T3.Mesh(cg(r,r,.12,14),mat(dark));if(axis==='x')m.rotation.z=Math.PI/2;if(axis==='z')m.rotation.x=Math.PI/2;return m}
+function tint(m,on){m.traverse(o=>{if(o.isMesh&&o.material&&o.material.color&&!o.material.isMeshBasicMaterial){if(o.material.map){o.material.emissive.setHex(on?0x23835c:0);return}if(o.userData.b==null)o.userData.b=o.material.color.getHex();const c=o.userData.b,lum=((c>>16&255)+(c>>8&255)+(c&255))/3;o.material.color.setHex(on&&lum>90?ACC:c)}})}
+const HOLE=0x1d2426,HOT=0xf07a22;let MARKS=[];
+function drill(target,pLocal,nLocal,r,steps){const g=new T3.Group();const d=new T3.Mesh(new T3.CircleGeometry(r,20),new T3.MeshBasicMaterial({color:HOLE}));d.rotation.x=-Math.PI/2;
+  const rim=new T3.Mesh(new T3.RingGeometry(r,r*1.22,24),new T3.MeshBasicMaterial({color:0x8b928d,side:T3.DoubleSide}));rim.rotation.x=-Math.PI/2;rim.position.y=.01;g.add(d,rim);
+  g.position.copy(pLocal).add(nLocal.clone().multiplyScalar(.05));g.quaternion.setFromUnitVectors(new T3.Vector3(0,1,0),nLocal);target.add(g);MARKS.push({d,rim,steps})}
+const RAD=o=>{let r=0;o.traverse(q=>{if(q.userData.hr)r=q.userData.hr});return r};
+function autoHoles(list,sceneObj,bodyOf,firstKey){sceneObj.updateMatrixWorld(true);const ray=new T3.Raycaster();
+  list.forEach(p=>{const r=p.m.userData.hr;if(!r)return;const body=bodyOf(p);if(!body)return;const k=firstKey(p);if(!k)return;const off=k[1][0];const o=new T3.Vector3(off[0],off[1],off[2]);if(o.lengthSq()<1)return;
+    const par=p.m.parent,start=new T3.Vector3(...p.pos).add(o);par.localToWorld(start);const dirW=new T3.Vector3(-off[0],-off[1],-off[2]).normalize().transformDirection(par.matrixWorld);
+    ray.set(start,dirW);const hit=ray.intersectObject(body,false)[0];if(!hit)return;const nW=hit.face.normal.clone().transformDirection(body.matrixWorld);
+    const inv=new T3.Matrix4().copy(body.matrixWorld).invert();const pL=hit.point.clone().applyMatrix4(inv),nL=nW.clone().transformDirection(inv).normalize();drill(body,pL,nL,r,[k[0]])})}
+function mark(step){MARKS.forEach(h=>{const on=h.steps.includes(step);h.d.material.color.setHex(on?HOT:HOLE);h.rim.material.color.setHex(on?HOT:0x8b928d)})}
+function holes(obj,list){list.forEach(([x,y,z,r,a])=>obj.add(at(hole(r,a),x,y,z)))}
+
+const wc=(fn,c)=>(...a)=>{const o=fn(...a);o.userData.code=typeof c==='function'?c(...a):c;return o};
+conn=wc(conn,'118331');dowel=wc(dowel,'101352');pin145=wc(pin145,'145718');rail=wc(rail,'10102042');lever=wc(lever,'联锁拨片');bracket=wc(bracket,'102553');plug708=wc(plug708,'151708');pin707=wc(pin707,'151707');clipB=wc(clipB,'10093081');clipC=wc(clipC,'10093082');coverL=wc(coverL,'10101849');coverS=wc(coverS,'158568');plugW=wc(plugW,'10087223');fix=wc(fix,'防倾倒固定件');lock=wc(lock,(x,y,k)=>k==='c'?'120076':k==='b'?'110126':'119252/119250');
+const SCREW={'2':'110733','3':'117494','4':'110733','6':'110733','9':'116546','10':'116546'};
+const PANEL={frameL:'框架',frameR:'框架',gateL:'支撑腿',gateR:'支撑腿',leafL:'桌板',leafR:'桌板',topC:'中段桌板'};
+let LBL=[],showLbl=true;try{showLbl=localStorage.getItem('stork-labels')!=='off'}catch(e){}
+function codeOf(o){let c=null;o.traverse(q=>{if(!c&&q.userData.code)c=q.userData.code});return c}
+function labelText(code){const id=cur,cell=typeof CELLS!=='undefined'&&CELLS.find(x=>x.code===code);if(!cell)return code;const n=need(id).find(x=>x[0]===code);return cell.n+' 格 · '+cell.name+' '+code+(n?' × '+n[1]:'')}
+const PAIR={frameL:'frameR',frameR:'frameL',leafL:'leafR',leafR:'leafL',gateL:'gateR',gateR:'gateL'};let CENTER=null;
+function buildLabels(){const box0=document.getElementById('animLabels');box0.replaceChildren();LBL=[];const seen=new Set(),grpL={};
+  const put=(obj,text,win,o={})=>{const key=o.key||text;if(!text||seen.has(key))return;seen.add(key);const d=document.createElement('div');d.className='alabel';d.textContent=text;box0.append(d);const line=document.createElementNS('http://www.w3.org/2000/svg','line');document.getElementById('animLines').append(line);LBL.push({obj,win,d,line,text,dir:o.dir||false,pair:o.pair||null,sep:o.sep||'',anchor:o.anchor||null})};
+  document.getElementById('animLines').replaceChildren();const dr=IDS.includes(cur);
+  (dr?parts:CP).forEach(p=>{const k=p.keys[cur];if(!k)return;let code=codeOf(p.m);if(!code&&p.m.userData.hr)code=SCREW[cur];if(!code&&p.m===(FR.chains||[])[0])code='10102070';let txt=code?labelText(code):p.lbl;if(!txt||!(code||k[0].join()!==k[1].join()))return;
+    if(p.tag)put(p.m,txt.replace(/ × \d+$/,'')+' '+p.tag+' × 3',p.win||[0,1],{key:txt+p.tag});
+    else if(p.pairM)put(p.m,code?txt.replace(/ × \d+$/,' × 1'):txt,p.win||[0,1],{key:txt+p.side,dir:true,pair:p.pairM,sep:code?' · ':''});
+    else put(p.m,txt,p.win||[0,1],{anchor:p.anchor});
+    if(code&&!p.pairM&&!p.tag)(grpL[txt]=grpL[txt]||[]).push(p)});
+  LBL.forEach(l=>{const g=grpL[l.text];if(g&&g.length>1){l.follow=g;const w=g.map(p=>p.tap||p.win||[0,1]);l.win=[Math.min(...w.map(x=>x[0])),Math.max(...w.map(x=>x[1]))]}});
+  if(!dr)GS.forEach(G=>{const q=G.seq[cur];if(q&&q[1]!==0&&q[0]!==q[1]){const m=FR[PAIR[G.name]];put(G.g,PANEL[G.name],[(G.startAt&&G.startAt[cur])||0,G.name==='back'&&cur==='21'?1:(G.move||1)],{key:G.name,dir:!!m,pair:m?m.g:null,anchor:G.anchor})}});
+  if(cur==='11'){put(FR.drs[0].g,'抽屉',[0,.5]);put(FR.gateR.g,'支撑腿',[.72,.86],{anchor:FR.gateR.anchor})}}
+function drawLabels(){const v=document.getElementById('animView'),w=v.clientWidth,h=v.clientHeight,pv=new T3.Vector3(),on=[];
+  document.getElementById('animLabels').hidden=!showLbl;document.getElementById('animLines').style.display=showLbl?'':'none';if(!showLbl)return;
+  const tt=Math.min(t,1);LBL.forEach(l=>{const a=l.win[0]-.1,b=l.win[1]+.06,vis=l.obj.visible&&tt>=a&&tt<=Math.min(b,.985);l.d.style.opacity=vis?1:0;l.line.style.display=vis?'':'none';if(!vis)return;
+    if(l.follow){const q=l.follow.find(p=>p._L>0&&p._L<1);if(q)l.obj=q.m}if(l.anchor){l.obj.updateWorldMatrix(true,false);pv.set(...l.anchor).applyMatrix4(l.obj.matrixWorld)}else l.obj.getWorldPosition(pv);pv.project(cam);const x=(pv.x+1)/2*w,y=(1-pv.y)/2*h;if(pv.z>1||x<-20||y<-20||x>w+20||y>h+20){l.d.style.opacity=0;l.line.style.display='none';return}on.push({l,x,y})});
+  on.forEach(o=>{const l=o.l;if(!l.dir)return;const c=new T3.Vector3();if(l.pair&&l.pair.visible)l.pair.getWorldPosition(c);else if(CENTER)c.copy(CENTER);else return;c.project(cam);const rx=(c.x+1)/2*w,ry=(1-c.y)/2*h,dx=o.x-rx,dy=o.y-ry,tag=Math.abs(dx)>=Math.abs(dy)*.8?(dx<0?'左':'右'):(dy>0?'前':'后'),txt=tag+l.sep+l.text;if(l.d.textContent!==txt)l.d.textContent=txt});
+  on.sort((a,b)=>a.y-b.y);let lastB=-99;const pad=6;on.forEach(o=>{const dw=o.l.d.offsetWidth,dh=o.l.d.offsetHeight;let lx=o.x+16,ly=o.y-dh-20;if(lx+dw>w-pad)lx=o.x-dw-16;if(lx<pad)lx=pad;if(ly<pad)ly=pad;if(ly<lastB+4)ly=lastB+4;if(ly+dh>h-pad)ly=h-dh-pad;lastB=ly+dh;
+    o.l.d.style.transform=`translate(${Math.round(lx)}px,${Math.round(ly)}px)`;const ln=o.l.line;ln.setAttribute('x1',o.x);ln.setAttribute('y1',o.y);ln.setAttribute('x2',lx+dw/2);ln.setAttribute('y2',ly+dh/2)})}
+/* Realistic look: procedural wood, matcap metal, gloss plastic. Line look stays available. */
+let realLook=true;try{realLook=localStorage.getItem('stork-look')!=='line'}catch(e){}
+function woodTex(base,dark,lines){const c=document.createElement('canvas');c.width=1024;c.height=256;const x=c.getContext('2d');x.fillStyle=base;x.fillRect(0,0,1024,256);let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  for(let i=0;i<lines;i++){x.strokeStyle=dark;x.globalAlpha=.04+rnd()*.2;x.lineWidth=.5+rnd()*2.2;const y=rnd()*256,a=rnd()*7,b=rnd()*9;x.beginPath();for(let u=0;u<=1024;u+=32){const k=u/1024*Math.PI*2;x.lineTo(u,y+Math.sin(k+a)*b+Math.sin(k*2+b)*b*.4)}x.stroke()}
+  x.globalAlpha=.14;x.fillStyle=dark;for(let i=0;i<500;i++)x.fillRect(rnd()*1024,rnd()*256,6+rnd()*40,1);x.globalAlpha=1;const t=new T3.CanvasTexture(c);t.wrapS=t.wrapT=T3.RepeatWrapping;return t}
+function matcapTex(hi,mid,lo){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d'),g=x.createRadialGradient(46,38,6,64,64,78);g.addColorStop(0,hi);g.addColorStop(.45,mid);g.addColorStop(.85,lo);g.addColorStop(1,mid);x.fillStyle=g;x.fillRect(0,0,128,128);return new T3.CanvasTexture(c)}
+function planarUV(m){const g=m.geometry;if(!g.parameters||g.type!=='BoxGeometry')return;const p=g.attributes.position,n=g.attributes.normal,uv=g.attributes.uv,d=[g.parameters.width,g.parameters.height,g.parameters.depth];for(let i=0;i<p.count;i++){const a=[Math.abs(n.getX(i)),Math.abs(n.getY(i)),Math.abs(n.getZ(i))],skip=a.indexOf(Math.max(...a)),ax=[0,1,2].filter(k=>k!==skip).sort((q,w)=>d[w]-d[q]),v=[p.getX(i),p.getY(i),p.getZ(i)];uv.setXY(i,v[ax[0]]*.0065+skip*.31,v[ax[1]]*.024+skip*.17)}uv.needsUpdate=true}
+let LOOK=null;const inCover=o=>{let c=false;o.traverseAncestors(q=>{if(q.userData.code==='10101849'||q.userData.code==='158568')c=true});return c};
+function makeLook(sceneObj){if(!LOOK)LOOK={oak:woodTex('#4d3628','#241510',900),beech:woodTex('#c9a26b','#8d6838',260),steel:matcapTex('#ffffff','#a8b0b4','#3b4246'),black:matcapTex('#8c9296','#34383b','#0d0f10')};
+  sceneObj.traverse(o=>{if(!o.isMesh||!o.material||o.material.isMeshBasicMaterial||o.userData.lineM)return;const old=o.material,c=(o.userData.b!=null?o.userData.b:old.color.getHex());let nw;
+    if(c===DOW||c===WOODP){nw=new T3.MeshPhongMaterial({map:LOOK.beech,shininess:10})}
+    else if(c===METAL||c===STEEL||c===ZINC||c===0x6d7478){nw=new T3.MeshMatcapMaterial({matcap:LOOK.steel,color:0xffffff})}
+    else if(c===0x4a5256||c===0x333b3f||c===0x2a2f31||c===DARK||c===0x3a4246||c===0x2a3033){nw=new T3.MeshMatcapMaterial({matcap:LOOK.black,color:0xffffff})}
+    else if(c===PLAST||c===0xf4f4ef||c===0xf0f0ea){nw=new T3.MeshPhongMaterial({color:0xe9e6dc,shininess:80,specular:0x555555})}
+    else return;
+    o.userData.lineM=old;o.userData.realM=nw;o.userData.lb=c});}
+function setLook(real){realLook=real;[scene,sc2].forEach(sc=>{if(!sc)return;sc.traverse(o=>{if(o.isLineSegments)o.visible=!real||!o.parent.userData.realM;if(o.isMesh&&o.userData.realM){const m=real?o.userData.realM:o.userData.lineM;if(o.material!==m){o.material=m;o.userData.b=m.map?0xffffff:m.color.getHex()}}});sc.children.forEach(q=>{if(q.isAmbientLight)q.intensity=.85;if(q.isDirectionalLight)q.intensity=.45})});const b=document.getElementById('animLook');if(b)b.textContent=real?'线稿模式':'真实材质';try{localStorage.setItem('stork-look',real?'real':'line')}catch(e){}}
+/* NORDEN gateleg table. Built upright (steps 1-2), table top inverted (3-4), frame inverted (5-8), flipped, drawers (9-11). Proportions are estimates. */
+const CIDS=['1','2','3','4','5','6','7','8','9','10','11'];
+const ORD=id=>CIDS.indexOf(id);
+let sc2,GS=[],CP=[],FR={},cabReady=false;
+const PI=Math.PI,F={f:[0,0,0]},H0=70,BW=24,LZ=76,PS=4,TK=3,CW=38,LW=52;
+
+function grp(name,body,final,seq,opt={}){const g=new T3.Group();if(body)g.add(body);sc2.add(g);const G={g,name,body,final,seq,...opt};GS.push(G);FR[name]=G;return G}
+function pt(G,m,pos,keys,o={}){m.position.set(...pos);(G?G.g:sc2).add(m);CP.push({m,pos,keys,G,...o});return m}
+function frameOf(id,t){const inv=new T3.Quaternion().setFromAxisAngle(new T3.Vector3(0,0,1),PI),up=new T3.Quaternion();let q=up,y=0;
+  const n=+id;if(n>=3&&n<=7){q=inv;y=H0+TK}else if(id==='8'){const k=ease(clamp((t-.62)/.38));q=inv.clone().slerp(up,k);y=lerp(H0+TK,.3,k)+Math.sin(k*PI)*30}else if(n===11)y=.3;
+  return{q,t:new T3.Vector3(0,y,0)}}
+function resolve(G,spec,fr){const v=new T3.Vector3(),q=new T3.Quaternion();
+  if(spec.p){v.set(...spec.p);q.setFromEuler(new T3.Euler(...spec.r));return{v,q,arc:spec.arc||0}}
+  const o=spec.f||[0,0,0];v.set(G.final[0]+o[0],G.final[1]+o[1],G.final[2]+o[2]).applyQuaternion(fr.q).add(fr.t);q.copy(fr.q);if(spec.ry)q.multiply(new T3.Quaternion().setFromAxisAngle(new T3.Vector3(0,1,0),spec.ry));if(spec.rz)q.multiply(new T3.Quaternion().setFromAxisAngle(new T3.Vector3(0,0,1),spec.rz));return{v,q,arc:0}}
+function bolt116(axis,sign){const g=new T3.Group();g.add(at(pm(cg(.62,.5,.28),STEEL),0,.95,0),at(pm(cg(.3,.3,.45),STEEL),0,.6,0),at(pm(cg(.22,.22,1.3),STEEL),0,-.25,0),at(pm(helix(.36,1.2,6,.09),STEEL),0,.35,0));cross(g,.42,1.1);return tag(point(g,axis,sign),.36)}
+function longBolt(axis,sign){const g=new T3.Group();g.add(at(pm(cg(.8,.8,.3),STEEL),0,5.2,0),at(pm(cg(.3,.3,.36,6),DARK),0,5.2,0),at(pm(cg(.33,.33,6.2),STEEL),0,2,0),at(pm(cg(.33,.33,3.6),STEEL),0,-3,0),at(pm(helix(.42,3.4,14,.09),STEEL),0,-1.3,0),at(pm(cg(.33,.02,.7,10),STEEL),0,-5.15,0));return tag(point(g,axis,sign),.45)}
+function barrel(axis,sign){const g=new T3.Group();g.add(pm(cg(.55,.55,2.6,16),STEEL));const sl=pm(bg(.9,.1,.16),DARK);g.add(at(sl,0,1.31,0));const h=pm(cg(.26,.26,1.15,12),DARK);h.rotation.z=PI/2;g.add(h);return tag(point(g,axis,sign),.6)}
+function foot(axis,sign){const g=new T3.Group();g.add(at(pm(cg(1.5,1.5,.26,22),PLAST),0,.8,0));g.add(at(pm(bg(.35,1.4,.9),PLAST),0,0,0),at(pm(bg(.9,1.4,.35),PLAST),0,0,0));return tag(point(g,axis,sign),.5)}
+function pad(axis,sign){const g=new T3.Group();g.add(at(pm(bg(3.8,.3,1.7),PLAST),0,.8,0));[-.9,.9].forEach(x=>g.add(at(pm(cg(.42,.42,1.3,12),PLAST),x,0,0)));return tag(point(g,axis,sign),0)}
+function bar(){const g=new T3.Group(),pl=pm(bg(32,.25,1.8),ZINC);g.add(pl);[-14,14].forEach(x=>drill(pl,new T3.Vector3(x,.13,0),new T3.Vector3(0,1,0),.5,['2']));[-10,0,10].forEach(x=>{drill(pl,new T3.Vector3(x,-.13,0),new T3.Vector3(0,-1,0),.56,['6']);if(x)MARKS[MARKS.length-1].d.parent.scale.x=1.5});[-10,0,10].forEach(x=>{const h=at(pm(cg(.62,.62,.28,14),DARK),x,0,0);if(x)h.scale.x=1.6;g.add(h)});[-14,14].forEach(x=>{g.add(at(pm(cg(.32,.32,.28,10),DARK),x,0,0));g.add(at(pm(cg(.6,.32,.1,14),DARK),x,.1,0))});g.userData.code='120139';return g}
+function hingeP(a,knuckle){const g=new T3.Group(),pl=pm(bg(3.6,.22,5),ZINC);g.add(at(pl,a*2,0,0));[-1.8,1.8].forEach(z=>[.9,3].forEach(x=>{g.add(at(pm(cg(.3,.3,.26,10),DARK),a*x,0,z));drill(pl,new T3.Vector3(a*(x-2),-.11,z),new T3.Vector3(0,-1,0),.34,['4'])}));if(knuckle){const k=pm(cg(.35,.35,5,10),STEEL);k.rotation.x=PI/2;g.add(at(k,0,-.14,0))}g.userData.code='10005601';return g}
+function keyL(){const g=new T3.Group();[[0,0,0,5,'x'],[2.4,0,1.2,3,'z']].forEach(([x,y,z,l,a])=>{const m=pm(bg(a==='x'?l:.35,.35,a==='x'?.35:l),STEEL);g.add(at(m,x,y,z))});g.userData.code='10083377';return g}
+const rail2=(l,y,zc,x)=>{const m=box(2.6,3,l,WOOD);return at(m,x,y,zc)};
+function frameBody(a){const g=new T3.Group();[-1,1].forEach(z=>{g.add(at(box(PS,H0,PS,WOOD),0,0,z*(LZ/2)))});[H0/2-1.7,16,-5,-26].forEach(y=>g.add(at(box(2.2,3.4,LZ-PS,WOOD),-a*.6,y,0)));g.userData.posts=g.children.slice(0,2);g.userData.top=g.children[2];return g}
+function gateBody(s){const g=new T3.Group();g.add(at(box(3.4,H0-3,3.4,WOOD),s*46,-1.5,0));[H0/2-4,-H0/2+8].forEach(y=>g.add(at(box(46,3.4,2.8,WOOD),s*23,y,0)));return g}
+function hammerRig(){const root=new T3.Group(),sw=new T3.Group();root.add(sw);const L=18,GL=0xeef0ec;
+  const ed=(m,th=25)=>{m.add(new T3.LineSegments(new T3.EdgesGeometry(m.geometry,th),EDGE()));return m};
+  const xc=(r0,r1,l,x,col,y=0)=>{const m=ed(pm(cg(r0,r1,l,18),col));m.rotation.z=-PI/2;m.position.set(x,y,0);return m};
+  sw.add(xc(.42,.42,L,L/2,STEEL),xc(.78,.68,7,3.4,DARK));
+  const n=ed(pm(cg(.95,.95,2.3,20),STEEL));n.position.set(L,-.75,0);sw.add(n);const fc=ed(pm(cg(1.2,1.05,.5,20),STEEL));fc.position.set(L,-2,0);sw.add(fc);const ck=ed(pm(bg(1.9,1.3,1.5),STEEL));ck.position.set(L,.45,0);sw.add(ck);
+  const s=new T3.Shape();s.moveTo(.95,.5);s.quadraticCurveTo(1.1,3.1,-3,3.5);s.quadraticCurveTo(-.9,2.2,-.95,.5);s.closePath();
+  [-.42,.42].forEach(z=>{const g=new T3.ExtrudeGeometry(s,{depth:.56,bevelEnabled:false});g.translate(L,0,z-.28);sw.add(ed(pm(g,STEEL),30))});
+  const palm=ed(pm(bg(3.8,2.5,2.3),GL));palm.position.set(2.6,.25,0);sw.add(palm);for(let k=0;k<4;k++){const f=ed(pm(cg(.52,.52,2.5,10),GL));f.rotation.x=PI/2;f.position.set(1.15+k*.98,-1.05,0);sw.add(f)}const th=ed(pm(cg(.5,.42,2.6,10),GL));th.rotation.z=-PI/2+.35;th.position.set(3.2,1.1,.9);sw.add(th);
+  root.add(xc(1.45,1.75,2.6,-.6,GL),xc(1.75,2.1,7,-5.4,GL));root.scale.setScalar(1.4);return{root,sw,L:L*1.4}}
+function tapL(p,tt){const[a,b]=p.tap,n=p.taps||3,u=clamp((tt-a)/(b-a)),v=clamp((u-.3)/.7)*n,cnt=Math.min(n,Math.floor(v+.55));return .82*ease(clamp(u/.3))+.18*cnt/n}
+function hammerAt(s,tt,fr){const list=CP.filter(p=>p.tap&&p.keys[s]);const H=FR.ham;H.root.visible=false;if(!list.length)return;const p=list.find(q=>tt<q.tap[1]);if(!p||tt<p.tap[0])return;const[a,b]=p.tap,n=p.taps||3,u=clamp((tt-a)/(b-a));if(u<.08)return;H.root.visible=true;
+  const A=.85,v=clamp((u-.3)/.7)*n,f=v%1,ang=u<.3||v>=n?A:f<.45?A*(1-(f/.45)**2):A*ease((f-.45)/.55);
+  p.m.updateWorldMatrix(true,true);const bx=new T3.Box3().setFromObject(p.m);let X,Y,Z;
+  if(s==='9'||s==='10'){const sd=p.side;X=new T3.Vector3(0,.92,-.38).normalize();Y=new T3.Vector3(sd,0,0);Z=X.clone().cross(Y);const hit=new T3.Vector3(sd>0?bx.max.x:bx.min.x,(bx.min.y+bx.max.y)/2,(bx.min.z+bx.max.z)/2);H.root.position.copy(hit).add(Y.clone().multiplyScalar(3.15)).sub(X.clone().multiplyScalar(H.L))}
+  else{const sx=p.side;X=new T3.Vector3(-sx,0,0);Y=new T3.Vector3(0,1,0);Z=X.clone().cross(Y);const hit=new T3.Vector3((bx.min.x+bx.max.x)/2,bx.max.y,(bx.min.z+bx.max.z)/2);H.root.position.copy(hit).add(Y.clone().multiplyScalar(3.15)).sub(X.clone().multiplyScalar(H.L))}
+  H.root.quaternion.setFromRotationMatrix(new T3.Matrix4().makeBasis(X,Y,Z));H.sw.rotation.z=ang}
+function buildCab(){
+  sc2=new T3.Scene();sc2.add(new T3.AmbientLight(0xffffff,.85));const d=new T3.DirectionalLight(0xffffff,.45);d.position.set(30,70,-40);sc2.add(d);
+  FR.floor=box(420,1,300,0xdfe2dd);FR.floor.position.set(0,-.5,0);FR.floor.children[0].visible=false;sc2.add(FR.floor);
+  const hideT={3:null,4:null},hideD={9:null,10:null};
+  const fy=H0/2,fL=grp('frameL',null,[-BW/2-PS/2,fy,0],{1:[{f:[-6,0,0]},F],2:[F,0],...hideT,5:[F,0],6:[{f:[0,-34,0]},F],...hideD},{startAt:{1:.45},moveAt:{6:.5},anchor:[0,16,0]});
+  const fR=grp('frameR',null,[BW/2+PS/2,fy,0],{1:[{f:[6,0,0]},F],2:[F,0],...hideT,5:[F,0],6:[{f:[0,-34,0]},F],...hideD},{startAt:{1:.45},moveAt:{6:.5},anchor:[0,16,0]});
+  fL.g.add(frameBody(-1));fR.g.add(frameBody(1));
+  const gt=grp('gateL',null,[-BW/2-PS,fy,LZ/2+.8],{1:[{f:[-6,0,0]},F],2:[F,0],...hideT,5:[F,{ry:-PI*.5}],6:[{f:[0,-34,0],ry:-PI*.5},{ry:-PI*.5}],7:[{ry:-PI*.5},0],8:[{ry:-PI*.5},0],...hideD,11:[{ry:-PI*.5},0]},{startAt:{1:.45},moveAt:{5:.2,6:.5},anchor:[-46,0,0]});gt.g.add(gateBody(-1));
+  const gr=grp('gateR',null,[BW/2+PS,fy,-LZ/2-.8],{1:[{f:[6,0,0]},F],2:[F,0],...hideT,5:[F,{ry:-PI*.5}],6:[{f:[0,-34,0],ry:-PI*.5},{ry:-PI*.5}],7:[{ry:-PI*.5},0],8:[{ry:-PI*.5},0],...hideD,11:[{ry:-PI*.5},F]},{startAt:{1:.45,11:.72},moveAt:{5:.2,6:.5,11:.86},anchor:[46,0,0]});gr.g.add(gateBody(1));const peg=cyl(.5,2.4,PLAST);peg.position.set(46,H0/2-2.2,.8);gr.g.add(peg);FR.peg=peg;const pegL=cyl(.5,2.4,PLAST);pegL.position.set(-46,H0/2-2.2,-.8);gt.g.add(pegL);
+  const ties=grp('ties',null,[0,fy,0],{1:[F,0],2:[F,0],...hideT,5:[F,0],6:[{f:[0,-34,0]},F],...hideD},{moveAt:{6:.5}});const YB=-H0/2+3.5;FR.bolts=[];
+  [-1,1].forEach((z,i)=>{const bk=box(BW,5,3,WOOD);pt(ties,bk,[0,YB,z*(LZ/2)],{1:[[0,0,z*14],[0,0,0]]},{i,of:2,win:[.2,.45],lbl:'连接木块'});
+    [-1,1].forEach(a=>{drill(bk,new T3.Vector3(a*BW/2,0,0),new T3.Vector3(a,0,0),.42,['5']);[-1.5,1.5].forEach(y=>pt(ties,dowel('x',a,.4,3),[a*(BW/2-.1),YB+y,z*(LZ/2)],{1:[[0,0,z*14],[0,0,0]]},{i,of:2,win:[.2,.45],ins:a*5}));
+      const fg=(a<0?fL:fR).g.children[0],post=fg.userData.posts[z<0?0:1];[-1.5,1.5].forEach(y=>drill(post,new T3.Vector3(-a*PS/2,YB+y,0),new T3.Vector3(-a,0,0),.45,['1']));drill(post,new T3.Vector3(a*PS/2,YB,0),new T3.Vector3(a,0,0),.5,['5']);
+      pt(ties,barrel('y',-1),[a*(BW/2-3.2),YB,z*(LZ/2)],{5:[[0,-9,0],[0,0,0]]},{i:(z+1)+(a+1)/2,of:4,win:[.2,.5],spin:'y',on:bk});
+      const blt=pt(ties,longBolt('x',a),[a*(BW/2+PS-5.35),YB,z*(LZ/2)],{5:[[a*12,0,0],[0,0,0]]},{i:(z+1)+(a+1)/2,of:4,win:[.5,1],spin:'x',nohole:1});FR.bolts.push(blt)})});
+  const ky=keyL();ky.position.set(0,0,0);sc2.add(ky);FR.key=ky;
+  // steel bars on the top rails
+  [[fL,-1],[fR,1]].forEach(([G,a])=>[-26,26].forEach(z=>drill(G.g.children[0].userData.top,new T3.Vector3(a*.6,1.7,z),new T3.Vector3(0,1,0),.3,['2'])));
+  [-1,1].forEach((z,i)=>{const b=bar();pt(fL,b,[BW/2+PS/2,H0/2-.1,z*26],{2:[[0,10,0],[0,0,0]]},{i,of:2,win:[0,.5]});[-1,1].forEach((a,j)=>pt(fL,screw('y',1,{r:.3,len:1.1}),[BW/2+PS/2+a*14,H0/2-.48,z*26],{2:[[0,9,0],[0,0,0]]},{i:i*2+j,of:4,win:[.5,1],spin:'y',nohole:1}));
+    [-10,0,10].forEach((x,j)=>pt(fL,screw('y',-1,{r:.34,len:1.2}),[BW/2+PS/2+x,H0/2+.37,z*26],{6:[[0,-14,0],[0,0,0]]},{i:x===0?i:i*2+(x>0?1:0),of:x===0?2:4,win:x===0?[.55,.72]:[.72,1],spin:'y',nohole:1}))});
+  // table top, built upright then shown inverted
+  const cP=box(CW,TK,LZ+8,WOOD),lP=box(LW,TK,LZ+8,WOOD),rP=box(LW,TK,LZ+8,WOOD);
+  const seq={1:null,2:null,3:[F,0],4:[F,0],5:null,6:[F,0],7:[F,0],9:null,10:null};
+  const ct=grp('topC',cP,[0,H0+TK/2,0],{...seq,8:[F,0]});
+  const bendL={rz:PI/2},bendR={rz:-PI/2};
+  const lf=grp('leafL',null,[-CW/2,H0+TK/2,0],{...seq,8:[F,bendL],11:[bendL,0]},{startAt:{8:.28},move:.6,piv:[0,-TK/2-.2,0],anchor:[-LW/2,0,0]});lf.g.add(at(lP,-LW/2,0,0));
+  const rf=grp('leafR',null,[CW/2,H0+TK/2,0],{...seq,8:[F,bendR],11:[bendR,{rz:.055}]},{startAt:{8:.28,11:.55},moveAt:{8:.6,11:.7},drop:{11:[.88,1]},piv:[0,-TK/2-.2,0],anchor:[LW/2,0,0]});rf.g.add(at(rP,LW/2,0,0));
+  [-1,1].forEach(z=>[-10,0,10].forEach(x=>drill(cP,new T3.Vector3(x,-TK/2,z*26),new T3.Vector3(0,-1,0),.42,['6'])));
+  [[lf,-1,lP],[rf,1,rP]].forEach(([G,a,P])=>{[-1,1].forEach(z=>drill(P,new T3.Vector3(0,-TK/2,z*.9),new T3.Vector3(0,-1,0),.34,['3']));[-37.5,37.5].forEach(z=>{const r=box(LW-6,1.7,2.6,WOOD);r.position.set(a*(LW/2),-TK/2-.85,z);G.g.add(r);if(G===rf&&z<0)drill(r,new T3.Vector3(43-LW/2,-.85,-.5),new T3.Vector3(0,-1,0),.62,['11']);if(G===lf&&z>0)drill(r,new T3.Vector3(LW/2-43,-.85,.5),new T3.Vector3(0,-1,0),.62,['11'])});const bl=box(5,3,4,WOOD);[-1,1].forEach(z=>drill(bl,new T3.Vector3(0,-1.5,z*.9),new T3.Vector3(0,-1,0),.5,['3']));pt(G,bl,[a*(LW/2),-TK/2-1.5,0],{3:[[0,-10,0],[0,0,0]]},{win:[0,.5],lbl:'垫块'});
+    [-1,1].forEach((z,i)=>pt(G,screw('y',-1,{r:.3,len:3.2}),[a*(LW/2),-TK/2-1.7,z*.9],{3:[[0,-9,0],[0,0,0]]},{i,of:2,win:[.5,1],spin:'y',nohole:1}))});
+  [[-1,lf,lP],[1,rf,rP]].forEach(([a,LF,P],i)=>[-31,31].forEach((z,j)=>{
+    pt(ct,hingeP(-a,true),[a*CW/2,-TK/2-.14,z],{4:[[0,-9,0],[0,0,0]]},{i:i*2+j,of:4,win:[0,.45]});pt(LF,hingeP(a,false),[0,-TK/2-.14,z],{4:[[0,-9,0],[0,0,0]]},{i:i*2+j,of:4,win:[0,.45]});
+    for(let k=0;k<8;k++){const sx=(k%4<2?-1:1)*(k%2?3:.9),sz=k<4?-1.8:1.8,inner=sx*a<0;drill(inner?cP:P,new T3.Vector3(inner?a*CW/2+sx:sx-a*LW/2,-TK/2,z+sz),new T3.Vector3(0,-1,0),.3,['4']);pt(inner?ct:LF,screw('y',-1,{r:.26,len:1.2}),[inner?a*CW/2+sx:sx,-TK/2-.1,z+sz],{4:[[0,-8,0],[0,0,0]]},{i:i*2+j,of:4,win:[.45,1],nohole:1})}}));
+  // feet and pads on leg ends
+  [[fL,-1,-1],[fL,-1,1],[fR,1,-1],[fR,1,1]].forEach(([G,a,z],i)=>drill(G.g.children[0].userData.posts[z<0?0:1],new T3.Vector3(0,-H0/2,0),new T3.Vector3(0,-1,0),.75,['7']));
+  [[fL,-1,-1],[fL,-1,1],[fR,1,-1],[fR,1,1]].forEach(([G,a,z],i)=>pt(G,foot('y',-1),[0,-H0/2+.67,z*(LZ/2)],{7:[[0,-10,0],[0,0,0]]},{tap:[i/4,(i+1)/4],taps:3,side:a}));
+  [gt,gr].forEach((G,i)=>{const s=i?1:-1;[-.9,.9].forEach(x=>drill(G.g.children[0].children[0]||G.g.children[0],new T3.Vector3(x,-(H0-3)/2,0),new T3.Vector3(0,-1,0),.45,['8']));pt(G,pad('y',-1),[s*46,-H0/2+.65,0],{8:[[0,-9,0],[0,0,0]]},{tap:[i*.135,(i+1)*.135],taps:2,side:s});if(i===0)FR.padObj=G.g.children[G.g.children.length-1]});
+  // drawer parts for steps 9-10, one drawer at the origin
+  const dw=22,dh=18,dd=34,th=1.8;const D={};
+  const dg=grp('drawer',null,[0,0,0],{},{});sc2.remove(dg.g);GS.pop();
+  const m=(name,w,h,d0,c=WOOD)=>{const b=box(w,h,d0,c);return b};
+  [-1,1].forEach((a,i)=>{const sd=m('s',th,dh,dd);D['s'+a]=sd;[3.2,16.3].forEach(y=>[[-1,'9'],[1,'10']].forEach(([zs,st])=>drill(sd,new T3.Vector3(a*th/2,y-dh/2,zs*(dd/2-th/2)),new T3.Vector3(a,0,0),.32,[st])));sd.add(at(new T3.Mesh(bg(.12,.7,dd-.5),mat(0x3a4246)),-a*(th/2+.03),-dh/2+1.6,0));sd.add(at(box(.5,1,dd-.5,WOOD),a*(th/2+.25),dh/2-3.3,0));pt(null,sd,[a*(dw/2-th/2),dh/2+1,0],{9:[[a*8,0,0],[0,0,0]]},{i,of:2,win:[0,.25],lbl:'抽屉长板（凸条朝外）',only2:1,side:a,anchor:[0,dh/2,0]})});{const q=CP.filter(p=>p.lbl==='抽屉长板（凸条朝外）');q[0].pairM=q[1].m;q[1].pairM=q[0].m}
+  const endP=(ntc)=>{const g=new T3.Group();const s=new T3.Shape();const W2=dw/2-th,H2=dh;s.moveTo(-W2,0);s.lineTo(W2,0);s.lineTo(W2,H2);if(ntc){s.lineTo(1.4,H2);s.lineTo(1.4,H2-4);s.absarc(0,H2-4,1.4,0,-PI,true);s.lineTo(-1.4,H2)}s.lineTo(-W2,H2);s.closePath();const ge=new T3.ExtrudeGeometry(s,{depth:th,bevelEnabled:false});ge.translate(0,0,-th/2);const me=new T3.Mesh(ge,mat(WOOD));me.add(new T3.LineSegments(new T3.EdgesGeometry(ge,20),EDGE()));g.add(me);return g};
+  const be=endP(false);[-1,1].forEach(a=>[3.2,16.3].forEach(y=>drill(be.children[0],new T3.Vector3(a*(dw/2-th),y,0),new T3.Vector3(a,0,0),.3,['9'])));pt(null,be,[0,1,-dd/2+th/2],{9:[[0,0,-9],[0,0,0]]},{win:[.2,.5],lbl:'无缺口端板',only2:1,anchor:[0,dh-.5,0]});
+  const fr=endP(true);[-1,1].forEach(a=>[3.2,16.3].forEach(y=>drill(fr.children[0],new T3.Vector3(a*(dw/2-th),y,0),new T3.Vector3(a,0,0),.3,['10'])));pt(null,fr,[0,1,dd/2-th/2],{10:[[0,-3,12],[0,0,0]]},{win:[.3,.6],lbl:'有缺口端板（缺口朝上）',only2:1,anchor:[-5,dh*.55,th/2],tiltX:{10:[.9,0]}});
+  pt(null,m('b',dw-2*th+.6,.5,dd-1.6,GREY),[0,2.6,-.4],{10:[[0,0,dd+8],[0,0,0]]},{win:[0,.3],lbl:'抽屉底板',only2:1});
+  [-1,1].forEach((a,i)=>[3.2,16.3].forEach((y,j)=>{pt(null,bolt116('x',a),[a*(dw/2-1),y+1,-dd/2+th/2],{9:[[a*9,0,0],[0,0,0]]},{tap:[.5+(i*2+j)*.125,.5+(i*2+j+1)*.125],taps:2,side:a,only2:1,nohole:1});pt(null,bolt116('x',a),[a*(dw/2-1),y+1,dd/2-th/2],{10:[[a*9,0,0],[0,0,0]]},{tap:[.6+(i*2+j)*.1,.6+(i*2+j+1)*.1],taps:2,side:a,only2:1,nohole:1})}));
+  FR.ham=hammerRig();sc2.add(FR.ham.root);
+  const drs=[];[-1,1].forEach(z=>[53,33,13].forEach((y,r)=>{const g=new T3.Group(),f=endP(true);f.position.set(0,.6,z*16.6);if(z<0)f.rotation.y=0;const bd=box(22,18,LZ/2-6,0xeef0ec);bd.position.set(0,10,0);g.add(bd,f);g.position.set(0,y-8,z*(LZ/4+1));g.userData.z=z*(LZ/4+1);sc2.add(g);drs.push({g,z,r})}));FR.drs=drs;
+  GS.forEach(G=>{G.g.position.set(0,0,0);G.g.quaternion.identity();G.g.position.set(...G.final)});
+  sc2.updateMatrixWorld(true);
+  CP.forEach(p=>{const r=p.m.userData.hr;if(!r||!p.on)return;const k=Object.keys(p.keys)[0];const off=p.keys[k][0];const start=new T3.Vector3(...p.pos).add(new T3.Vector3(...off));p.m.parent.localToWorld(start);const dir=new T3.Vector3(-off[0],-off[1],-off[2]).normalize().transformDirection(p.m.parent.matrixWorld),ry=new T3.Raycaster(start,dir),hit=ry.intersectObject(p.on,false)[0];if(!hit)return;const nW=hit.face.normal.clone().transformDirection(p.on.matrixWorld),inv=new T3.Matrix4().copy(p.on.matrixWorld).invert();drill(p.on,hit.point.clone().applyMatrix4(inv),nW.clone().transformDirection(inv).normalize(),r,[k])});
+  cabReady=true;
+}
+const CC={def:[[120,110,190],[0,36,0]],low:[[110,120,170],[0,14,0]],dr:[[52,44,72],[0,9,0]],gate:[[150,70,170],[30,44,-10]],back:[[-110,90,190],[0,44,0]],peg:[[105,50,-85],[62,68,-38]]};
+function camFor(id,t=0){if(id==='9'||id==='10')return CC.dr;if(id==='11')return t>.8?CC.peg:t>.52?CC.gate:CC.def;if(id==='3'||id==='4')return CC.low;return CC.def}
+let lastStage='';const STG={'8':[[.27,'把 2 个止动垫敲入支撑腿底端'],[.6,'两侧桌板向框架折起'],[2,'两人把桌子翻回正面']],'11':[[.52,'把 6 个抽屉从两端推入'],[.71,'抬起桌板，略高于水平'],[.88,'转出支撑腿'],[2,'放下桌板，定位销进入桌板下的孔']],'5':[[.2,'把两片支撑腿贴到框架外侧'],[.5,'把 4 个 121121 放入连接木块'],[2,'用内六角扳手拧入 4 根长螺栓']],'6':[[.55,'把框架放到桌面中段'],[.72,'先拧每根钢条中间的孔'],[2,'再拧两端的椭圆孔']]};
+function stage(s,tt){const list=STG[s];let txt='';if(list)txt=list.find(x=>tt<x[0])[1];const key=s+txt;if(key!==lastStage){lastStage=key;document.getElementById('animCap').textContent='第 '+s+' 步 · '+(txt||byId[s].title)}}
+function applyCab(s,tt){
+  mark(s);MARKS.forEach(h=>{const g=h.d.parent;if(g.userData.sx==null)g.userData.sx=g.scale.x;const k=h.steps.includes(s)?1.6:1;g.scale.set(g.userData.sx*k,1,k)});const fr=frameOf(s,tt),n=ORD(s);CENTER=fr.t.clone().setY(36);
+  GS.forEach(G=>{let spec=G.seq[s];const keys=Object.keys(G.seq).filter(k=>G.seq[k]!==null).map(k=>ORD(k));
+    if(spec===undefined){if(n<Math.min(...keys)){G.g.visible=false;return}spec=[F,F]}
+    if(spec===null){G.g.visible=false;return}
+    G.g.visible=true;G.start=G.startAt&&G.startAt[s]||0;const mv=(G.moveAt&&G.moveAt[s])||G.move||1,a=spec[0],b=spec[1]===0?a:spec[1],k=ease(clamp((tt-G.start)/(mv-G.start))),A1=resolve(G,a,fr),B1=resolve(G,b,fr);
+    G.g.position.copy(A1.v).lerp(B1.v,k);G.g.quaternion.copy(A1.q).slerp(B1.q,k);const dp=G.drop&&G.drop[s];if(dp){const d=ease(clamp((tt-dp[0])/(dp[1]-dp[0]))),E=resolve(G,F,fr);G.g.position.lerp(E.v,d);G.g.quaternion.slerp(E.q,d)}if(G.piv){const p0=new T3.Vector3(...G.piv),w=new T3.Vector3(G.final[0],G.final[1],G.final[2]).add(p0).applyQuaternion(fr.q).add(fr.t);G.g.position.copy(w).sub(p0.applyQuaternion(G.g.quaternion))}});
+  CP.forEach(p=>{const ks=Object.keys(p.keys),first=ORD(ks[0]);if(p.key){p.m.visible=false;return}
+    if(n<first||(p.only2&&s!=='9'&&s!=='10')){p.m.visible=false;return}
+    if(s==='9'&&p.keys[10]&&!p.keys[9]){p.m.visible=false;return}
+    p.m.visible=true;const k=p.keys[s];let L=tt;
+    if(k){const [a,b]=p.win||[0,1];L=clamp((tt-a)/(b-a));if(p.of>1){const gap=.5/p.of;L=clamp((L-p.i*gap)/(1-(p.of-1)*gap))}L=ease(L);if(p.tap)L=tapL(p,tt);
+      p._L=L;p.m.position.set(p.pos[0]+lerp(k[0][0],k[1][0],L),p.pos[1]+lerp(k[0][1],k[1][1],L),p.pos[2]+lerp(k[0][2],k[1][2],L));tint(p.m,L<1&&L>0)
+    }else{p.m.position.set(...p.pos);tint(p.m,false)}
+    if(p.ins&&s==='1')p.m.position.x+=p.ins*(1-ease(clamp(tt/.2)));if(p.spin&&k)p.m.rotation[p.spin]=L*PI*3;if(p.tiltX&&p.tiltX[s]&&k)p.m.rotation.x=lerp(p.tiltX[s][0],p.tiltX[s][1],L)});
+  hammerAt(s,tt,fr);
+  FR.key.visible=s==='5'&&tt>=.5;if(FR.key.visible){const i=Math.min(3,Math.floor((tt-.5)/.125)),q=FR.bolts[i],o=new T3.Vector3();q.getWorldPosition(o);const a=i%2?1:-1;FR.key.position.copy(o).add(new T3.Vector3(a*7,0,0).applyQuaternion(fr.q));FR.key.rotation.x=tt*40}
+  FR.floor.visible=s!=='9'&&s!=='10';
+  FR.drs.forEach((d,i)=>{d.g.visible=s==='11';const L=ease(clamp((tt-i*.06)/.14));d.g.position.z=lerp(d.g.userData.z+d.z*44,d.g.userData.z,L)});
+  stage(s,tt);
+  const c=camFor(s,tt),tp=new T3.Vector3(...c[1]),base=new T3.Vector3(...c[0]).sub(tp),r=base.length(),th=Math.atan2(base.x,base.z)+az,ph=clamp(Math.asin(base.y/r)+el,-.3,1.3);
+  const want=new T3.Vector3(Math.sin(th)*Math.cos(ph)*r,Math.sin(ph)*r,Math.cos(th)*Math.cos(ph)*r).add(tp);
+  camPos=camPos?camPos.lerp(want,.14):want.clone();camTgt=camTgt?camTgt.lerp(tp,.14):tp.clone();cam.position.copy(camPos);cam.lookAt(camTgt);
+}
+
+function load(){return loading||(loading=new Promise((ok,no)=>{if(window.THREE)return ok();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';s.onload=ok;s.onerror=no;document.head.append(s)}))}
+function mat(c){return new T3.MeshLambertMaterial({color:c})}
+const EDGE=()=>new T3.LineBasicMaterial({color:0x1b2420});
+function box(w,h,d,c){const m=new T3.Mesh(new T3.BoxGeometry(w,h,d),mat(c));m.add(new T3.LineSegments(new T3.EdgesGeometry(m.geometry),EDGE()));return m}
+function cyl(r,l,c,axis){const g=new T3.CylinderGeometry(r,r,l,14);if(axis==='x')g.rotateZ(Math.PI/2);if(axis==='z')g.rotateX(Math.PI/2);return new T3.Mesh(g,mat(c))}
+const ACC=0x2f8f6b,WOOD=0xf4f5f2,GREY=0xc9cdc9,METAL=0x8d979c,DOW=0xd9b77e;
+function add(m,pos,keys,opt={}){m.position.set(...pos);inner.add(m);parts.push({m,pos,keys,base:m.material&&m.material.color?m.material.color.getHex():null,...opt});return m}
+function build(){
+  T3=window.THREE;const box0=document.getElementById('animView');
+  ren=new T3.WebGLRenderer({antialias:true,alpha:true});ren.setPixelRatio(Math.min(devicePixelRatio,2));box0.append(ren.domElement);
+  scene=new T3.Scene();cam=new T3.PerspectiveCamera(32,1.5,1,600);
+  scene.add(new T3.AmbientLight(0xffffff,.85));const d=new T3.DirectionalLight(0xffffff,.45);d.position.set(30,70,-40);scene.add(d);
+  root=new T3.Group();inner=new T3.Group();inner.position.y=-D/2;root.add(inner);scene.add(root);
+  const yTop=T+D;
+  const v=document.getElementById('animView');let drag=null;
+  v.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY,az,el,performance.now()];v.setPointerCapture(e.pointerId)});
+  v.addEventListener('pointermove',e=>{if(drag){az=drag[2]+(e.clientX-drag[0])*.008;el=clamp(drag[3]+(e.clientY-drag[1])*.006,-.6,.8)}});
+  v.addEventListener('pointerup',e=>{if(drag&&Math.hypot(e.clientX-drag[0],e.clientY-drag[1])<7&&performance.now()-drag[4]<450)openZoom(e);drag=null});
+  v.addEventListener('pointercancel',()=>drag=null);
+  new ResizeObserver(size).observe(v);size();ready=true;
+}
+let auto=false,nextAuto=()=>false;
+let ren2=null,cam2=null,zoomPt=null,zoomK=.3;
+function curScene(){return IDS.includes(cur)?scene:sc2}
+function openZoom(e){const v=document.getElementById('animView'),r=v.getBoundingClientRect(),m=new T3.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),ray=new T3.Raycaster();ray.setFromCamera(m,cam);
+  const list=[];curScene().traverseVisible(o=>{if(o.isMesh)list.push(o)});const hit=ray.intersectObjects(list,false)[0];
+  zoomPt=hit?hit.point.clone():ray.ray.at(cam.position.distanceTo(camTgt),new T3.Vector3());
+  const box=document.getElementById('zoomBox');box.hidden=false;document.getElementById('zoomPlay').textContent=playing?'暂停':'播放';
+  if(!ren2){ren2=new T3.WebGLRenderer({antialias:true,alpha:true});ren2.setPixelRatio(Math.min(devicePixelRatio,2));document.getElementById('zoomView').append(ren2.domElement);cam2=new T3.PerspectiveCamera(32,1,.5,600)}
+  sizeZoom()}
+function sizeZoom(){const z=document.getElementById('zoomView');if(!ren2||!z.clientWidth)return;ren2.setSize(z.clientWidth,z.clientHeight);cam2.aspect=z.clientWidth/z.clientHeight;cam2.updateProjectionMatrix()}
+let full=false,fitMode='detail',FIT=null;
+function poseAt(x){const k=t;t=x;if(IDS.includes(cur))apply();else applyCab(cur,x);curScene().updateMatrixWorld(true);t=k}
+function activeObjs(){if(IDS.includes(cur))return parts.filter(p=>{const k=p.keys[cur];return k&&(k[0].join()!==k[1].join())}).map(p=>p.m);
+  const a=CP.filter(p=>p.keys[cur]).map(p=>p.m);GS.forEach(G=>{const q=G.seq[cur];if(q&&q[1]!==0&&q[0]!==q[1])a.push(G.g)});return a}
+function allObjs(){if(IDS.includes(cur)){const o=parts.filter(p=>p.m.visible).map(p=>p.m);if(cur==='44')o.push(cab);return o}
+  const o=GS.filter(G=>G.g.visible).map(G=>G.g);if(cur==='11')FR.drs.forEach(d=>o.push(d.g));return o}
+function viewDir(){const c=IDS.includes(cur)?(CAMS[cur]||CAMS.def):camFor(cur);return new T3.Vector3(...c[0]).sub(new T3.Vector3(...c[1])).normalize()}
+function computeFit(){if(!full||!cur||!ready||cur==='8'||cur==='11'){FIT=null;return}
+  const box=new T3.Box3(),turn=['6','8','11'].includes(cur),samples=turn?[1]:[0,1];let list=fitMode==='detail'?activeObjs():[];
+  if(!list.length||turn&&fitMode==='detail'&&cur!=='43'&&cur!=='24')list=null;
+  poseAt(1);
+  if(list&&list.length>1){const w=new T3.Vector3(),p0=new T3.Vector3();list[0].getWorldPosition(p0);const bigR=38;list=list.filter(o=>{o.getWorldPosition(w);return w.distanceTo(p0)<bigR})}
+  samples.forEach(x=>{poseAt(x);(list||allObjs()).forEach(o=>{if(o.visible)box.expandByObject(o)})});
+  poseAt(Math.min(t,1));
+  if(box.isEmpty())return void(FIT=null);
+  const ct=box.getCenter(new T3.Vector3()),d=viewDir(),up=new T3.Vector3(0,1,0),rt=new T3.Vector3().crossVectors(up,d).normalize(),u=new T3.Vector3().crossVectors(d,rt).normalize(),vt=Math.tan(cam.fov*Math.PI/360),ht=vt*cam.aspect;let D=0;
+  for(const x of[box.min.x,box.max.x])for(const y of[box.min.y,box.max.y])for(const z of[box.min.z,box.max.z]){const r=new T3.Vector3(x,y,z).sub(ct),a=Math.abs(r.dot(rt)),b=Math.abs(r.dot(u)),c=r.dot(d);D=Math.max(D,a/ht+c,b/vt+c)}
+  FIT={ct,d,D:Math.max(D*1.14,26)}}
+function camFit(){if(!FIT)return;const th=Math.atan2(FIT.d.x,FIT.d.z)+az,ph=clamp(Math.asin(FIT.d.y)+el,-.3,1.35),v=new T3.Vector3(Math.sin(th)*Math.cos(ph),Math.sin(ph),Math.cos(th)*Math.cos(ph)).multiplyScalar(FIT.D).add(FIT.ct);
+  camPos.lerp(v,.16);camTgt.lerp(FIT.ct,.16);cam.position.copy(camPos);cam.lookAt(camTgt)}
+function setFull(on){const box0=document.getElementById('anim'),b=document.getElementById('animFull');full=on;box0.classList.toggle('full',on);document.documentElement.classList.toggle('noscroll',on);b.textContent=on?'退出全屏':'全屏';
+  if(on){const q=box0.requestFullscreen&&box0.requestFullscreen();if(q&&q.catch)q.catch(()=>{})}else if(document.fullscreenElement){const q=document.exitFullscreen();if(q&&q.catch)q.catch(()=>{})}setTimeout(()=>{size();computeFit()},80)}
+function closeZoom(){document.getElementById('zoomBox').hidden=true;zoomPt=null}
+function drawZoom(){if(!zoomPt||!ren2)return;const dir=cam.position.clone().sub(zoomPt),d=dir.length();cam2.position.copy(zoomPt).add(dir.normalize().multiplyScalar(d*zoomK));cam2.lookAt(zoomPt);ren2.render(curScene(),cam2)}
+function size(){const v=document.getElementById('animView'),w=v.clientWidth,h=v.clientHeight;if(!w||!ren)return;ren.setSize(w,h);const as=w/h;cam.aspect=as;cam.fov=as<1.5?2*Math.atan(Math.tan(16*Math.PI/180)*1.5/as)*180/Math.PI:32;cam.updateProjectionMatrix()}
+function apply(){
+  mark(cur);
+  CENTER=root.position;
+  const n=IDS.indexOf(cur);
+  parts.forEach(p=>{const ks=Object.keys(p.keys),first=+ks[0],lastK=+ks[ks.length-1],s=+cur;
+    if(s<first){p.m.visible=false;return}p.m.visible=true;
+    let k=p.keys[s],local=t;
+    const col=(p.mesh||p.m).material;
+    if(k){const [a,b]=p.win||[0,1];local=clamp((t-a)/(b-a));if(p.of){const gap=.5/p.of;local=clamp((local-p.i*gap)/(1-(p.of-1)*gap))}local=ease(local);
+      p.m.position.set(p.pos[0]+lerp(k[0][0],k[1][0],local),p.pos[1]+lerp(k[0][1],k[1][1],local),p.pos[2]+lerp(k[0][2],k[1][2],local));
+      tint(p.mesh||p.m,k[0].join()!==k[1].join()&&local<1&&t<1);
+    }else{p.m.position.set(...p.pos);tint(p.mesh||p.m,false)}
+    if(!p.noRot)p.m.rotation.set(0,0,0);if(p.tilt&&p.tilt[s]&&k){const r=lerp(p.tilt[s][0],p.tilt[s][1],local);p.m.rotation[s==='41'?'z':'x']=r}
+    if(p.spin&&k){const a=local*Math.PI*3;p.m.rotation[p.spin]=a}
+  });
+  const q0=new T3.Quaternion(),q1=new T3.Quaternion().setFromEuler(new T3.Euler(Math.PI/2,0,0)),q2=new T3.Quaternion().setFromEuler(new T3.Euler(-Math.PI/2,0,0));
+  const ok=ease(clamp(t/.35)),s=cur;
+  if(s==='43'){T3.Quaternion.slerp?T3.Quaternion.slerp(q0,q1,root.quaternion,ok):root.quaternion.copy(q0).slerp(q1,ok);root.position.set(0,lerp(0,0,ok),0)}
+  else if(s==='44'){const k1=ease(clamp(t/.4)),k2=ease(clamp((t-.4)/.6));root.quaternion.copy(q1).slerp(q2,k1);root.position.set(0,lerp(0,21,k1)+Math.max(0,.9-k2)*6,lerp(0,58,k1)+lerp(0,-94,k2));root.quaternion.multiply(new T3.Quaternion().setFromAxisAngle(new T3.Vector3(1,0,0),clamp((1-k2)*3)*.0+(k2>.75?(1-k2)*.5:0)));}
+  else{root.quaternion.copy(q0);root.position.set(0,0,0)}
+  table.visible=s==='43';cab.visible=s==='44';if(window.__ar){window.__ar.visible=s==='44'&&t>.72;window.__lv44.visible=s==='44'&&t>.6}if(window.__lab)window.__lab.visible=s==='44';
+  hammer.visible=s==='40';if(s==='40'){const k=(t*5)%1;hammer.position.set(13,5+Math.abs(Math.sin(k*Math.PI))*7-D/2-T,-44);hammer.rotation.z=-.15}
+  const c=CAMS[s]||CAMS.def;const tp=new T3.Vector3(...c[1]),base=new T3.Vector3(...c[0]).sub(tp),r=base.length(),th=Math.atan2(base.x,base.z)+az,ph=clamp(Math.asin(base.y/r)+el,-.3,1.3);
+  const want=new T3.Vector3(Math.sin(th)*Math.cos(ph)*r,Math.sin(ph)*r,Math.cos(th)*Math.cos(ph)*r).add(tp);
+  camPos=camPos?camPos.lerp(want,.12):want.clone();camTgt=camTgt?camTgt.lerp(tp,.12):tp.clone();cam.position.copy(camPos);cam.lookAt(camTgt);
+}
+function frame(ts){raf=requestAnimationFrame(frame);if(!ready||!cur)return;const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
+  if(playing){t+=dt*speed/4/(DUR[cur]||1);if(auto&&t>=1.12){if(zoomPt||!nextAuto())t=1.12}else if(t>=1.15)t=0}
+  const sl=document.getElementById('animT');if(sl&&document.activeElement!==sl)sl.value=Math.round(Math.min(t,1)*100);
+  const keep=t;t=Math.min(t,1);if(IDS.includes(cur))apply();else applyCab(cur,t);camFit();ren.render(curScene(),cam);drawLabels();drawZoom();t=keep}
+const CAP={'35':'4 个 118331 拧入前板','36':'每块侧板插 2 根木销','37':'两块侧板插到前板上','38':'4 个 120076 放入并转动锁紧','39':'灰色底板沿槽插入','40':'用锤子敲入 1 根联锁杆','41':'后板盖到两块侧板上','42':'先插 4 个 145718，再锁 4 个 120076','43':'抽屉倒扣放桌面，装滑轨并拧 6 颗螺丝','44':'翻回正面，沿滑轨推入柜体'};
+function fail(){failed=true;document.getElementById('anim').hidden=true}
+async function show(id){const box0=document.getElementById('anim');const on=IDS.includes(id)||CIDS.includes(id);box0.hidden=!on||failed;
+  if(!on){if(full)setFull(false);cur=null;cancelAnimationFrame(raf);raf=0;return}
+  closeZoom();const lb=byId[id].label||('第 '+id+' 步');document.getElementById('animCap').textContent=lb+' · '+(CAP[id]||byId[id].title);cur=id;t=0;az=0;el=0;
+  try{await load();if(!ready){build();buildCab();makeLook(scene);makeLook(sc2);setLook(realLook)}computeFit();buildLabels();if(!raf){last=performance.now();raf=requestAnimationFrame(frame)}}catch(e){fail()}}
+const mq=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;if(mq)playing=false;
+function ui(){const p=document.getElementById('animPlay');p.textContent=playing?'暂停':'播放';
+  p.onclick=()=>{playing=!playing;if(playing&&t>=1)t=0;p.textContent=playing?'暂停':'播放'};
+  const s=document.getElementById('animSlow');s.onclick=()=>{speed=speed===1?.45:1;s.textContent=speed===1?'慢放':'正常速度'};
+  document.getElementById('animT').oninput=e=>{t=e.target.value/100;playing=false;p.textContent='播放'};
+  const ab=document.getElementById('animAuto');ab.onclick=()=>{auto=!auto;ab.textContent=auto?'停止连续':'连续播放';ab.classList.toggle('primary',auto);if(auto){playing=true;p.textContent='暂停'}};
+  const lb=document.getElementById('animLbl');lb.textContent=showLbl?'隐藏标签':'显示标签';lb.onclick=()=>{showLbl=!showLbl;lb.textContent=showLbl?'隐藏标签':'显示标签';try{localStorage.setItem('stork-labels',showLbl?'on':'off')}catch(e){}};
+  document.getElementById('animLook').onclick=()=>setLook(!realLook);
+  document.getElementById('animFull').onclick=()=>setFull(!full);
+  document.getElementById('fMode').onclick=e=>{fitMode=fitMode==='detail'?'all':'detail';e.target.textContent=fitMode==='detail'?'看整体':'看细节';computeFit()};
+  new ResizeObserver(()=>{if(full)computeFit()}).observe(document.getElementById('animView'));
+  document.getElementById('fPrev').onclick=()=>window.goStep(-1);document.getElementById('fNext').onclick=()=>window.goStep(1);
+  document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&full)setFull(false)});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&full)setFull(false)});
+  document.getElementById('zoomClose').onclick=closeZoom;
+  document.getElementById('zoomIn').onclick=()=>{zoomK=Math.max(.12,zoomK*.75)};
+  document.getElementById('zoomOut').onclick=()=>{zoomK=Math.min(.7,zoomK/.75)};
+  document.getElementById('zoomPlay').onclick=()=>{p.onclick();document.getElementById('zoomPlay').textContent=p.textContent};
+  addEventListener('resize',sizeZoom);
+  document.getElementById('animRe').onclick=()=>{t=0;playing=true;p.textContent='暂停'}}
+return{_fit:()=>FIT&&{D:FIT.D},setNext:f=>{nextAuto=f},stopAuto:()=>{auto=false;const a=document.getElementById('animAuto');a.textContent='连续播放';a.classList.remove('primary');const p=document.getElementById('animPlay');playing=false;p.textContent='播放'},show,ui,_zoom:()=>!!zoomPt,_set:(id,v)=>{cur=id;t=v;playing=false}};
+})();
+
+const STEPS=[{"id":"1","page":3,"crop":[0,0.6,1,0.95],"title":"用连接木块连接两片框架","do":["在 2 块连接木块两端各插 2 根 101352，共 8 根。","把木块放到两端腿柱下部之间。","把两片框架向中间合拢，让木销插入腿柱。"],"parts":[["101352",8]],"warn":[],"unsure":[]},{"id":"2","page":4,"crop":[0,0,1,0.56],"title":"在框架顶部装钢条","do":["把 2 根 120139 放到框架顶部，按图保持沉孔朝上。","每根用 2 颗 110733 固定两端，共 4 颗。"],"parts":[["120139",2],["110733",4]],"warn":["钢条两端的沉孔要朝上，打叉的是错的。"],"unsure":[]},{"id":"3","page":5,"crop":[0,0,1,0.42],"title":"在桌板下面装垫块","do":["桌面朝下放在软垫上。","在两块桌板的小木块上各拧 2 颗 117494，共 4 颗。"],"parts":[["117494",4]],"warn":[],"unsure":[]},{"id":"4","page":5,"crop":[0,0.47,1,0.96],"title":"安装铰链","do":["在两条拼缝处各装 2 个 10005601，共 4 个。","每个铰链用 8 颗 110733，共 32 颗。"],"parts":[["10005601",4],["110733",32]],"warn":[],"unsure":[]},{"id":"5","page":6,"crop":[0,0,1,0.96],"title":"装入横销和长螺栓","do":["把框架倒置，并把两片支撑腿贴到框架外侧。","把 4 个 121121 放入连接木块的孔，用一字螺丝刀调整到位。","用 10083377 内六角扳手把 4 根 105330 穿过腿柱，拧入 121121。"],"parts":[["121121",4],["105330",4]],"warn":[],"unsure":["支撑腿没有单独的安装步骤，这里推断铰接部分已预装。"]},{"id":"6","page":7,"crop":[0,0,1,0.82],"title":"把框架固定到桌面","do":["把倒置的框架放到桌面中段。","穿过 2 根钢条的沉孔拧入 110733，共 6 颗：先拧每根钢条中间的孔，再拧两端的椭圆孔。"],"parts":[["110733",6]],"warn":[],"unsure":[]},{"id":"7","page":8,"crop":[0,0,1,0.45],"title":"敲入脚垫","do":["用锤子把 4 个 107271 敲入腿端。"],"parts":[["107271",4]],"warn":[],"unsure":[]},{"id":"8","page":8,"crop":[0,0.46,1,0.93],"title":"敲入止动垫并翻转桌子","do":["用锤子把 2 个 156508 敲入支撑腿底端。","把两侧桌板折起。","把桌子翻回正面。"],"parts":[["156508",2]],"warn":["翻转时要小心，说明书不建议一人组装。"],"unsure":[]},{"id":"9","page":9,"crop":[0,0,1,0.44],"title":"组装抽屉框","do":["一共要做 6 个抽屉。","把无缺口的端板放到两块长板之间。两块长板分左右摆放：外侧的凸条朝外、靠上，内侧的槽朝里、靠下。","用锤子从两侧敲入 4 个 116546：每块长板这一端的上下两个孔各 1 个，对准端板侧边的孔。"],"parts":[["116546",4]],"warn":["注意长板和端板的方向，按图摆放。"],"unsure":[]},{"id":"10","page":9,"crop":[0,0.48,1,0.95],"title":"装抽屉底板和另一端板","do":["把底板插入两块长板的槽中。","转入带缺口的端板，缺口朝上。","再敲入 4 个 116546，位置是长板另一端的上下两个孔。"],"parts":[["116546",4]],"warn":[],"unsure":[]},{"id":"11","page":10,"crop":[0,0,1,0.93],"title":"推入抽屉并打开支撑腿","do":["从两端各推入 3 个抽屉，共 6 个。","抬起桌板，转出支撑腿。","把桌板放下，让支撑腿顶部的定位销进入桌板下面的孔。"],"parts":[],"warn":["放下桌板前，先确认支撑腿到位。"],"unsure":[]}];
+const BAG=new Proxy({},{get:()=>'五金袋'});
+const QTY={'110733':42,'116546':48,'101352':8,'117494':4,'121121':4,'105330':4,'10083377':1,'107271':4,'156508':2,'120139':2,'10005601':4};
+const byId=Object.fromEntries(STEPS.map(s=>[s.id,s]));
+const CELLS=[{"n": 1, "code": "110733", "name": "短螺丝"}, {"n": 2, "code": "116546", "name": "抽屉螺栓"}, {"n": 3, "code": "101352", "name": "木销"}, {"n": 4, "code": "117494", "name": "木螺丝"}, {"n": 5, "code": "121121", "name": "横销"}, {"n": 6, "code": "105330", "name": "长螺栓"}, {"n": 7, "code": "10083377", "name": "内六角扳手"}, {"n": 8, "code": "107271", "name": "脚垫"}, {"n": 9, "code": "156508", "name": "止动垫"}, {"n": 10, "code": "120139", "name": "钢条"}, {"n": 11, "code": "10005601", "name": "铰链"}];
+const RAILS={};
+const OPEN=[{at:'1',q:{...QTY}}];
+const OPENNAME={'1':'五金袋'};
+function need(id){const s=byId[id],o=s.parts.flatMap(([k,q])=>k==='10087223'?[[k,q]]:[[k,q]]);if(RAILS[id])o.push(['10102042',RAILS[id]]);return o}
+function stock(pos){const m={};const seen=new Set();
+  for(let i=0;i<=pos;i++){const id=P[i].id;OPEN.forEach(b=>{if(b.at===id&&!seen.has(id)){seen.add(id);Object.entries(b.q).forEach(([k,v])=>m[k]=(m[k]||0)+v)}});if(i<pos)need(id).forEach(([k,q])=>m[k]-=q)}
+  return m}
+const KEY='norden-v1';
+const load=()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return {}}};
+const st=Object.assign({pos:0,branch:null,found:[]},load());
+let taken=new Set();
+let scans={},finds={},scanCode=null,findCode=null,LIM=null;
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
+const $=i=>document.getElementById(i);
+
+function path(){const p=[];for(let i=1;i<=8;i++)p.push({id:String(i)});for(let d=1;d<=6;d++)for(const i of ['9','10'])p.push({id:i,d});p.push({id:'11'});return p}
+let P=path();
+if(!Number.isInteger(st.pos)||st.pos<0||st.pos>=P.length)st.pos=0;
+
+function render(){
+  P=path();
+  const c=P[st.pos],s=byId[c.id];
+  $('jump').value=s.id;
+  $('no').textContent=s.label||('第 '+s.id+' 步');
+  $('meta').textContent='说明书第 '+s.page+' 页'+(c.d?' · 第 '+c.d+'/6 个抽屉':'');
+  $('bar').style.width=(st.pos+1)/P.length*100+'%';
+  $('title').textContent=s.title;
+  $('img').src='img/s'+s.id+'.png';
+  $('img').alt='说明书第 '+s.page+' 页，'+s.title;
+  const d=$('do');d.replaceChildren();s.do.forEach(t=>{const l=document.createElement('li');l.textContent=t;d.append(l)});
+  renderPick(c);
+  Anim.show(s.id);
+  const f=$('flags');f.replaceChildren();
+  s.warn.forEach(t=>f.append(flag('warn','注意',t)));
+  s.unsure.forEach(t=>f.append(flag('unsure','请对照原图',t)));
+  const choose=s.id==='32w'&&!st.branch;
+  $('choice').hidden=!choose;$('nav').hidden=false;
+  $('next').hidden=choose;
+  $('prev').disabled=st.pos===0;
+  $('next').disabled=st.pos>=P.length-1;
+  $('next').textContent=st.pos>=P.length-1?'全部完成':nextLabel(c);
+  $('ans').hidden=true;$('q').value='';
+  $('fig').classList.remove('zoom');
+  save();if(window.VoiceReady)Voice.onStep();
+}
+function thumb(n){const t=document.createElement('div');t.className='thumb';const i=document.createElement('img');i.src='img/c/'+n+'.png';i.alt='';t.append(i);return t}
+function picker(id,label,busy,fn){const w=document.createElement('label');w.className='btn file';w.append(label);
+  const i=document.createElement('input');i.type='file';i.accept='image/*';i.setAttribute('capture','environment');i.id=id;i.disabled=!!busy;i.setAttribute('aria-label',label);
+  i.onchange=()=>{const f=i.files[0];if(f)fn(f)};w.append(i);return w}
+function renderPick(c){
+  const n=need(c.id),box=$('picks'),m=stock(st.pos);box.replaceChildren();
+  const opened=OPEN.find(b=>b.at===c.id&&!(c.d&&c.d>1));
+  $('pickLbl').textContent=(opened?'先打开'+OPENNAME[c.id]+'，摆入格子。':'')+(n.length?'这一步取料':'这一步不用小零件');
+  n.forEach(([k,q])=>{const e=CELLS.find(x=>x.code===k);const b=document.createElement('button');b.className='pick'+(taken.has(k)?' done':'');
+    const t=document.createElement('div');const a=document.createElement('b');a.textContent=e.n+' 格 · '+e.name+(taken.has(k)?' · 已取':'');const sm=document.createElement('small');sm.textContent=k+' · 格内剩 '+m[k];t.append(a,sm);
+    const u=document.createElement('div');u.className='take';u.textContent='× '+q;b.append(thumb(e.n),t,u);
+    b.onclick=()=>{taken.has(k)?taken.delete(k):taken.add(k);renderPick(c)};
+    const row=document.createElement('div');row.className='pickrow';row.append(b);
+    if(sample&&LIM&&LIM.images){const busy=scans[k]&&scans[k].result==='busy',fb=finds[k]&&finds[k].busy;
+      const sc=picker('scan-'+e.n,busy?'正在比对…':'扫描确认',busy,f=>scanPart(k,f,st.pos));
+      const fd=picker('find-'+e.n,fb?'正在查找…':'拍桌面找零件',fb,f=>findPart(k,f,st.pos));
+      const two=document.createElement('div');two.className='scan2';two.append(fd,sc);row.append(two)}
+    if(finds[k]&&!finds[k].busy){const f=document.createElement('div');f.className='find';if(finds[k].canvas)f.append(finds[k].canvas);const t=document.createElement('div');t.className='result '+finds[k].cls;t.textContent=finds[k].text;f.append(t);row.append(f)}
+    if(scans[k]&&scans[k].result!=='busy'){const r=document.createElement('div');r.className='result '+scans[k].result;r.textContent=scans[k].text;row.append(r)}
+    box.append(row)});
+  renderGrid();
+}
+function renderGrid(){
+  const c=P[st.pos],m=stock(st.pos),n=need(c.id),g=$('grid');g.replaceChildren();
+  $('gridHint').textContent='当前：'+(byId[c.id].label||'第 '+c.id+' 步')+(c.d?' · 第 '+c.d+'/6 个抽屉':'')+'。绿框是这一步要取的格子。灰色的格子还没开袋。';
+  CELLS.forEach(e=>{const has=m[e.code]!==undefined;const d=document.createElement('div');d.className='cell'+(n.some(x=>x[0]===e.code)?' need':'')+(has?'':' locked');
+    const h=document.createElement('b');h.textContent=e.n+' 格';const nm=document.createElement('span');nm.textContent=e.name;const q=document.createElement('span');q.className='q';q.textContent=has?'剩 '+m[e.code]:'未开袋';const co=document.createElement('span');co.className='hint';co.textContent=e.code;
+    d.append(h,thumb(e.n),nm,co,q);g.append(d)});
+}
+function nextLabel(c){return c.id==='43'&&c.d<6?'做下一个抽屉':'下一步'}
+function flag(cls,h,t){const e=document.createElement('div');e.className='flag '+cls;const b=document.createElement('b');b.textContent=h;e.append(b,t);return e}
+function go(d){const n=st.pos+d;if(n<0||n>=P.length)return;
+  if(d<0&&P[st.pos].id==='32'||d<0&&P[st.pos].id==='33')st.branch=null;
+  st.pos=n;taken=new Set();scans={};finds={};render();scrollTo(0,0)}
+function jump(id){if(id==='32')st.branch='none';else if(id==='33'||id==='34')st.branch='skirt';
+  P=path();const n=P.findIndex(x=>x.id===id);if(n<0)return;st.pos=n;taken=new Set();scans={};finds={};view('steps');render();scrollTo(0,0)}
+STEPS.forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=(s.label||('第 '+s.id+' 步'))+' · '+s.title;$('jump').append(o)});
+$('jump').onchange=e=>jump(e.target.value);
+$('toAnim').onclick=()=>jump('9');
+function pick(b){st.branch=b;st.pos+=1;taken=new Set();scans={};finds={};render();scrollTo(0,0)}
+$('prev').onclick=()=>go(-1);$('next').onclick=()=>go(1);
+$('noSkirt').onclick=()=>pick('none');$('yesSkirt').onclick=()=>pick('skirt');
+$('fig').onclick=()=>$('fig').classList.toggle('zoom');
+
+function view(v){['steps','grid','parts','safe'].forEach(k=>{$('v-'+k).hidden=k!==v;$('t-'+k).setAttribute('aria-selected',k===v)})}
+['steps','grid','parts','safe'].forEach(k=>$('t-'+k).onclick=()=>{if(k==='grid')renderGrid();view(k)});
+
+function uses(k){if(k==='10102042')return '1、7、8、43';const out=[];STEPS.forEach(s=>{if(s.parts.some(p=>p[0]===k))out.push(s.label||s.id)});return out.join('、')}
+function renderParts(){
+  const b=$('pt');b.replaceChildren();
+  Object.keys(QTY).forEach(k=>{
+    const r=document.createElement('tr');
+    const a=document.createElement('td'),box=document.createElement('input');box.type='checkbox';box.className='check';box.id='p-'+k;box.setAttribute('aria-label',k+' 已到齐');box.checked=st.found.includes(k);
+    box.onchange=()=>{st.found=box.checked?[...new Set([...st.found,k])]:st.found.filter(x=>x!==k);save()};a.append(box);
+    const c=document.createElement('td');c.className='c';c.textContent=k;
+    const q=document.createElement('td');q.className='c';q.textContent=QTY[k];
+    const g=document.createElement('td');g.textContent=BAG[k];
+    const u=document.createElement('td');u.textContent=uses(k);
+    r.append(a,c,q,g,u);b.append(r);
+  });
+}
+
+const SIM={'110733':['117494'],'117494':['110733'],'116546':['105330'],'105330':['116546']};
+const FEAT={'110733':'沉头十字螺丝，粗牙，平尾','116546':'圆头，细颈，带螺纹段的抽屉螺栓','101352':'圆柱木销，表面竖纹','117494':'带垫圈头的尖尾木螺丝','121121':'圆柱横销，顶部一字槽，侧面螺纹孔','105330':'很长的内六角螺栓，尾段细牙，尖头','10083377':'L 形弯曲内六角扳手','107271':'圆帽塑料脚垫，下方十字插脚','156508':'长条塑料片，下方两个圆柱插脚','120139':'长条钢片，三个大沉孔和两端小孔','10005601':'金属铰链，两片各四个沉孔'};
+async function findPart(k,file,pos){
+  const step=()=>renderPick(P[st.pos]);
+  finds[k]={busy:true};step();
+  let out;
+  try{
+    const bmp=await createImageBitmap(file);const sc=Math.min(1,1000/Math.max(bmp.width,bmp.height));
+    const c=document.createElement('canvas');c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);const x=c.getContext('2d');x.drawImage(bmp,0,0,c.width,c.height);
+    const room=Math.max(0,((LIM.images.maxCount)||3)-2);const sim=(SIM[k]||[]).slice(0,room);
+    const refs=await Promise.all([k,...sim].map(cellBlob));
+    const names=[k,...sim].map((v,i)=>`第 ${i+1} 张：说明书线稿，编号 ${v}。特征：${FEAT[v]}`).join('\n');
+    const q=need(P[pos].id).find(n=>n[0]===k);
+    const r=await sample.json(`检查最后一张桌面照片里有没有第 1 张线稿对应的零件。照片里可能完全没有目标，家里的普通螺丝或其他物品都不算目标；这种情况 items 返回空数组。外形大类相同不算匹配，头型、牙型、尾端和比例都要吻合。\n${names}\n后面的线稿是容易混淆的零件，不要圈它们。本步需要 ${q?q[1]:'若干'} 个。\n只圈确认吻合的零件，宁可少圈也不要误圈，把握不足就标 low。scale 表示照片里是否有硬币或尺子，并且能用它判断长度。坐标都按照片比例，x、y、r 为 0 到 1 的小数：x 是中心横向位置（左 0 右 1），y 是中心纵向位置（上 0 下 1），r 是相对照片宽度的圈半径。\n只回复 JSON：{"items":[{"x":0.5,"y":0.5,"r":0.05,"conf":"high|medium|low"}],"scale":false,"note":"不超过 40 字的简体中文说明"}`,{images:[...refs,file],cache:false});
+    const raw=Array.isArray(r&&r.items)?r.items:[];
+    const items=raw.filter(i=>[i.x,i.y,i.r].every(v=>typeof v==='number'&&v>=0&&v<=1)).slice(0,60);
+    if(SCREWS.has(k)&&!(r&&r.scale===true))items.forEach(i=>i.conf='low');
+    x.lineWidth=Math.max(3,c.width/220);const col=getComputedStyle(document.documentElement).getPropertyValue('--stop').trim()||'#c62828';
+    items.forEach(i=>{const rad=Math.max(i.r*c.width,14);x.setLineDash(i.conf==='low'?[10,8]:[]);x.strokeStyle=i.conf==='low'?'#e08a00':'#00a65a';x.beginPath();x.arc(i.x*c.width,i.y*c.height,rad,0,Math.PI*2);x.stroke()});
+    const n=items.length,low=items.filter(i=>i.conf==='low').length,note=String((r&&r.note)||'').slice(0,80);
+    if(!n)out={cls:'unclear',text:'这张照片里没有确认到目标零件。'+note+' 如果确实有，请摊开后再拍一次。'};
+    else out={canvas:c,cls:low?'unclear':'correct',text:'圈出 '+n+' 个'+(q?'，本步需要 '+q[1]+' 个':'')+(low?'，其中 '+low+' 个把握不大（虚线圈）':'')+'。'+note+(SCREWS.has(k)&&!(r&&r.scale===true)?' 没有比例参照，螺丝长度未确认。':'')+' 拿起后请用“扫描确认”。'};
+  }catch(e){out={cls:'unclear',text:msg(e&&e.code)}}
+  if(pos!==st.pos)return;
+  finds[k]=out;step();
+}
+const SCREWS=new Set(['110733','117494']);
+const cellOf=k=>CELLS.find(x=>x.code===k);
+const cellBlob=k=>fetch('img/c/'+cellOf(k).n+'.png').then(r=>r.blob());
+async function scanPart(k,file,pos){
+  const step=()=>renderPick(P[st.pos]);
+  scans[k]={result:'busy'};step();
+  let out;
+  try{
+    const room=Math.max(0,((LIM.images.maxCount)||3)-2);
+    const sim=(SIM[k]||[]).slice(0,room);
+    const refs=await Promise.all([k,...sim].map(cellBlob));
+    const names=[k,...sim].map((c,i)=>`第 ${i+1} 张：说明书线稿，编号 ${c}，${cellOf(c).name}`).join('\n');
+    const r=await sample.json(`你在核对 IKEA NORDEN 的零件。\n${names}\n最后一张：用户手中的实物照片。\n先默认实物不是第 1 张的零件：它很可能是家里其他普通螺丝或别的物品，这些都不算目标。逐项比较头型、槽型、牙型、尾端、比例和特殊结构，只有每项都明确吻合才判 correct。外形大类相同（比如都是螺丝）不算吻合。有一项明显不同就判 wrong；看不清就判 unclear。判 wrong 时如果不是列出的零件，code 留空。scale 表示照片里是否有硬币或尺子，并且能用它判断长度。\n只回复 JSON：{"result":"correct|wrong|unclear","code":"认出的编号，不确定时留空","scale":false,"why":"不超过 40 字的简体中文依据"}`,{images:[...refs,file],cache:false});
+    let res=['correct','wrong','unclear'].includes(r&&r.result)?r.result:'unclear';
+    const noScale=SCREWS.has(k)&&res==='correct'&&!(r&&r.scale===true);if(noScale)res='unclear';
+    const why=String((r&&r.why)||'').slice(0,80);
+    const other=r&&cellOf(String(r.code||''));
+    if(res==='correct')out={result:res,text:'零件正确。'+why};
+    else if(res==='wrong')out={result:res,text:'这可能不是要取的零件。'+(other&&other.code!==k?'看起来像 '+other.n+' 格的'+other.name+'。':'')+why};
+    else if(noScale)out={result:res,text:'外形相近，但没有比例参照，不能确认长度。请把一枚硬币放在旁边再拍。'};
+    else out={result:res,text:'无法确认。'+why+' 请把零件放在纯色背景上，旁边放一枚硬币再拍，或核对说明书编号。'};
+  }catch(e){out={result:'unclear',text:msg(e&&e.code)}}
+  if(pos!==st.pos)return;
+  scans[k]=out;if(out.result==='correct')taken.add(k);else taken.delete(k);step();
+}
+
+/* Claude features appear only when the viewer allows them. */
+let sample=null;
+const RULES=()=>{const c=P[st.pos],s=byId[c.id];return `你是 IKEA NORDEN 折叠餐桌组装助手，用简体中文回答，先给结论，不超过 120 字。
+只依据随附的说明书原图和下面的步骤数据回答。图和数据都不能确定时直接说不确定，不要猜。
+涉及防倾倒、墙体、翻转柜体时，提醒用户以说明书为准。
+当前步骤：${JSON.stringify(s)}
+全部步骤：${JSON.stringify(STEPS.map(x=>({id:x.id,title:x.title,parts:x.parts})))}`};
+async function stepImage(){const r=await fetch('img/s'+P[st.pos].id+'.png');return r.blob()}
+async function run(prompt,extra){
+  const a=$('ans');a.hidden=false;a.textContent='思考中…';$('send').disabled=true;
+  try{
+    const images=[await stepImage(),...extra];
+    await sample(prompt,{images,cache:false,onText:({text})=>{a.textContent=text}});
+  }catch(e){a.textContent=(e&&e.text)||msg(e&&e.code)}
+  finally{$('send').disabled=false}
+}
+function msg(c){if(c==='not_granted'||c==='sampling_disabled')return '当前没有允许使用 Claude，这个功能不可用。';if(c==='rate_limited')return '请求太频繁，请稍后再试。';if(c==='image_rejected')return '这张照片无法读取，请换一张 JPG 或 PNG。';return '这次没有得到回答，请再试一次。'}
+$('send').onclick=()=>{const q=$('q').value.trim();if(!q){$('q').focus();return}run(RULES()+'\n\n第一张图是说明书原图。用户问题：'+q,[])};
+$('photo').onchange=e=>{const f=e.target.files[0];if(!f)return;run(RULES()+'\n\n第一张图是说明书原图，第二张是用户拍的实物。比较两者，判断这一步是否正确。先写“看起来正确”“可能有误”或“看不清”，再说依据。看不清的部分不要下结论。',[f]);e.target.value=''};
+(async()=>{
+  if(!window.claude)return;
+  sample=await claude.use('sample');if(!sample)return;
+  $('ask').hidden=false;
+  $('gridPhoto').onchange=async e=>{const f=e.target.files[0];if(!f)return;const a=$('gridAns');a.hidden=false;a.textContent='思考中…';
+    try{const m=stock(st.pos);const list=CELLS.filter(x=>m[x.code]!==undefined).map(x=>x.n+' 格：'+x.name+' '+x.code+'，应有 '+m[x.code]);
+      const pages=await Promise.all(['parts3','parts2'].map(n=>fetch('img/'+n+'.png').then(r=>r.blob())));
+      await sample('前两张图是 IKEA NORDEN 说明书的零件页，第三张是用户摆放的零件照片。格子按编号从左到右、从上到下排列，每行 3 格。应有内容：\n'+list.join('\n')+'\n用简体中文列出看起来放错或数量明显不对的格子，不超过 120 字。小零件数不清时直接说明，不要猜。',{images:[...pages,f],cache:false,onText:({text})=>{a.textContent=text}});
+    }catch(err){a.textContent=(err&&err.text)||msg(err&&err.code)}
+    e.target.value=''};
+  const lim=await sample.limits().catch(()=>null);
+  if(!lim||!lim.images)$('photoWrap').hidden=true;else{$('gridAsk').hidden=false;LIM=lim;renderPick(P[st.pos])}
+})();
+window.goStep=d=>{if(d>0&&P[st.pos].id==='32w'&&!st.branch)return;go(d)};
+Anim.ui();
+/* Conversational voice mode, in the style of a chat app's voice mode. Browser speech for ears and mouth, Claude for the talking. Typing always works if the mic is blocked. */
+const Voice=(()=>{
+const PRD=window.PRODUCT||{},SAY=PRD.say||{},PNAME=PRD.name||'这件家具',TOTAL=PRD.steps||STEPS.length;
+const syn=window.speechSynthesis||null,SR=window.SpeechRecognition||window.webkitSpeechRecognition||null,IOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),HALF=IOS||/Android/i.test(navigator.userAgent);
+const blocked=!!(window.NORDEN_TTS?false:(()=>{try{return localStorage.getItem('norden-mic')==='no'}catch(e){return false}})());
+let silent=false,noted=false,lastErr='',started=false,dict=0,chat=false,state='idle',voice=null,rec=null,recOn=false,micOK=!!SR,fast=0,paused=false,hist=[],q=[],playing=false,streamDone=true,ctl=null,turnId=0,spoken='',guard=0,live=null,alive=0;
+const $v=id=>document.getElementById(id);
+const pickV=()=>{if(!syn)return;const l=syn.getVoices();voice=l.find(v=>/^zh[-_]CN/i.test(v.lang))||l.find(v=>/^zh/i.test(v.lang))||null};
+if(syn){pickV();syn.onvoiceschanged=pickV}
+const LABEL={listen:'在听，直接说',think:'思考中',speak:'正在说',pause:'已暂停，点一下继续',type:window.NORDEN_TTS?'麦克风断开，点圆球重试':'点圆球，再点键盘话筒说话',idle:''};
+function setS(s){state=s;const o=$v('vOrb');o.className='orb '+s;$v('vState').textContent=LABEL[s]||'';$v('vInt').hidden=s!=='speak'&&s!=='think';$v('vKb').hidden=!$v('vInt').hidden}
+function bubble(who,text){const d=document.createElement('div');d.className='msg '+who;d.textContent=text;if(who==='ai')d.onclick=()=>{if(chat&&syn){const m=alive+1;stopSpeech();streamDone=true;if(m)sayAll(d.textContent)}};const l=$v('vLog');l.append(d);l.scrollTop=l.scrollHeight;return d}
+const scroll=()=>{const l=$v('vLog');l.scrollTop=l.scrollHeight};
+function here(){const c=P[st.pos],s=byId[c.id];return{c,s}}
+function info(){const{c,s}=here();return{step:s.id,title:s.title,drawer:c.d?c.d+'/6':null,guide:SAY[s.id]||s.do.join(''),warn:s.warn,parts:s.parts.map(([k,n])=>{const x=CELLS.find(y=>y.code===k);return{name:x?x.name:k,code:k,qty:n,cell:x?x.n:null}})}}
+function stepLine(){const i=info();return (i.drawer?'第 '+i.drawer.split('/')[0]+' 个抽屉，':'')+'第 '+i.step+' 步，'+i.title+'。'+i.guide}
+function partsLine(){const i=info();if(!i.parts.length)return '这一步不需要新零件。';return '这一步要用'+i.parts.map(p=>p.name+' '+p.qty+' 个'+(p.cell?'，在 '+p.cell+' 格':'')).join('；')+'。'}
+/* speech out */
+let pace=1.35;try{pace=+localStorage.getItem('norden-pace')||1.35}catch(e){}
+function setPace(d){pace=Math.max(.9,Math.min(2,Math.round((pace+d)*100)/100));nMemo.clear();try{localStorage.setItem('norden-pace',pace)}catch(e){}}
+let actx=null,nReady=false,nW=null,nId=0,cur=null,nChain=Promise.resolve();const nWait=new Map(),nMemo=new Map();
+function unlock(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume();const s=actx.createBufferSource();s.buffer=actx.createBuffer(1,1,22050);s.connect(actx.destination);s.start()}catch(e){}}
+function initN(){if(nW||!window.NORDEN_TTS||!window.Worker)return;try{nW=new Worker(window.NORDEN_TTS+'worker.js');nW.onerror=()=>tr('语音模型加载失败');nW.onmessage=({data:d})=>{if(d.type==='progress')tr('首次下载语音模型 '+d.pct+'%');else if(d.type==='ready'){nReady=true;tr('语音模型已就绪')}else if(d.type==='pcm'){const f=nWait.get(d.id);nWait.delete(d.id);f&&f.res(d.pcm)}else if(d.type==='error'){if(d.id){const f=nWait.get(d.id);nWait.delete(d.id);f&&f.rej(new Error(d.message))}else tr('语音模型错误：'+d.message)}};nW.postMessage({type:'init'})}catch(e){tr('语音模型无法启动')}}
+const ZD='零一二三四五六七八九';
+function zn(n){if(n<10)return ZD[n];if(n<20)return '十'+(n%10?ZD[n%10]:'');if(n<100)return ZD[n/10|0]+'十'+(n%10?ZD[n%10]:'');return String(n).split('').map(c=>ZD[+c]).join('')}
+function norm(t){return t.replace(/\d+/g,m=>m.length>3?m.split('').map(c=>ZD[+c]).join(''):zn(+m)).replace(/[A-Za-z]+/g,' ').replace(/[“”"'（）()]/g,'').replace(/\s+/g,'')}
+function synth(t){if(nMemo.has(t))return nMemo.get(t);const p=nChain.then(()=>new Promise((res,rej)=>{const id=++nId;nWait.set(id,{res,rej});nW.postMessage({type:'say',id,text:norm(t),len:pace})}));nChain=p.catch(()=>{});nMemo.set(t,p);if(nMemo.size>40)nMemo.delete(nMemo.keys().next().value);return p}
+async function playN(txt,my,n){const next=()=>{if(my!==alive)return;cur=null;playing=false;pump()};tr('朗读 '+n+'：合成中');try{const pcm=await synth(txt);if(my!==alive)return;unlock();const b=actx.createBuffer(1,pcm.length,22050);b.copyToChannel(pcm,0);const s=actx.createBufferSource();s.buffer=b;s.connect(actx.destination);s.onended=()=>{tr('朗读 '+n+'：结束');next()};cur=s;tr('朗读 '+n+'：播放中');s.start()}catch(e){tr('朗读 '+n+'：错误 '+(e&&e.message));nMemo.delete(txt);next()}}function ding(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume();const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.value=.35;o.connect(g).connect(actx.destination);o.start();o.stop(actx.currentTime+.35)}catch(e){}}
+let barge=false;try{barge=localStorage.getItem('norden-barge')==='1'}catch(e){}
+let listenTok=0,recEnd=0,lastCancel=0,uCount=0,trace='';const tr=t=>{trace=t;$v('vTrace').textContent=t};
+function stopSpeech(){alive++;q=[];playing=false;clearTimeout(guard);if(cur){try{cur.onended=null;cur.stop()}catch(e){}cur=null}if(syn&&(syn.speaking||syn.pending)){syn.cancel();lastCancel=Date.now()}}
+function pump(){if(playing)return;if(!q.length){if(streamDone&&(state==='speak'||state==='think'))doneTalking();return}if(!syn){noSound();q=[];if(streamDone)doneTalking();return}
+  const w=250-(Date.now()-lastCancel);if(w>0){const m1=alive;setTimeout(()=>{if(m1===alive)pump()},w);return}
+  if(HALF&&!barge){if(recOn){stopRec();recEnd=Date.now()}const w2=(nReady?350:1500)-(Date.now()-recEnd);if(w2>0){setS('speak');tr('等麦克风释放…');const m0=alive;setTimeout(()=>{if(m0===alive)pump()},w2);return}}
+  const my=alive,txt=q.shift();playing=true;setS('speak');const n=++uCount;if(nReady){playN(txt,my,n);return}
+  const go=(retry)=>{const u=new SpeechSynthesisUtterance(txt);u.lang='zh-CN';if(voice)u.voice=voice;let began=false;tr('朗读 '+n+'：已发出'+(retry?'（重试）':'')+' speaking='+(syn.speaking?1:0));
+    const next=()=>{if(my!==alive)return;clearTimeout(guard);playing=false;pump()};
+    u.onstart=()=>{began=true;started=true;tr('朗读 '+n+'：开始')};u.onend=()=>{tr('朗读 '+n+'：结束'+(began?'':'（未开始）'));next()};
+    u.onerror=e=>{lastErr=e&&e.error||'';tr('朗读 '+n+'：错误 '+lastErr);if(lastErr&&lastErr!=='interrupted'&&lastErr!=='canceled'&&!began)noSound();next()};
+    window._u=u;guard=setTimeout(()=>{if(syn)syn.cancel();lastCancel=Date.now();tr('朗读 '+n+'：超时');next()},txt.length*420+12000);
+    setTimeout(()=>{if(my!==alive||began||!playing)return;clearTimeout(guard);if(!retry){syn.cancel();lastCancel=Date.now();tr('朗读 '+n+'：1.5 秒未开始，重试');setTimeout(()=>{if(my===alive)go(true)},300)}else{tr('朗读 '+n+'：重试后仍未开始');noSound();syn.cancel();lastCancel=Date.now();next()}},retry?4000:1500);
+    try{syn.resume()}catch(e){}syn.speak(u)};go(false)}
+function noSound(){if(noted)return;noted=true;bubble('ai note','这一句没有读出来，后面会继续尝试。诊断：语音引擎'+(syn?'有':'无')+'，可用声音 '+(syn?syn.getVoices().length:0)+' 个'+(lastErr?'，错误 '+lastErr:'，朗读未开始')+'。')}
+function testSound(){if(!syn){bubble('ai note','测试：这个页面没有语音引擎。');return}const l=syn.getVoices(),zh=l.filter(x=>/^zh/i.test(x.lang)),log=[];stopSpeech();stopRec();paused=true;setS('pause');const d=bubble('ai note','测试中…');
+  const show=()=>{d.textContent='声音 '+l.length+' 个，中文 '+zh.length+' 个'+(zh[0]?'（'+zh[0].name+'）':'')+'。'+log.join('；')+'。听到后点圆球继续。';scroll()};
+  const one=(t,lang,tag,then)=>{const u=new SpeechSynthesisUtterance(t);u.lang=lang;if(lang==='zh-CN'&&zh[0])u.voice=zh[0];let fin=false;const f=x=>{if(fin)return;fin=true;log.push(tag+x);show();then&&setTimeout(then,300)};u.onstart=()=>{log.push(tag+'开始');show()};u.onend=()=>f('结束');u.onerror=e=>f('错误 '+(e&&e.error));syn.speak(u);setTimeout(()=>f('超时'),9000)};
+  setTimeout(()=>one('测试声音，一二三。','zh-CN','中文',()=>one('Testing sound, one two three.','en-US','英文')),300)}
+function feed(t){q.push(t);if(nReady)synth(t);pump()}
+function sayAll(t){streamDone=false;spoken=t;(t.match(/[^。！？!?；]+[。！？!?；]?/g)||[t]).forEach(feed);streamDone=true;pump()}
+let lastSaid='',lastEnd=0;
+function doneTalking(){if(spoken){lastSaid=spoken;lastEnd=Date.now()}spoken='';if(!chat)return;if(paused){setS('pause');return}setS(micOK?'listen':'type');const m=++listenTok;setTimeout(()=>{if(m===listenTok&&state==='listen')startRec()},HALF?1000:0)}
+/* tools the model can use */
+const TOOLS=[{name:'go_step',description:'翻到下一步或上一步。用户说做好了、要继续时用 next。',inputSchema:{type:'object',properties:{direction:{type:'string',enum:['next','prev']}},required:['direction']},execute:({direction})=>{const b=st.pos;goStep(direction==='prev'?-1:1);return st.pos===b?{note:'已经到头了',...info()}:info()}},
+ {name:'jump_step',description:'跳到说明书的第几步。',inputSchema:{type:'object',properties:{step:{type:'number'}},required:['step']},execute:({step})=>{if(!byId[String(step)])throw new Error('没有这一步');jump(String(step));return info()}},
+ {name:'animation',description:'控制屏幕上的组装动画：replay 重播，pause 暂停，play 继续，slow 慢放，normal 正常速度。',inputSchema:{type:'object',properties:{action:{type:'string',enum:['replay','pause','play','slow','normal']}},required:['action']},execute:({action})=>{anim(action);return{ok:true}}}];
+function anim(a){const c=id=>$v(id).click(),pl=$v('animPlay').textContent,sl=$v('animSlow').textContent;if(a==='replay')c('animRe');if(a==='pause'&&pl==='暂停')c('animPlay');if(a==='play'&&pl==='播放')c('animPlay');if(a==='slow'&&sl==='慢放')c('animSlow');if(a==='normal'&&sl!=='慢放')c('animSlow')}
+const CN1={一:1,二:2,两:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9};const cnNum=s=>{if(/^\d+$/.test(s))return +s;if(s==='十')return 10;const m=s.match(/^([一二两三四五六七八九])?十([一二三四五六七八九])?$/);if(m)return (m[1]?CN1[m[1]]:1)*10+(m[2]?CN1[m[2]]:0);return CN1[s]||0};
+/* short exact commands answer at once, without waiting for the model */
+function quick(raw){const t=raw.toLowerCase().replace(/[\s，。！？、,.!?]/g,'').replace(/^(返回到?|回到|跳到|去|到|转到)/,'').replace(/^(第.{1,3}|下一|上一)[部布不]$/,'$1步'),m=t.match(/^第(\d+|[一二两三四五六七八九十]{1,3})步$/);
+  if(/说?(慢一点|慢点)说?$|说得?太快|语速.*慢/.test(t)){setPace(.2);return '好，我说慢一点。'}
+  if(/说?(快一点|快点)说?$|说得?太慢|语速.*快/.test(t)){setPace(-.2);return '好，我说快一点。'}
+  if(/^(下一步|继续下一步|做完了|好了|做好了|好的|装好了|完成了|接下来|然后呢|下一个|next)$/.test(t)){const b=st.pos;goStep(1);return st.pos===b?'已经是最后一步了。':stepLine()}
+  if(/^(上一步|back)$/.test(t)||raw.trim()==='返回'){goStep(-1);return stepLine()}
+  if(m){const n=cnNum(m[1]);if(!byId[String(n)])return '没有这一步。';jump(String(n));return stepLine()}
+  if(/^(再说一遍|重复|再讲一遍|没听清|怎么做|怎么装|这一?步怎么(做|装)|这一?步做什么|repeat)$/.test(t))return stepLine();
+  if(/注意什么|要注意|有什么注意/.test(t)){const w=info().warn;return w.length?w.join(''):'这一步没有特别的注意事项。'}
+  if(/第几步|到哪了|进度/.test(t)){const i=info();return '现在是第 '+i.step+' 步，'+i.title+(i.drawer?'，第 '+i.drawer.split('/')[0]+' 个抽屉':'')+'。'}
+  if(/^(再演示一遍|重播|再看一遍|replay)$/.test(t)){anim('replay');return '好，再看一遍。'}
+  if(/^(暂停|pause)$/.test(t)){anim('pause');return '好。'}
+  if(/^(继续|播放|play)$/.test(t)){anim('play');return '好。'}
+  if(/^(动画慢放|慢放|slow)$/.test(t)){anim('slow');return '好，慢放。'}
+  if(/什么零件|哪些零件|要什么|用什么|几个零件|零件/.test(t))return partsLine();
+  return null}
+const PROMPT=()=>`你是陪用户组装 ${PNAME} 的语音助手，语气像身边有经验的朋友。
+你的话会被朗读：用口语短句，一般不超过 50 字，不用列表、编号、符号和括号，不提“图片”或“数据”这类词。一次只说一件事。用户说英文就用英文答，否则用简体中文。
+只依据随附的说明书原图和下面的内容回答，不确定就直说并建议对照说明书，不要猜。翻转大件、防倾倒和墙体固定要提醒注意安全。
+如果没听清或不确定用户的意思，不要猜，先用一句话问清楚再答。用户打断你时，你上一句会标着“被用户打断”，此时不要重复或继续原来的话，先按用户的新说法修正理解。
+用户说做好了或想继续时调用 go_step，再用返回的 guide 口语化地讲下一步；想回看时调用 jump_step；想再看动作时调用 animation。语音转文字可能有错字，请按这一步的内容理解。
+现在：${JSON.stringify(info())}
+全部步骤：${JSON.stringify(STEPS.map(x=>({id:x.id,title:x.title})))}`;
+async function turn(text){const q0=text.trim();if(!q0||!chat)return;const my=++turnId;if(ctl)ctl.abort();stopSpeech();streamDone=true;paused=false;bubble('me',q0);hist.push({role:'user',content:q0});
+  const fastA=quick(q0);if(fastA!==null){bubble('ai',fastA);hist.push({role:'assistant',content:fastA});sayAll(fastA);return}
+  if(!sample){const x='这句要设置密钥后才能回答。现在可以说下一步、上一步、第三步、再说一遍、要什么零件、注意什么。';bubble('ai',x);hist.push({role:'assistant',content:x});sayAll(x);return}
+  setS('think');startRec();streamDone=false;ctl=new AbortController();let all='',buf='';const b=bubble('ai','');
+  const take=d=>{all+=d;spoken=all;buf+=d;b.textContent=all;scroll();let m;while((m=buf.match(/^[\s\S]*?[。！？!?；\n]/))){buf=buf.slice(m[0].length);if(m[0].trim())feed(m[0].trim())}};
+  try{let images;try{images=[await stepImage()]}catch(e){}const r=await sample([{role:'user',content:PROMPT()},...hist.slice(-12)],{tools:TOOLS,images,modelTier:'quick',cache:false,signal:ctl.signal,onText:({text:t,delta})=>{if(my===turnId)take(delta!=null?delta:t.slice(all.length))}});
+    if(my!==turnId)return;if(!all&&r.text)take(r.text);if(buf.trim())feed(buf.trim());buf='';hist.push({role:'assistant',content:all||'好。'});streamDone=true;pump()}
+  catch(e){if(my!==turnId||(e&&e.code==='cancelled'))return;const x=all?'':(msg(e&&e.code));if(x)b.textContent=x;if(!all)hist.pop();streamDone=true;if(x)sayAll(x);else pump()}}
+/* speech in */
+function stopRec(){if(rec&&recOn){try{rec.abort()}catch(e){}}recOn=false}
+function startRec(){if(!chat||!micOK||paused||recOn)return;if(HALF&&!barge&&(state!=='listen'||playing||q.length))return;rec=new SR();rec.lang='zh-CN';rec.interimResults=true;rec.maxAlternatives=1;const t0=Date.now(),me=rec;
+  rec.onresult=e=>{if(me!==rec)return;let t='',fin=false;for(let i=e.resultIndex;i<e.results.length;i++){t+=e.results[i][0].transcript;if(e.results[i].isFinal)fin=true}
+    if(HALF&&!barge&&state!=='listen')return;
+    if(Date.now()-lastEnd<8000&&t.replace(/\s/g,'').length>=4&&isEcho(t,lastSaid)){if(live){live.remove();live=null}tr('已忽略回声');return}
+    if((state==='speak'||state==='think')&&isEcho(t))return;
+    if(state==='speak'||state==='think'){if(t.replace(/\s/g,'').length<2)return;interrupt(true)}
+    if(fin){if(live){live.remove();live=null}turn(t)}else{if(!live)live=bubble('me live','');live.textContent=t;scroll()}};
+  rec.onerror=e=>{tr('麦克风：'+e.error);if(e.error==='not-allowed'||e.error==='service-not-allowed'||e.error==='audio-capture'){if(!window.NORDEN_TTS){try{localStorage.setItem('norden-mic','no')}catch(x){}}micOff()}};
+  rec.onend=()=>{recEnd=Date.now();if(me!==rec)return;recOn=false;if(!micOK||!chat||paused)return;if(Date.now()-t0<400){if(++fast>5){if(!window.NORDEN_TTS){micOff();return}fast=0;setTimeout(startRec,2500);return}}else fast=0;setTimeout(startRec,350)};
+  try{rec.start();recOn=true}catch(e){recOn=false}}
+function micOff(){micOK=false;$v('vChat').classList.add('kb');if(state==='listen')setS('type');$v('vChat').classList.add('dictate');$v('vTxt').placeholder='点这里，再点键盘上的话筒说话'}
+function isEcho(t,src){const a=t.replace(/[\s，。！？、,.!?；]/g,''),b=(src==null?spoken:src).replace(/[\s，。！？、,.!?；]/g,'');if(!a)return true;if(!b)return false;if(a.length<2)return b.includes(a);let n=0;for(let i=0;i<a.length-1;i++)if(b.includes(a.slice(i,i+2)))n++;return n/(a.length-1)>.45}
+function interrupt(keepRec){const said=spoken;turnId++;if(ctl)ctl.abort();stopSpeech();streamDone=true;spoken='';lastEnd=0;lastSaid='';if(said){const l=hist[hist.length-1];if(l&&l.role==='assistant')l.content=said+'（说到这里被用户打断）';else hist.push({role:'assistant',content:said+'（说到这里被用户打断）'})}setS(micOK?'listen':'type');$v('vState').textContent=micOK?'已打断，请说':'已打断，请打字';if(micOK&&!keepRec){stopRec();setTimeout(startRec,120)}}
+function orb(){if(state==='speak'||state==='think')interrupt();else if(state==='listen'){paused=true;stopRec();setS('pause')}else if(state==='pause'){paused=false;doneTalking()}else if(state==='type'){if(SR&&window.NORDEN_TTS){micOK=true;$v('vChat').classList.remove('dictate');$v('vTxt').placeholder='也可以打字';setS('listen');startRec()}else $v('vTxt').focus()}}
+function open(){unlock();initN();chat=true;paused=false;hist=[];fast=0;micOK=!!SR&&!blocked;$v('vLog').replaceChildren();if(!micOK)micOff();$v('anim').classList.add('vc');if(!$v('anim').classList.contains('full'))$v('animFull').click();if($v('fMode').textContent==='看整体')$v('fMode').click();setTimeout(()=>window.dispatchEvent(new Event('resize')),200);setS('speak');const g='我在。'+stepLine()+'有问题随时说，做好了就告诉我。';bubble('ai',g);hist.push({role:'assistant',content:g});if(!micOK)$v('vTxt').focus();sayAll(g)}
+function close(){chat=false;turnId++;if(ctl)ctl.abort();stopSpeech();stopRec();setS('idle');if(live){live.remove();live=null}const a=$v('anim');a.classList.remove('vc');if(a.classList.contains('full'))$v('animFull').click()}
+function ui(){$v('vStart').onclick=open;$v('vInt').onclick=()=>interrupt();const bb=$v('vBarge'),bs=()=>{bb.textContent=barge?'开口打断：开':'开口打断：关';bb.classList.toggle('primary',barge)};bs();bb.onclick=()=>{barge=!barge;try{localStorage.setItem('norden-barge',barge?'1':'0')}catch(e){}bs();if(barge&&(state==='speak'||state==='think'))startRec()};$v('vKb').onclick=()=>{const c=$v('vChat');c.classList.toggle('kb');if(c.classList.contains('kb'))$v('vTxt').focus()};$v('vEnd').onclick=close;$v('vOrb').onclick=orb;if($v('vTest'))$v('vTest').onclick=testSound;
+  const send=()=>{const i=$v('vTxt'),t=i.value;i.value='';if(!micOK){i.blur();recEnd=Date.now()}turn(t)};$v('vSend').onclick=()=>{clearTimeout(dict);send()};$v('vTxt').oninput=()=>{if(micOK)return;clearTimeout(dict);if(state==='speak'||state==='think'){turnId++;if(ctl)ctl.abort();stopSpeech();streamDone=true;setS('type')}if($v('vTxt').value.trim())dict=setTimeout(send,1800)};$v('vTxt').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();clearTimeout(dict);send()}};
+  document.addEventListener('fullscreenchange',()=>{if(chat&&!document.fullscreenElement&&!$v('anim').classList.contains('full'))close()})}
+return{ui,onStep(){},_s:()=>({chat,state,micOK,hist})}})();
+
+Voice.ui();window.Voice=Voice;window.VoiceReady=true;
+Anim.setNext(()=>{const c=P[st.pos];
+  if(st.pos>=P.length-1){Anim.stopAuto();return true}
+  st.pos=c.id==='10'&&c.d===1?P.findIndex(x=>x.id==='11'):st.pos+1;taken=new Set();scans={};finds={};render();$('anim').scrollIntoView({block:'nearest'});return true});
+render();renderParts();
+document.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA/.test(e.target.tagName))return;if(e.key==='ArrowRight')go(1);if(e.key==='ArrowLeft')go(-1)});
+</script>

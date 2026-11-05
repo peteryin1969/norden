@@ -1,0 +1,442 @@
+<title>STORKLINTA 组装助手</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+/* Layout: a workbench job card. The manual drawing stays in view, the instruction sits under it, the controls stay at the thumb. */
+:root{
+  --bg:#ecefec;--panel:#fbfcfa;--ink:#1c2420;--muted:#59655e;--line:#c8d0ca;
+  --accent:#265f4a;--accent-ink:#fff;--warn:#7f4d00;--warn-bg:#f8e8cb;--stop:#97281f;--stop-bg:#f8e0dc;--ask:#e1e9e4;
+  --sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141a17;--panel:#1c2420;--ink:#e6ece8;--muted:#a2afa7;--line:#35423b;
+  --accent:#86cfae;--accent-ink:#0e2119;--warn:#f0c67e;--warn-bg:#3e2f12;--stop:#f4aca3;--stop-bg:#47211d;--ask:#26322c;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141a17;--panel:#1c2420;--ink:#e6ece8;--muted:#a2afa7;--line:#35423b;
+  --accent:#86cfae;--accent-ink:#0e2119;--warn:#f0c67e;--warn-bg:#3e2f12;--stop:#f4aca3;--stop-bg:#47211d;--ask:#26322c;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:16px/1.65 var(--sans)}
+.wrap{max-width:680px;margin:0 auto;padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:14px}
+header{display:grid;gap:2px}
+h1{font-size:25px;line-height:1.25;margin:0}
+.sub{font:500 12px/1.5 var(--mono);color:var(--muted)}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tab{min-height:44px;font:500 15px var(--sans);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:6px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;display:grid;gap:13px;min-width:0}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.no{font:600 30px/1 var(--mono);color:var(--accent)}
+.meta{font:500 12.5px var(--mono);color:var(--muted)}
+.bar{height:5px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent)}
+h2{font-size:20px;line-height:1.35;margin:0}
+.figure{background:#fff;border:1px solid var(--line);border-radius:6px;overflow:auto;max-height:62vh;cursor:zoom-in;padding:0}
+.figure img{display:block;width:100%;height:auto}
+.figure.zoom{cursor:zoom-out}.figure.zoom img{width:210%;max-width:none}
+ol.do{margin:0;padding-left:22px;display:grid;gap:5px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:0;padding:0;list-style:none}
+.chips li{font:600 14px var(--mono);padding:4px 9px;border:1px solid var(--line);border-radius:4px;background:var(--bg)}
+.flag{padding:9px 12px;border-radius:6px;font-size:14.5px}
+.flag.warn{background:var(--stop-bg);color:var(--stop)}
+.flag.unsure{background:var(--warn-bg);color:var(--warn)}
+.flag b{display:block;font-size:13px}
+.btn{display:flex;align-items:center;justify-content:center;min-height:48px;padding:8px 14px;border-radius:6px;font:500 15.5px var(--sans);border:1px solid var(--accent);cursor:pointer;background:transparent;color:var(--accent);text-align:center}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.4;cursor:default}
+.nav{display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
+.choice{display:grid;gap:10px}
+.ask{background:var(--ask);border-radius:6px;padding:12px;display:grid;gap:9px}
+.ask label{font-size:13px;font-weight:700;color:var(--muted)}
+.ask textarea{width:100%;min-height:62px;padding:9px;font:15px/1.5 var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:5px;resize:vertical}
+.askrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.askrow .btn{min-height:44px;font-size:14.5px}
+.file{position:relative;overflow:hidden}
+.file input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}
+.file:focus-within{outline:3px solid var(--accent);outline-offset:2px}
+.answer{white-space:pre-wrap;font-size:15px;padding:10px;background:var(--panel);border-radius:5px}
+.hint{font-size:13.5px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th{font-size:12.5px;text-align:left;color:var(--muted);padding:5px 8px 5px 0;border-bottom:1px solid var(--line)}
+td{padding:8px 8px 8px 0;border-bottom:1px solid var(--line);vertical-align:middle}
+td.c{font:600 14px var(--mono);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+.tw{overflow-x:auto}
+.check{width:22px;height:22px;accent-color:var(--accent)}
+.safety{margin:0;padding-left:20px;display:grid;gap:6px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.picks{display:grid;gap:8px}
+.pick{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;padding:8px;background:var(--ask);border:2px solid var(--accent);border-radius:6px;cursor:pointer;width:100%;text-align:left;color:var(--ink);font:15px var(--sans)}
+.pick.done{opacity:.55;border-style:dashed}
+.thumb{background:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;aspect-ratio:1;padding:4px;min-width:0}
+.thumb img{max-width:100%;max-height:100%;object-fit:contain}
+.pick b{display:block;font-size:15px}.pick small{font:500 12.5px var(--mono);color:var(--muted)}
+.take{font:600 20px var(--mono);color:var(--accent);white-space:nowrap}
+.map{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.map i{aspect-ratio:1;border-radius:3px;background:var(--line);font:600 11px/1 var(--mono);font-style:normal;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.map i.on{background:var(--accent);color:var(--accent-ink)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.cell{display:grid;gap:3px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);min-width:0;color:var(--ink);font:13px var(--sans);text-align:left}
+.cell.need{border:2px solid var(--accent);background:var(--ask)}
+.cell.locked{opacity:.45}
+.cell b{font:600 14px var(--mono)}.cell .q{font:600 13px var(--mono);color:var(--accent)}
+.cell span{overflow-wrap:anywhere}
+.lbl{font-size:13px;font-weight:700;color:var(--muted)}
+.pickrow{display:grid;gap:5px}
+.scan{min-height:42px;font-size:14.5px}
+.result{padding:8px 10px;border-radius:6px;font-size:14.5px;background:var(--ask)}
+.result.correct{background:var(--ask);color:var(--accent);font-weight:500}
+.result.wrong{background:var(--stop-bg);color:var(--stop)}
+.result.unclear{background:var(--warn-bg);color:var(--warn)}
+.scan2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.scan2 .btn{min-height:42px;font-size:14px;padding:6px}
+.find{display:grid;gap:5px}
+.find canvas{width:100%;height:auto;display:block;border-radius:6px;background:#fff}
+.anim{display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:6px}
+.anim-view{height:min(58vw,300px);background:#fff;border-radius:5px;touch-action:none;cursor:grab;overflow:hidden}
+.anim-view canvas{display:block;width:100%!important;height:100%!important}
+.anim-ctl{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.anim-ctl .btn{min-height:42px;font-size:13.5px;padding:6px 3px}
+.anim input[type=range]{width:100%;accent-color:var(--accent)}
+.jump{display:grid;grid-template-columns:1fr auto;gap:6px}
+.jump select{min-width:0;width:100%;min-height:44px;padding:6px 8px;font:15px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px}
+.jump .btn{min-height:44px;font-size:14px;white-space:nowrap}
+.zoombox{position:fixed;inset:0;z-index:40;background:rgba(10,16,13,.62);display:grid;align-items:center;justify-items:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.zoomcard{width:min(100%,520px);background:var(--panel);border-radius:10px;padding:12px;display:grid;gap:10px}
+.zoomview{aspect-ratio:1;max-height:62vh;width:100%;background:#fff;border-radius:6px;overflow:hidden}
+.zoomview canvas{display:block;width:100%!important;height:100%!important}
+.zoomctl{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.zoomctl .btn{min-height:44px;font-size:14px;padding:6px}
+.noscroll,.noscroll body{overflow:hidden}
+.fullnav{display:none}
+.anim.full{position:fixed;inset:0;z-index:30;background:var(--panel);border:0;border-radius:0;grid-template-rows:auto 1fr auto auto auto;padding:max(10px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(10px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));height:100%}
+.anim.full .anim-view{height:auto;min-height:0}
+.anim.full .hint{display:none}
+.anim.full .fullnav{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.anim.full .fullnav .btn{min-height:42px;font-size:14px}
+.anim.full .lbl{font-size:15px;color:var(--ink)}
+@media (orientation:landscape) and (max-height:520px){.anim.full{grid-template-columns:1fr 168px;grid-template-rows:auto 1fr auto}.anim.full .lbl{grid-column:1/3}.anim.full .anim-view{grid-column:1;grid-row:2}.anim.full input[type=range]{grid-column:1;grid-row:3}.anim.full .anim-ctl{grid-column:2;grid-row:2;grid-template-columns:1fr;align-content:start}.anim.full .fullnav{grid-column:2;grid-row:3;grid-template-columns:1fr 1fr 1fr;gap:3px}.anim.full .anim-ctl .btn{min-height:34px}.anim.full .fullnav .btn{min-height:36px;font-size:13px;padding:2px;white-space:nowrap}}
+.anim-view{position:relative}
+.alines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.alines line{stroke:#1b2420;stroke-width:1.2}
+.alabels{position:absolute;inset:0;pointer-events:none;z-index:2;overflow:hidden}
+.alabel{position:absolute;left:0;top:0;max-width:72%;padding:3px 7px;border-radius:4px;background:#1b2420;color:#fff;font:500 12.5px/1.35 var(--sans);opacity:0;transition:opacity .15s;white-space:normal}
+.anim.full .alabel{font-size:14px}
+@media (prefers-reduced-motion:reduce){.alabel{transition:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="sub">AA-2413736-7 · 32 页 · 45 步 · 6 个抽屉</div>
+    <h1>STORKLINTA 组装助手</h1>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" id="t-steps" role="tab" aria-selected="true">组装</button>
+    <button class="tab" id="t-grid" role="tab" aria-selected="false">格子</button>
+    <button class="tab" id="t-parts" role="tab" aria-selected="false">零件</button>
+    <button class="tab" id="t-safe" role="tab" aria-selected="false">安全</button>
+  </div>
+
+  <section id="v-steps" class="card">
+    <div class="jump"><select id="jump" aria-label="跳到某一步"></select><button class="btn" id="toAnim">跳到抽屉</button></div>
+    <div class="head"><div class="no" id="no"></div><div class="meta" id="meta"></div></div>
+    <div class="bar"><i id="bar"></i></div>
+    <h2 id="title"></h2>
+    <div id="pickWrap" style="display:grid;gap:8px">
+      <div class="lbl" id="pickLbl"></div>
+      <div class="picks" id="picks"></div>
+      
+    </div>
+    <div class="anim" id="anim" hidden>
+      <div class="lbl" id="animCap"></div>
+      <div class="anim-view" id="animView" aria-label="组装动画，拖动可旋转"><svg class="alines" id="animLines" aria-hidden="true"></svg><div class="alabels" id="animLabels" aria-hidden="true"></div></div>
+      <input id="animT" type="range" min="0" max="100" value="0" aria-label="动画进度">
+      <div class="anim-ctl"><button class="btn" id="animPlay">暂停</button><button class="btn" id="animRe">重播</button><button class="btn" id="animSlow">慢放</button><button class="btn" id="animAuto">连续播放</button><button class="btn" id="animFull">全屏</button><button class="btn" id="animLbl">隐藏标签</button><button class="btn" id="animLook">线稿模式</button></div>
+      <div class="fullnav"><button class="btn" id="fPrev">上一步</button><button class="btn" id="fMode">看整体</button><button class="btn primary" id="fNext">下一步</button></div>
+      <div class="hint">示意动画，比例为估算，孔位和方向以下方说明书原图为准。拖动画面可旋转，点一下可放大局部。连续播放时，抽屉只演示一次。</div>
+    </div>
+    <div class="figure" id="fig" title="点按放大"><img id="img" alt=""></div>
+    <ol class="do" id="do"></ol>
+        <div id="flags" style="display:grid;gap:8px"></div>
+    <div id="choice" class="choice" hidden>
+      <strong>柜体靠墙的位置有踢脚线吗？</strong>
+      <button class="btn primary" id="noSkirt">没有踢脚线，继续第 32 步</button>
+      <button class="btn" id="yesSkirt">有踢脚线，转到第 33 步</button>
+    </div>
+    <div class="nav" id="nav">
+      <button class="btn" id="prev">上一步</button>
+      <button class="btn primary" id="next">下一步</button>
+    </div>
+    <div class="ask" id="ask" hidden>
+      <label for="q">问问这一步</label>
+      <textarea id="q" placeholder="例如：这颗螺丝怎么分辨？"></textarea>
+      <div class="askrow">
+        <button class="btn primary" id="send">提问</button>
+        <label class="btn file" id="photoWrap">拍照核对<input id="photo" type="file" accept="image/*" capture="environment" aria-label="上传这一步的照片"></label>
+      </div>
+      <div class="hint">回答由 Claude 根据本步原图和说明生成，可能出错。关键位置请再看原图。</div>
+      <div class="answer" id="ans" hidden></div>
+    </div>
+  </section>
+
+  <section id="v-grid" class="card" hidden>
+    <h2>虚拟格子</h2>
+    <div class="hint" id="gridHint"></div>
+    <div class="grid" id="grid"></div>
+    <div class="hint">请把零件按上面的位置摆在软垫或托盘上，不需要实体格子。大板件说明书没有编号，暂不在格子内。</div>
+    <div class="ask" id="gridAsk" hidden>
+      <label class="btn file" id="gridWrap">拍照核对摆放<input id="gridPhoto" type="file" accept="image/*" capture="environment" aria-label="上传零件摆放照片"></label>
+      <div class="answer" id="gridAns" hidden></div>
+    </div>
+  </section>
+
+  <div class="zoombox" id="zoomBox" hidden>
+    <div class="zoomcard" role="dialog" aria-label="放大局部动画">
+      <div class="lbl">局部放大</div>
+      <div class="zoomview" id="zoomView"></div>
+      <div class="zoomctl"><button class="btn" id="zoomOut">缩小</button><button class="btn" id="zoomIn">放大</button><button class="btn" id="zoomPlay">暂停</button><button class="btn primary" id="zoomClose">关闭</button></div>
+    </div>
+  </div>
+
+  <section id="v-parts" class="card" hidden>
+    <h2>开工前清点</h2>
+    <div class="hint">数量来自说明书第 4–6 页。螺丝和连接件已和各步用量逐项核对。勾选后保存在这台设备上。</div>
+    <div class="tw"><table><thead><tr><th>到齐</th><th>编号</th><th>数量</th><th>袋</th><th>用在</th></tr></thead><tbody id="pt"></tbody></table></div>
+    <div class="figure"><img src="img/parts5.png" alt="说明书第 5 页零件图"></div>
+    <div class="figure"><img src="img/parts6.png" alt="说明书第 6 页零件图"></div>
+    <div class="figure"><img src="img/parts4.png" alt="说明书第 4 页墙面固定零件图"></div>
+    <div class="figure"><img src="img/parts3.png" alt="说明书第 3 页工具图"></div>
+  </section>
+
+  <section id="v-safe" class="card" hidden>
+    <h2>开工前先看</h2>
+    <div class="flag warn">说明书警告：曾有儿童因家具倾倒死亡。必须安装随附的防倾倒装置。</div>
+    <ul class="safety">
+      <li>不要在这件家具上放电视。</li>
+      <li>不要让儿童站立、攀爬或悬挂在抽屉、门或搁板上。</li>
+      <li>不要同时打开超过一个抽屉。</li>
+      <li>不要拆除或破坏抽屉联锁系统，它关系到稳定和安全。</li>
+      <li>最重的物品放在最下层抽屉。</li>
+      <li>逐步按说明书操作。说明书建议两人组装。</li>
+      <li>随附螺丝和墙塞适用于大多数实心墙和空心墙。实木只用螺丝，不用墙塞。不确定时请咨询专业人士。</li>
+    </ul>
+    <div class="flag unsure"><b>需要留意</b>第 22 页图示：未固定时最多开一个抽屉，固定到墙上后可开多个。第 2 页文字则要求不要同时打开超过一个抽屉。本工具按第 2 页执行。</div>
+    <div class="hint">本工具不是宜家官方产品，也不能替代随货说明书。</div>
+  </section>
+</div>
+
+<script>
+/*ANIM*/
+const STEPS=/*STEPS*/[];
+const BAG={'118331':'1 / 2','119252/119250':'1','110126':'1','101345':'1 / 2','102553':'1','105248':'1','146114':'1 / 2','151707':'1','151708':'1','10093081':'1','10093082':'1','10101849':'1','158568':'1','151931':'A','120076':'2','145718':'2','10040242':'2','109572':'墙','10087223':'墙','10102070':'墙（踢脚线）','10102042':'袋外'};
+const QTY={'118331':38,'119252/119250':12,'110126':2,'101345':38,'102553':4,'105248':8,'146114':54,'151707':7,'151708':7,'10093081':6,'10093082':6,'10101849':4,'158568':3,'151931':12,'120076':48,'145718':24,'10040242':6,'109572':2,'10087223':2,'10102070':2,'10102042':'6 套（每套 4 根）'};
+const byId=Object.fromEntries(STEPS.map(s=>[s.id,s]));
+const CELLS=/*CELLS*/[];
+const RAILS={'1':6,'7':3,'8':3,'43':2};
+const OPEN=[{at:'1',q:{'118331':14,'119252/119250':12,'110126':2,'101345':14,'102553':4,'105248':8,'146114':18,'151707':7,'151708':7,'10093081':6,'10093082':6,'10101849':4,'158568':3,'10102042':24}},{at:'7',q:{'151931':12}},{at:'32w',q:{'109572':2,'10087223':2,'10102070':2}},{at:'35',q:{'120076':48,'118331':24,'146114':36,'145718':24,'101345':24,'10040242':6}}];
+const OPENNAME={'1':'1 号袋和滑轨','7':'A 号袋','32w':'墙面固定袋','35':'2 号袋'};
+function need(id){const s=byId[id],o=s.parts.flatMap(([k,q])=>k==='10087223'?[[k,q]]:[[k,q]]);if(RAILS[id])o.push(['10102042',RAILS[id]]);return o}
+function stock(pos){const m={};const seen=new Set();
+  for(let i=0;i<=pos;i++){const id=P[i].id;OPEN.forEach(b=>{if(b.at===id&&!seen.has(id)){seen.add(id);Object.entries(b.q).forEach(([k,v])=>m[k]=(m[k]||0)+v)}});if(i<pos)need(id).forEach(([k,q])=>m[k]-=q)}
+  return m}
+const KEY='storklinta-v1';
+const load=()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return {}}};
+const st=Object.assign({pos:0,branch:null,found:[]},load());
+let taken=new Set();
+let scans={},finds={},scanCode=null,findCode=null,LIM=null;
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
+const $=i=>document.getElementById(i);
+
+function path(){
+  const p=[];
+  for(let i=1;i<=31;i++)p.push({id:String(i)});
+  p.push({id:'32w'});
+  if(st.branch)(st.branch==='none'?['32']:['33','34']).forEach(id=>p.push({id}));
+  for(let d=1;d<=6;d++)for(let i=35;i<=43;i++)p.push({id:String(i),d});
+  p.push({id:'44'},{id:'45'});
+  return p;
+}
+let P=path();
+if(!Number.isInteger(st.pos)||st.pos<0||st.pos>=P.length)st.pos=0;
+
+function render(){
+  P=path();
+  const c=P[st.pos],s=byId[c.id];
+  $('jump').value=s.id;
+  $('no').textContent=s.label||('第 '+s.id+' 步');
+  $('meta').textContent='说明书第 '+s.page+' 页'+(c.d?' · 第 '+c.d+'/6 个抽屉':'');
+  $('bar').style.width=(st.pos+1)/P.length*100+'%';
+  $('title').textContent=s.title;
+  $('img').src='img/s'+s.id+'.png';
+  $('img').alt='说明书第 '+s.page+' 页，'+s.title;
+  const d=$('do');d.replaceChildren();s.do.forEach(t=>{const l=document.createElement('li');l.textContent=t;d.append(l)});
+  renderPick(c);
+  Anim.show(s.id);
+  const f=$('flags');f.replaceChildren();
+  s.warn.forEach(t=>f.append(flag('warn','注意',t)));
+  s.unsure.forEach(t=>f.append(flag('unsure','请对照原图',t)));
+  const choose=s.id==='32w'&&!st.branch;
+  $('choice').hidden=!choose;$('nav').hidden=false;
+  $('next').hidden=choose;
+  $('prev').disabled=st.pos===0;
+  $('next').disabled=st.pos>=P.length-1;
+  $('next').textContent=st.pos>=P.length-1?'全部完成':nextLabel(c);
+  $('ans').hidden=true;$('q').value='';
+  $('fig').classList.remove('zoom');
+  save();
+}
+function thumb(n){const t=document.createElement('div');t.className='thumb';const i=document.createElement('img');i.src='img/c/'+n+'.png';i.alt='';t.append(i);return t}
+function picker(id,label,busy,fn){const w=document.createElement('label');w.className='btn file';w.append(label);
+  const i=document.createElement('input');i.type='file';i.accept='image/*';i.setAttribute('capture','environment');i.id=id;i.disabled=!!busy;i.setAttribute('aria-label',label);
+  i.onchange=()=>{const f=i.files[0];if(f)fn(f)};w.append(i);return w}
+function renderPick(c){
+  const n=need(c.id),box=$('picks'),m=stock(st.pos);box.replaceChildren();
+  const opened=OPEN.find(b=>b.at===c.id&&!(c.d&&c.d>1));
+  $('pickLbl').textContent=(opened?'先打开'+OPENNAME[c.id]+'，摆入格子。':'')+(n.length?'这一步取料':'这一步不用小零件');
+  n.forEach(([k,q])=>{const e=CELLS.find(x=>x.code===k);const b=document.createElement('button');b.className='pick'+(taken.has(k)?' done':'');
+    const t=document.createElement('div');const a=document.createElement('b');a.textContent=e.n+' 格 · '+e.name+(taken.has(k)?' · 已取':'');const sm=document.createElement('small');sm.textContent=k+' · 格内剩 '+m[k];t.append(a,sm);
+    const u=document.createElement('div');u.className='take';u.textContent='× '+q;b.append(thumb(e.n),t,u);
+    b.onclick=()=>{taken.has(k)?taken.delete(k):taken.add(k);renderPick(c)};
+    const row=document.createElement('div');row.className='pickrow';row.append(b);
+    if(sample&&LIM&&LIM.images){const busy=scans[k]&&scans[k].result==='busy',fb=finds[k]&&finds[k].busy;
+      const sc=picker('scan-'+e.n,busy?'正在比对…':'扫描确认',busy,f=>scanPart(k,f,st.pos));
+      const fd=picker('find-'+e.n,fb?'正在查找…':'拍桌面找零件',fb,f=>findPart(k,f,st.pos));
+      const two=document.createElement('div');two.className='scan2';two.append(fd,sc);row.append(two)}
+    if(finds[k]&&!finds[k].busy){const f=document.createElement('div');f.className='find';if(finds[k].canvas)f.append(finds[k].canvas);const t=document.createElement('div');t.className='result '+finds[k].cls;t.textContent=finds[k].text;f.append(t);row.append(f)}
+    if(scans[k]&&scans[k].result!=='busy'){const r=document.createElement('div');r.className='result '+scans[k].result;r.textContent=scans[k].text;row.append(r)}
+    box.append(row)});
+  renderGrid();
+}
+function renderGrid(){
+  const c=P[st.pos],m=stock(st.pos),n=need(c.id),g=$('grid');g.replaceChildren();
+  $('gridHint').textContent='当前：'+(byId[c.id].label||'第 '+c.id+' 步')+(c.d?' · 第 '+c.d+'/6 个抽屉':'')+'。绿框是这一步要取的格子。灰色的格子还没开袋。';
+  CELLS.forEach(e=>{const has=m[e.code]!==undefined;const d=document.createElement('div');d.className='cell'+(n.some(x=>x[0]===e.code)?' need':'')+(has?'':' locked');
+    const h=document.createElement('b');h.textContent=e.n+' 格';const nm=document.createElement('span');nm.textContent=e.name;const q=document.createElement('span');q.className='q';q.textContent=has?'剩 '+m[e.code]:'未开袋';const co=document.createElement('span');co.className='hint';co.textContent=e.code;
+    d.append(h,thumb(e.n),nm,co,q);g.append(d)});
+}
+function nextLabel(c){return c.id==='43'&&c.d<6?'做下一个抽屉':'下一步'}
+function flag(cls,h,t){const e=document.createElement('div');e.className='flag '+cls;const b=document.createElement('b');b.textContent=h;e.append(b,t);return e}
+function go(d){const n=st.pos+d;if(n<0||n>=P.length)return;
+  if(d<0&&P[st.pos].id==='32'||d<0&&P[st.pos].id==='33')st.branch=null;
+  st.pos=n;taken=new Set();scans={};finds={};render();scrollTo(0,0)}
+function jump(id){if(id==='32')st.branch='none';else if(id==='33'||id==='34')st.branch='skirt';
+  P=path();const n=P.findIndex(x=>x.id===id);if(n<0)return;st.pos=n;taken=new Set();scans={};finds={};view('steps');render();scrollTo(0,0)}
+STEPS.forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=(s.label||('第 '+s.id+' 步'))+' · '+s.title;$('jump').append(o)});
+$('jump').onchange=e=>jump(e.target.value);
+$('toAnim').onclick=()=>jump('35');
+function pick(b){st.branch=b;st.pos+=1;taken=new Set();scans={};finds={};render();scrollTo(0,0)}
+$('prev').onclick=()=>go(-1);$('next').onclick=()=>go(1);
+$('noSkirt').onclick=()=>pick('none');$('yesSkirt').onclick=()=>pick('skirt');
+$('fig').onclick=()=>$('fig').classList.toggle('zoom');
+
+function view(v){['steps','grid','parts','safe'].forEach(k=>{$('v-'+k).hidden=k!==v;$('t-'+k).setAttribute('aria-selected',k===v)})}
+['steps','grid','parts','safe'].forEach(k=>$('t-'+k).onclick=()=>{if(k==='grid')renderGrid();view(k)});
+
+function uses(k){if(k==='10102042')return '1、7、8、43';const out=[];STEPS.forEach(s=>{if(s.parts.some(p=>p[0]===k))out.push(s.label||s.id)});return out.join('、')}
+function renderParts(){
+  const b=$('pt');b.replaceChildren();
+  Object.keys(QTY).forEach(k=>{
+    const r=document.createElement('tr');
+    const a=document.createElement('td'),box=document.createElement('input');box.type='checkbox';box.className='check';box.id='p-'+k;box.setAttribute('aria-label',k+' 已到齐');box.checked=st.found.includes(k);
+    box.onchange=()=>{st.found=box.checked?[...new Set([...st.found,k])]:st.found.filter(x=>x!==k);save()};a.append(box);
+    const c=document.createElement('td');c.className='c';c.textContent=k;
+    const q=document.createElement('td');q.className='c';q.textContent=QTY[k];
+    const g=document.createElement('td');g.textContent=BAG[k];
+    const u=document.createElement('td');u.textContent=uses(k);
+    r.append(a,c,q,g,u);b.append(r);
+  });
+}
+
+const SIM={'146114':['151931','105248'],'151931':['146114','105248','109572'],'105248':['146114','151931'],'109572':['151931'],'119252/119250':['120076','110126'],'120076':['119252/119250','110126'],'110126':['119252/119250','120076'],'151707':['151708'],'151708':['151707'],'118331':['145718'],'145718':['118331'],'10093081':['10093082'],'10093082':['10093081']};
+const FEAT={'146114':'短螺丝，十字沉头，粗牙，长度短','151931':'较长的螺丝，十字沉头，粗牙，比 146114 明显更长','105248':'宽头短螺丝，头部大而扁，机制细牙','109572':'很长的自攻螺丝，圆头','118331':'金属连接杆，上端带十字头，中段多棱，下端粗螺纹','145718':'长条连接杆，一端圆帽，杆身带纵向凹槽，另一端小圆头','101345':'圆柱木销，表面竖纹','119252/119250':'小圆柱凸轮锁，顶面一字槽，侧面有椭圆开口，底部缺口带齿','120076':'小圆柱凸轮锁，顶面一字槽，无 119252 那样的椭圆侧孔，底部有齿','110126':'较大的十字槽凸轮锁，外壳镂空，结构复杂','102553':'L 形金属角码，竖片和底片各一孔，竖片顶部圆弧','10101849':'L 形塑料盖件，圆角，背面两个插脚','158568':'长条形塑料盖件，圆角，背面两个插脚','151708':'带十字头的塑料膨胀件，杆身有分叉和倒刺','151707':'圆帽塑料插销，杆身细长','10093081':'塑料卡扣底座，半圆头，下方方形框架','10093082':'塑料卡扣盖，半圆头，下方实心楔形','10102042':'金属抽屉滑轨，长条形，一端有滚轮','10040242':'弯曲的金属联锁杆，两端带倒刺，中段波浪形','10087223':'塑料墙塞，圆帽，杆身开叉','10102070':'可掰开的塑料垫块条，四节方块'};
+async function findPart(k,file,pos){
+  const step=()=>renderPick(P[st.pos]);
+  finds[k]={busy:true};step();
+  let out;
+  try{
+    const bmp=await createImageBitmap(file);const sc=Math.min(1,1000/Math.max(bmp.width,bmp.height));
+    const c=document.createElement('canvas');c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);const x=c.getContext('2d');x.drawImage(bmp,0,0,c.width,c.height);
+    const room=Math.max(0,((LIM.images.maxCount)||3)-2);const sim=(SIM[k]||[]).slice(0,room);
+    const refs=await Promise.all([k,...sim].map(cellBlob));
+    const names=[k,...sim].map((v,i)=>`第 ${i+1} 张：说明书线稿，编号 ${v}。特征：${FEAT[v]}`).join('\n');
+    const q=need(P[pos].id).find(n=>n[0]===k);
+    const r=await sample.json(`检查最后一张桌面照片里有没有第 1 张线稿对应的零件。照片里可能完全没有目标，家里的普通螺丝或其他物品都不算目标；这种情况 items 返回空数组。外形大类相同不算匹配，头型、牙型、尾端和比例都要吻合。\n${names}\n后面的线稿是容易混淆的零件，不要圈它们。本步需要 ${q?q[1]:'若干'} 个。\n只圈确认吻合的零件，宁可少圈也不要误圈，把握不足就标 low。scale 表示照片里是否有硬币或尺子，并且能用它判断长度。坐标都按照片比例，x、y、r 为 0 到 1 的小数：x 是中心横向位置（左 0 右 1），y 是中心纵向位置（上 0 下 1），r 是相对照片宽度的圈半径。\n只回复 JSON：{"items":[{"x":0.5,"y":0.5,"r":0.05,"conf":"high|medium|low"}],"scale":false,"note":"不超过 40 字的简体中文说明"}`,{images:[...refs,file],cache:false});
+    const raw=Array.isArray(r&&r.items)?r.items:[];
+    const items=raw.filter(i=>[i.x,i.y,i.r].every(v=>typeof v==='number'&&v>=0&&v<=1)).slice(0,60);
+    if(SCREWS.has(k)&&!(r&&r.scale===true))items.forEach(i=>i.conf='low');
+    x.lineWidth=Math.max(3,c.width/220);const col=getComputedStyle(document.documentElement).getPropertyValue('--stop').trim()||'#c62828';
+    items.forEach(i=>{const rad=Math.max(i.r*c.width,14);x.setLineDash(i.conf==='low'?[10,8]:[]);x.strokeStyle=i.conf==='low'?'#e08a00':'#00a65a';x.beginPath();x.arc(i.x*c.width,i.y*c.height,rad,0,Math.PI*2);x.stroke()});
+    const n=items.length,low=items.filter(i=>i.conf==='low').length,note=String((r&&r.note)||'').slice(0,80);
+    if(!n)out={cls:'unclear',text:'这张照片里没有确认到目标零件。'+note+' 如果确实有，请摊开后再拍一次。'};
+    else out={canvas:c,cls:low?'unclear':'correct',text:'圈出 '+n+' 个'+(q?'，本步需要 '+q[1]+' 个':'')+(low?'，其中 '+low+' 个把握不大（虚线圈）':'')+'。'+note+(SCREWS.has(k)&&!(r&&r.scale===true)?' 没有比例参照，螺丝长度未确认。':'')+' 拿起后请用“扫描确认”。'};
+  }catch(e){out={cls:'unclear',text:msg(e&&e.code)}}
+  if(pos!==st.pos)return;
+  finds[k]=out;step();
+}
+const SCREWS=new Set(['146114','151931','105248','109572']);
+const cellOf=k=>CELLS.find(x=>x.code===k);
+const cellBlob=k=>fetch('img/c/'+cellOf(k).n+'.png').then(r=>r.blob());
+async function scanPart(k,file,pos){
+  const step=()=>renderPick(P[st.pos]);
+  scans[k]={result:'busy'};step();
+  let out;
+  try{
+    const room=Math.max(0,((LIM.images.maxCount)||3)-2);
+    const sim=(SIM[k]||[]).slice(0,room);
+    const refs=await Promise.all([k,...sim].map(cellBlob));
+    const names=[k,...sim].map((c,i)=>`第 ${i+1} 张：说明书线稿，编号 ${c}，${cellOf(c).name}`).join('\n');
+    const r=await sample.json(`你在核对 IKEA STORKLINTA 的零件。\n${names}\n最后一张：用户手中的实物照片。\n先默认实物不是第 1 张的零件：它很可能是家里其他普通螺丝或别的物品，这些都不算目标。逐项比较头型、槽型、牙型、尾端、比例和特殊结构，只有每项都明确吻合才判 correct。外形大类相同（比如都是螺丝）不算吻合。有一项明显不同就判 wrong；看不清就判 unclear。判 wrong 时如果不是列出的零件，code 留空。scale 表示照片里是否有硬币或尺子，并且能用它判断长度。\n只回复 JSON：{"result":"correct|wrong|unclear","code":"认出的编号，不确定时留空","scale":false,"why":"不超过 40 字的简体中文依据"}`,{images:[...refs,file],cache:false});
+    let res=['correct','wrong','unclear'].includes(r&&r.result)?r.result:'unclear';
+    const noScale=SCREWS.has(k)&&res==='correct'&&!(r&&r.scale===true);if(noScale)res='unclear';
+    const why=String((r&&r.why)||'').slice(0,80);
+    const other=r&&cellOf(String(r.code||''));
+    if(res==='correct')out={result:res,text:'零件正确。'+why};
+    else if(res==='wrong')out={result:res,text:'这可能不是要取的零件。'+(other&&other.code!==k?'看起来像 '+other.n+' 格的'+other.name+'。':'')+why};
+    else if(noScale)out={result:res,text:'外形相近，但没有比例参照，不能确认长度。请把一枚硬币放在旁边再拍。'};
+    else out={result:res,text:'无法确认。'+why+' 请把零件放在纯色背景上，旁边放一枚硬币再拍，或核对说明书编号。'};
+  }catch(e){out={result:'unclear',text:msg(e&&e.code)}}
+  if(pos!==st.pos)return;
+  scans[k]=out;if(out.result==='correct')taken.add(k);else taken.delete(k);step();
+}
+
+/* Claude features appear only when the viewer allows them. */
+let sample=null;
+const RULES=()=>{const c=P[st.pos],s=byId[c.id];return `你是 IKEA STORKLINTA 六斗柜组装助手，用简体中文回答，先给结论，不超过 120 字。
+只依据随附的说明书原图和下面的步骤数据回答。图和数据都不能确定时直接说不确定，不要猜。
+涉及防倾倒、墙体、翻转柜体时，提醒用户以说明书为准。
+当前步骤：${JSON.stringify(s)}
+全部步骤：${JSON.stringify(STEPS.map(x=>({id:x.id,title:x.title,parts:x.parts})))}`};
+async function stepImage(){const r=await fetch('img/s'+P[st.pos].id+'.png');return r.blob()}
+async function run(prompt,extra){
+  const a=$('ans');a.hidden=false;a.textContent='思考中…';$('send').disabled=true;
+  try{
+    const images=[await stepImage(),...extra];
+    await sample(prompt,{images,cache:false,onText:({text})=>{a.textContent=text}});
+  }catch(e){a.textContent=(e&&e.text)||msg(e&&e.code)}
+  finally{$('send').disabled=false}
+}
+function msg(c){if(c==='not_granted'||c==='sampling_disabled')return '当前没有允许使用 Claude，这个功能不可用。';if(c==='rate_limited')return '请求太频繁，请稍后再试。';if(c==='image_rejected')return '这张照片无法读取，请换一张 JPG 或 PNG。';return '这次没有得到回答，请再试一次。'}
+$('send').onclick=()=>{const q=$('q').value.trim();if(!q){$('q').focus();return}run(RULES()+'\n\n第一张图是说明书原图。用户问题：'+q,[])};
+$('photo').onchange=e=>{const f=e.target.files[0];if(!f)return;run(RULES()+'\n\n第一张图是说明书原图，第二张是用户拍的实物。比较两者，判断这一步是否正确。先写“看起来正确”“可能有误”或“看不清”，再说依据。看不清的部分不要下结论。',[f]);e.target.value=''};
+(async()=>{
+  if(!window.claude)return;
+  sample=await claude.use('sample');if(!sample)return;
+  $('ask').hidden=false;
+  $('gridPhoto').onchange=async e=>{const f=e.target.files[0];if(!f)return;const a=$('gridAns');a.hidden=false;a.textContent='思考中…';
+    try{const m=stock(st.pos);const list=CELLS.filter(x=>m[x.code]!==undefined).map(x=>x.n+' 格：'+x.name+' '+x.code+'，应有 '+m[x.code]);
+      const pages=await Promise.all(['parts5','parts6'].map(n=>fetch('img/'+n+'.png').then(r=>r.blob())));
+      await sample('前两张图是 IKEA STORKLINTA 说明书的零件页，第三张是用户摆放的零件照片。格子按编号从左到右、从上到下排列，每行 3 格。应有内容：\n'+list.join('\n')+'\n用简体中文列出看起来放错或数量明显不对的格子，不超过 120 字。小零件数不清时直接说明，不要猜。',{images:[...pages,f],cache:false,onText:({text})=>{a.textContent=text}});
+    }catch(err){a.textContent=(err&&err.text)||msg(err&&err.code)}
+    e.target.value=''};
+  const lim=await sample.limits().catch(()=>null);
+  if(!lim||!lim.images)$('photoWrap').hidden=true;else{$('gridAsk').hidden=false;LIM=lim;renderPick(P[st.pos])}
+})();
+window.goStep=d=>{if(d>0&&P[st.pos].id==='32w'&&!st.branch)return;go(d)};
+Anim.ui();
+Anim.setNext(()=>{const c=P[st.pos];if(c.id==='32w'&&!st.branch)return false;
+  if(st.pos>=P.length-1){Anim.stopAuto();return true}
+  st.pos=c.id==='43'&&c.d===1?P.findIndex(x=>x.id==='44'):st.pos+1;taken=new Set();scans={};finds={};render();$('anim').scrollIntoView({block:'nearest'});return true});
+render();renderParts();
+document.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA/.test(e.target.tagName))return;if(e.key==='ArrowRight')go(1);if(e.key==='ArrowLeft')go(-1)});
+</script>

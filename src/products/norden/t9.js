@@ -1,0 +1,11 @@
+const {chromium}=require('playwright');const fs=require('fs');const d=process.cwd()+'/';
+(async()=>{const srv=require('http').createServer((q,s)=>{const f=d+(q.url==='/'?'norden.html':q.url.slice(1));fs.readFile(f,(e,c)=>{if(e){s.writeHead(404);s.end()}else{s.writeHead(200,{'content-type':f.endsWith('.png')?'image/png':'text/html;charset=utf8'});s.end(c)}})}).listen(8792);
+const b=await chromium.launch({args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});const p=await b.newPage({viewport:{width:390,height:860},hasTouch:true});const er=[];p.on('pageerror',e=>er.push(e.message));
+await p.route('**/three.min.js',r=>r.fulfill({body:fs.readFileSync('tv/node_modules/three/build/three.min.js'),contentType:'text/javascript'}));await p.route('**fonts.g**',r=>r.abort());
+await p.goto('http://localhost:8792/');await p.waitForTimeout(1500);
+const v=await (await p.$('#animView')).boundingBox();
+await p.mouse.move(v.x+150,v.y+100);await p.mouse.down();await p.mouse.move(v.x+220,v.y+120,{steps:5});await p.mouse.up();console.log('drag opens zoom',await p.isVisible('#zoomBox'));
+await p.mouse.click(v.x+v.width*.35,v.y+v.height*.6);await p.waitForTimeout(1200);console.log('tap opens',await p.isVisible('#zoomBox'),await p.evaluate(()=>{const c=document.querySelector('#zoomView canvas');return [c.width,c.height]}));await p.screenshot({path:'z1.png'});
+await p.click('#zoomIn');await p.click('#zoomPlay');console.log('play btn',await p.textContent('#zoomPlay'),await p.textContent('#animPlay'));await p.click('#zoomPlay');await p.waitForTimeout(500);
+await p.click('#zoomClose');console.log('closed',await p.isVisible('#zoomBox'));
+await p.mouse.click(v.x+v.width*.5,v.y+v.height*.5);await p.waitForTimeout(400);await p.evaluate(()=>go(1));console.log('next closes',await p.isVisible('#zoomBox'),'err',er);await b.close();srv.close()})();
