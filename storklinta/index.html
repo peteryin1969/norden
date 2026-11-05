@@ -915,7 +915,7 @@ async function turn(text){const q0=text.trim();if(!q0||!chat)return;const my=++t
   const take=d=>{all+=d;spoken=all;buf+=d;b.textContent=all;scroll();let m;while((m=buf.match(/^[\s\S]*?[。！？!?；\n]/))){buf=buf.slice(m[0].length);if(m[0].trim())feed(m[0].trim())}};
   try{let images;try{images=[await stepImage()]}catch(e){}const r=await sample([{role:'user',content:PROMPT()},...hist.slice(-12)],{tools:TOOLS,images,modelTier:'quick',cache:false,signal:ctl.signal,onText:({text:t,delta})=>{if(my===turnId)take(delta!=null?delta:t.slice(all.length))}});
     if(my!==turnId)return;if(!all&&r.text)take(r.text);if(buf.trim())feed(buf.trim());buf='';hist.push({role:'assistant',content:all||'好。'});streamDone=true;pump()}
-  catch(e){if(my!==turnId||(e&&e.code==='cancelled'))return;const x=all?'':(msg(e&&e.code));if(x)b.textContent=x;if(!all)hist.pop();streamDone=true;if(x)sayAll(x);else pump()}}
+  catch(e){if(my!==turnId||(e&&e.code==='cancelled'))return;const x=all?'':(e&&e.code==='overloaded'?'服务器现在太忙，请再说一次。':msg(e&&e.code));tr('接口错误：'+(e&&(e.message||e.code)));if(x)b.textContent=x+(e&&e.message?'（'+e.message+'）':'');if(!all)hist.pop();streamDone=true;if(x)sayAll(x);else pump()}}
 /* speech in */
 let pend='',sendT=0;
 function flushSpeech(){clearTimeout(sendT);const t=pend;pend='';if(live){live.remove();live=null}if(t)turn(t)}
