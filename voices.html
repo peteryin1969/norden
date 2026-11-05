@@ -5,7 +5,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans
 .v{background:var(--c);border-radius:10px;padding:13px;margin-top:10px}.v h2{font-size:17px;margin:0;color:var(--ac)}.v small{color:var(--mut);display:block;margin:3px 0 10px}.v button{min-height:44px;padding:0 16px;border-radius:7px;border:1px solid var(--ac);background:var(--ac);color:var(--c);font:15px system-ui,sans-serif}.v button:disabled{opacity:.45}.note{font-size:13.5px;color:var(--mut);margin-top:8px}a{color:var(--ac)}</style></head><body><main>
 <a href="./">‹ 选择产品</a><h1>声音对比</h1><p>选一句话，依次试听。全部是真实合成的声音，没有修饰。</p><div class="t" id="L"></div><div id="V"></div></main><script>
 const L=["好，先把横销放进去，对，就是木块上这个孔。别急，放正了再拧。","把钢条搭到框架顶上，有喇叭口的那面朝上。每根钢条两头各拧一颗短螺丝。","快完成了。抬起桌板，把支撑腿转出来，再慢慢放下。"];
-const V=[['A','现在的声音（Piper 女声）','免费，已在手机上运行','p'],['B','Kokoro 女声','免费开源。完整模型约 400 MB，放进手机网页很难','kf'],['C','Kokoro 男声','免费开源。限制同上','km']];
+const V=[['A','柔和版（已用于语音对话）','Piper 女声，降低尖锐高音，更慢更平稳','s'],['A0','调整前的声音','Piper 女声，用来对比','p'],['B','Kokoro 女声','免费开源。完整模型约 400 MB，放进手机网页很难','kf'],['C','Kokoro 男声','免费开源。限制同上','km']];
 let cur=0,au=new Audio();const $=i=>document.getElementById(i);
 function list(){$('L').replaceChildren(...L.map((t,i)=>{const b=document.createElement('button');b.textContent=t;b.setAttribute('aria-pressed',i===cur);b.onclick=()=>{cur=i;list()};return b}))}
 function card(k,n,s,f){const d=document.createElement('section');d.className='v';d.innerHTML='<h2></h2><small></small><button>播放</button>';d.querySelector('h2').textContent=k+' · '+n;d.querySelector('small').textContent=s;d.querySelector('button').onclick=f;return d}
