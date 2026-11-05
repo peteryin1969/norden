@@ -833,12 +833,13 @@ const Voice=(()=>{
 const PRD=window.PRODUCT||{},SAY=PRD.say||{},PNAME=PRD.name||'这件家具',TOTAL=PRD.steps||STEPS.length;
 const syn=window.speechSynthesis||null,SR=window.SpeechRecognition||window.webkitSpeechRecognition||null,IOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),HALF=IOS||/Android/i.test(navigator.userAgent);
 const blocked=!!(window.NORDEN_TTS?false:(()=>{try{return localStorage.getItem('norden-mic')==='no'}catch(e){return false}})());
-let silent=false,noted=false,lastErr='',started=false,dict=0,chat=false,state='idle',voice=null,rec=null,recOn=false,micOK=!!SR,fast=0,paused=false,hist=[],q=[],playing=false,streamDone=true,ctl=null,turnId=0,spoken='',guard=0,live=null,alive=0;
+let recLive=false,silent=false,noted=false,lastErr='',started=false,dict=0,chat=false,state='idle',voice=null,rec=null,recOn=false,micOK=!!SR,fast=0,paused=false,hist=[],q=[],playing=false,streamDone=true,ctl=null,turnId=0,spoken='',guard=0,live=null,alive=0;
 const $v=id=>document.getElementById(id);
 const pickV=()=>{if(!syn)return;const l=syn.getVoices();voice=l.find(v=>/^zh[-_]CN/i.test(v.lang))||l.find(v=>/^zh/i.test(v.lang))||null};
 if(syn){pickV();syn.onvoiceschanged=pickV}
 const LABEL={listen:'稍等，马上听你说',think:'思考中',speak:'正在说',pause:'已暂停，点一下继续',type:window.NORDEN_TTS?'麦克风断开，点圆球重试':'点圆球，再点键盘话筒说话',idle:''};
-function setS(s){state=s;const o=$v('vOrb');o.className='orb '+s;$v('vState').textContent=LABEL[s]||'';$v('vInt').hidden=s!=='speak'&&s!=='think';$v('vKb').hidden=!$v('vInt').hidden}
+function setS(s){state=s;const o=$v('vOrb');o.className='orb '+s;$v('vState').textContent=LABEL[s]||'';$v('vInt').hidden=s!=='speak'&&s!=='think';$v('vKb').hidden=!$v('vInt').hidden;if(s==='listen')paintListen()}
+function paintListen(){$v('vOrb').classList.toggle('ready',recLive);$v('vState').textContent=recLive?'红色，现在请说':LABEL.listen}
 function bubble(who,text){const d=document.createElement('div');d.className='msg '+who;d.textContent=text;if(who==='ai')d.onclick=()=>{if(chat&&syn){const m=alive+1;stopSpeech();streamDone=true;if(m)sayAll(d.textContent)}};const l=$v('vLog');l.append(d);l.scrollTop=l.scrollHeight;return d}
 const scroll=()=>{const l=$v('vLog');l.scrollTop=l.scrollHeight};
 function here(){const c=P[st.pos],s=byId[c.id];return{c,s}}
@@ -920,9 +921,9 @@ async function turn(text){const q0=text.trim();if(!q0||!chat)return;const my=++t
 /* speech in */
 let pend='',sendT=0;
 function flushSpeech(){clearTimeout(sendT);const t=pend;pend='';if(live){live.remove();live=null}if(t)turn(t)}
-function stopRec(){if(rec&&recOn){try{rec.abort()}catch(e){}}recOn=false}
+function stopRec(){if(rec&&recOn){try{rec.abort()}catch(e){}}recOn=false;recLive=false}
 function startRec(){if(!chat||!micOK||paused||recOn)return;if(HALF&&!barge&&(state!=='listen'||playing||q.length))return;rec=new SR();rec.lang='zh-CN';rec.interimResults=true;rec.maxAlternatives=1;const t0=Date.now(),me=rec;
-  const ready=on=>{if(me!==rec||state!=='listen')return;$v('vOrb').classList.toggle('ready',on);$v('vState').textContent=on?'红色，现在请说':LABEL.listen};rec.onstart=()=>ready(true);rec.onresult=e=>{if(me!==rec)return;let t='',fin=false;for(let i=e.resultIndex;i<e.results.length;i++){t+=e.results[i][0].transcript;if(e.results[i].isFinal)fin=true}
+  const ready=on=>{if(me!==rec)return;recLive=on;if(state==='listen')paintListen()};rec.onstart=()=>ready(true);rec.onresult=e=>{if(me!==rec)return;let t='',fin=false;for(let i=e.resultIndex;i<e.results.length;i++){t+=e.results[i][0].transcript;if(e.results[i].isFinal)fin=true}
     if(HALF&&!barge&&state!=='listen')return;
     if(Date.now()-lastEnd<8000&&t.replace(/\s/g,'').length>=4&&isEcho(t,lastSaid)){if(live){live.remove();live=null}tr('已忽略回声');return}
     if((state==='speak'||state==='think')&&isEcho(t))return;
