@@ -783,12 +783,13 @@ function info(){const{c,s}=here();return{step:s.id,title:s.title,drawer:c.d?c.d+
 function stepLine(){const i=info();return (i.drawer?'第 '+i.drawer.split('/')[0]+' 个抽屉，':'')+'第 '+i.step+' 步，'+i.title+'。'+i.guide}
 function partsLine(){const i=info();if(!i.parts.length)return '这一步不需要新零件。';return '这一步要用'+i.parts.map(p=>p.name+' '+p.qty+' 个'+(p.cell?'，在 '+p.cell+' 格':'')).join('；')+'。'}
 /* speech out */
+let wasIdle=false,actx=null;function ding(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume();const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.value=.35;o.connect(g).connect(actx.destination);o.start();o.stop(actx.currentTime+.35)}catch(e){}}
 let recEnd=0,lastCancel=0,uCount=0,trace='';const tr=t=>{trace=t;$v('vTrace').textContent=t};
 function stopSpeech(){alive++;q=[];playing=false;clearTimeout(guard);if(syn&&(syn.speaking||syn.pending)){syn.cancel();lastCancel=Date.now()}}
 function pump(){if(playing)return;if(!q.length){if(streamDone&&(state==='speak'||state==='think'))doneTalking();return}if(!syn){noSound();q=[];if(streamDone)doneTalking();return}
   const w=250-(Date.now()-lastCancel);if(w>0){const m1=alive;setTimeout(()=>{if(m1===alive)pump()},w);return}
   if(HALF){if(recOn){stopRec();recEnd=Date.now()}const w2=1500-(Date.now()-recEnd);if(w2>0){setS('speak');tr('等麦克风释放…');const m0=alive;setTimeout(()=>{if(m0===alive)pump()},w2);return}}
-  const my=alive,txt=q.shift();playing=true;setS('speak');const n=++uCount;
+  const my=alive,txt=q.shift();playing=true;setS('speak');const n=++uCount;if(n%1===0&&wasIdle){wasIdle=false;ding()}
   const go=(retry)=>{const u=new SpeechSynthesisUtterance(txt);u.lang='zh-CN';if(voice)u.voice=voice;let began=false;tr('朗读 '+n+'：已发出'+(retry?'（重试）':'')+' speaking='+(syn.speaking?1:0));
     const next=()=>{if(my!==alive)return;clearTimeout(guard);playing=false;pump()};
     u.onstart=()=>{began=true;started=true;tr('朗读 '+n+'：开始')};u.onend=()=>{tr('朗读 '+n+'：结束'+(began?'':'（未开始）'));next()};
@@ -803,7 +804,7 @@ function testSound(){if(!syn){bubble('ai note','测试：这个页面没有语�
   setTimeout(()=>one('测试声音，一二三。','zh-CN','中文',()=>one('Testing sound, one two three.','en-US','英文')),300)}
 function feed(t){q.push(t);pump()}
 function sayAll(t){streamDone=false;spoken=t;(t.match(/[^。！？!?；]+[。！？!?；]?/g)||[t]).forEach(feed);streamDone=true;pump()}
-function doneTalking(){spoken='';if(!chat)return;if(paused){setS('pause');return}setS(micOK?'listen':'type');startRec()}
+function doneTalking(){wasIdle=true;spoken='';if(!chat)return;if(paused){setS('pause');return}setS(micOK?'listen':'type');startRec()}
 /* tools the model can use */
 const TOOLS=[{name:'go_step',description:'翻到下一步或上一步。用户说做好了、要继续时用 next。',inputSchema:{type:'object',properties:{direction:{type:'string',enum:['next','prev']}},required:['direction']},execute:({direction})=>{const b=st.pos;goStep(direction==='prev'?-1:1);return st.pos===b?{note:'已经到头了',...info()}:info()}},
  {name:'jump_step',description:'跳到说明书的第几步，1 到 11。',inputSchema:{type:'object',properties:{step:{type:'number'}},required:['step']},execute:({step})=>{if(!byId[String(step)])throw new Error('没有这一步');jump(String(step));return info()}},
@@ -849,7 +850,7 @@ function startRec(){if(!chat||!micOK||paused||recOn)return;if(HALF&&(state!=='li
 function micOff(){micOK=false;if(state==='listen')setS('type');$v('vChat').classList.add('dictate');$v('vTxt').placeholder='点这里，再点键盘上的话筒说话'}
 function isEcho(t){const a=t.replace(/[\s，。！？、,.!?；]/g,''),b=spoken.replace(/[\s，。！？、,.!?；]/g,'');if(!a)return true;if(!b)return false;if(a.length<2)return b.includes(a);let n=0;for(let i=0;i<a.length-1;i++)if(b.includes(a.slice(i,i+2)))n++;return n/(a.length-1)>.45}
 function orb(){if(state==='speak'||state==='think'){turnId++;if(ctl)ctl.abort();stopSpeech();streamDone=true;doneTalking()}else if(state==='listen'){paused=true;stopRec();setS('pause')}else if(state==='pause'){paused=false;doneTalking()}else if(state==='type')$v('vTxt').focus()}
-function open(){chat=true;paused=false;hist=[];fast=0;micOK=!!SR&&!blocked;$v('vLog').replaceChildren();if(!micOK)micOff();$v('anim').classList.add('vc');if(!$v('anim').classList.contains('full'))$v('animFull').click();setS('speak');const g='我在。'+stepLine()+'有问题随时说，做好了就告诉我。';bubble('ai',g);hist.push({role:'assistant',content:g});if(!micOK)$v('vTxt').focus();sayAll(g)}
+function open(){ding();chat=true;paused=false;hist=[];fast=0;micOK=!!SR&&!blocked;$v('vLog').replaceChildren();if(!micOK)micOff();$v('anim').classList.add('vc');if(!$v('anim').classList.contains('full'))$v('animFull').click();setS('speak');const g='我在。'+stepLine()+'有问题随时说，做好了就告诉我。';bubble('ai',g);hist.push({role:'assistant',content:g});if(!micOK)$v('vTxt').focus();sayAll(g)}
 function close(){chat=false;turnId++;if(ctl)ctl.abort();stopSpeech();stopRec();setS('idle');if(live){live.remove();live=null}const a=$v('anim');a.classList.remove('vc');if(a.classList.contains('full'))$v('animFull').click()}
 function ui(){$v('vStart').onclick=open;$v('vEnd').onclick=close;$v('vOrb').onclick=orb;$v('vTest').onclick=testSound;
   const send=()=>{const i=$v('vTxt'),t=i.value;i.value='';if(!micOK){i.blur();recEnd=Date.now()}turn(t)};$v('vSend').onclick=()=>{clearTimeout(dict);send()};$v('vTxt').oninput=()=>{if(micOK)return;clearTimeout(dict);if(state==='speak'||state==='think'){turnId++;if(ctl)ctl.abort();stopSpeech();streamDone=true;setS('type')}if($v('vTxt').value.trim())dict=setTimeout(send,1800)};$v('vTxt').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();clearTimeout(dict);send()}};
