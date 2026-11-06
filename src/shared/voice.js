@@ -65,6 +65,7 @@ const CN1={一:1,二:2,两:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9};const cn
 function quick(raw){const t=raw.toLowerCase().replace(/[\s，。！？、,.!?]/g,'').replace(/^(返回到?|回到|跳到|去到?|到|转到|进行|开始|进入|做|看)/,'').replace(/^(第[\d一二两三四五六七八九十]{1,3})$/,'$1步').replace(/^(第.{1,3}|下一|上一)[部布不]$/,'$1步'),m=t.match(/^第(\d+|[一二两三四五六七八九十]{1,3})步$/);
   if(/说?(慢一点|慢点)说?$|说得?太快|语速.*慢/.test(t)){setPace(.2);return '好，我说慢一点。'}
   if(/说?(快一点|快点)说?$|说得?太慢|语速.*快/.test(t)){setPace(-.2);return '好，我说快一点。'}
+  if(here().c.id==='32w'&&typeof pick==='function'&&!st.branch){if(/没有踢脚线|无踢脚线|^没有$/.test(t)){pick('none');return stepLine()}if(/有踢脚线|^有$/.test(t)){pick('skirt');return stepLine()}if(/下一步|做好了|做完了|好了/.test(t))return '这里要先选一下：墙边有踢脚线吗？说有，或者没有。'}
   if(/^(下一步|继续下一步|做完了|好了|做好了|好的|装好了|完成了|接下来|然后呢|下一个|next)$/.test(t)){const b=st.pos;goStep(1);return st.pos===b?'已经是最后一步了。':stepLine()}
   if(/^(上一步|back)$/.test(t)||raw.trim()==='返回'){goStep(-1);return stepLine()}
   if(m){const n=cnNum(m[1]);if(!byId[String(n)])return '没有这一步。';jump(String(n));return stepLine()}

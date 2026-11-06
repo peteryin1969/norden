@@ -188,7 +188,12 @@ function buildCab(){
     const sp=box(.3,6,7,0xdde0dd),sl=new T3.Mesh(bg(.34,.8,6),mat(0x2a3033));sl.rotation.x=-.75;sp.add(sl);pt(G,sp,[-a*1.05,CH/2-13,-CD/2+7],{30:[[0,0,0],[0,0,0]]},{win:[0,.01]});
     pt(G,cyl(.6,1.4,0xc33,'x'),[-a*1.5,CH/2-11.2,-CD/2+9.2],{32:[[0,-3.6,-4.4],[0,0,0]]},{win:[.8,1],only:'32'});
     pt(G,cyl(.6,1.4,0xc33,'x'),[-a*1.5,CH/2-11.2,-CD/2+9.2],{34:[[0,-3.6,-4.4],[0,0,0]]},{win:[.6,1],from2:1});
-    if(i===0){const drill=new T3.Group();const dc=box(5,5,13,0x45604f),bit=cyl(.4,11,METAL,'z');bit.position.z=-11;drill.add(dc,bit);drill.position.set(a*(SX-2.8),CH-6,WZ+20);sc2.add(drill);FR.drill=drill}});
+    if(i===0){const drill=new T3.Group();const zc=(r0,r1,l,z,c)=>{const m=pm(cg(r0,r1,l,20),c);m.rotation.x=PI/2;m.position.z=z;m.add(new T3.LineSegments(new T3.EdgesGeometry(m.geometry,28),EDGE()));return m},GRN=0x2f7a5a,BLK=0x23282a;
+      const chuck=new T3.Group();chuck.add(zc(1.45,1.05,2.6,0,BLK),zc(.95,.6,1.5,-2,0x9aa2a6),zc(.28,.22,8,-6.4,0xc8ccc8));[0,1,2].forEach(i=>{const j=pm(bg(.22,.3,1.2),BLK);const an=i*2.09;j.position.set(Math.cos(an)*1.45,Math.sin(an)*1.45,0);chuck.add(j)});chuck.position.z=-7.6;
+      const nose=zc(1.9,2.2,1.6,-5.6,BLK),body=zc(2.3,2.3,7.4,-1.1,GRN),cap=zc(2.3,1.7,1.6,3.3,BLK);
+      const gr=pm(bg(2.5,8.6,3.2),GRN);gr.position.set(0,-5.3,1.3);gr.rotation.x=.17;gr.add(new T3.LineSegments(new T3.EdgesGeometry(gr.geometry),EDGE()));const grip2=pm(bg(2.56,5,1.1),BLK);grip2.position.set(0,-4.9,2.75);grip2.rotation.x=.17;
+      const trg=pm(bg(.9,1.7,1),0xd9302c);trg.position.set(0,-3,-.65);const bat=pm(bg(4.6,2.4,6.6),BLK);bat.position.set(0,-10.3,2);bat.add(new T3.LineSegments(new T3.EdgesGeometry(bat.geometry),EDGE()));const bat2=pm(bg(4.2,.5,6),GRN);bat2.position.set(0,-9,2);
+      drill.add(chuck,nose,body,cap,gr,grip2,trg,bat,bat2);FR.chuck=chuck;drill.position.set(a*(SX-2.8),CH-6,WZ+20);sc2.add(drill);FR.drill=drill}});
   const hmr=hammerRig();sc2.add(hmr.root);FR.ham2=hmr.root;FR.ham2S=hmr.sw;
   FR.pencil=(()=>{const c=new T3.Mesh(new T3.CylinderGeometry(.5,.1,14,10),mat(0xd8a02f));c.rotation.x=1;sc2.add(c);return c})();
   // drawers for step 45
@@ -232,7 +237,7 @@ function applyCab(s,tt){
     }else{p.m.position.set(...p.pos);tint(p.m,false)}
     const rz=p.m.rotation.z,base=p.m.rotation;if(p.hinge)base.y=lerp(p.hinge[0],p.hinge[1],k?L:1);if(p.spin&&k){const off=k[0]['xyz'.indexOf(p.spin)];base[p.spin]=-(off<0?-1:1)*L*PI*3}if(p.swing&&k)base.x=Math.sin(L*PI)*-1.3});
   const wallOn=n>=ORD('30')&&s!=='45';FR.wall.visible=wallOn;FR.skirt.visible=s==='33'||s==='34';FR.floor.visible=n>=ORD('24')&&s!=='25';
-  FR.drill.visible=s==='32w'&&tt<.62;if(s==='32w'){const m=tt<.31?0:1,l=m?(tt-.31)/.3:tt/.3,dz=l<.6?lerp(24,9,ease(l/.6)):lerp(9,30,ease((l-.6)/.4));FR.drill.position.x=(m?1:-1)*(SX-2.8);FR.drill.position.z=WZ+dz}
+  FR.drill.visible=s==='32w'&&tt<.62;if(s==='32w'){const m=tt<.31?0:1,l=m?(tt-.31)/.3:tt/.3,dz=l<.6?lerp(24,9,ease(l/.6)):lerp(9,30,ease((l-.6)/.4));FR.drill.position.x=(m?1:-1)*(SX-2.8);if(FR.chuck)FR.chuck.rotation.z=tt*90;FR.drill.position.z=WZ+dz}
   FR.ham2.visible=s==='32w'&&tt>=.65;if(s==='32w'){const m=tt<.825?-1:1,k=(tt*18)%1;const X=new T3.Vector3(-m,0,0),Y=new T3.Vector3(0,0,1),Z=X.clone().cross(Y);FR.ham2.quaternion.setFromRotationMatrix(new T3.Matrix4().makeBasis(X,Y,Z));FR.ham2.position.set(m*(SX-2.8)-X.x*25.2,CH-6,WZ+.2+3.15);FR.ham2S.rotation.z=Math.abs(Math.sin(k*PI))*.75}
   FR.pencil.visible=s==='30';if(s==='30'){const k=clamp((tt-.42)/.5);FR.pencil.visible=tt>.4;FR.pencil.position.set(-(SX-2.8)+Math.sin(tt*30)*.5,CH-1,WZ+6+lerp(4,0,Math.min(k*2,1)))}
   FR.drs.forEach((d,i)=>{d.g.visible=s==='45';const done=d.col===0&&d.row===0;const seq=[0,1,2,3,4,5][i];const L=done?1:ease(clamp((tt-(seq-1)*.09)/.1));let z=lerp(26,0,L),yy=d.y;if(d.col===0&&d.row===0){z=lerp(0,30,ease(clamp((tt-.56)/.08)));const u=ease(clamp((tt-.64)/.06));yy+=ease(clamp((u-.26)/.74))*5;z+=u*44}if(d.col===0&&d.row===1){z=lerp(z,30,ease(clamp((tt-.84)/.08)));const u=ease(clamp((tt-.92)/.06));yy+=ease(clamp((u-.26)/.74))*5;z+=u*44}d.g.position.set(d.g.position.x,yy,z)});

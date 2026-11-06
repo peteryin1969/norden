@@ -434,7 +434,7 @@ $('photo').onchange=e=>{const f=e.target.files[0];if(!f)return;run(RULES()+'\n\n
 })();
 window.goStep=d=>{if(d>0&&P[st.pos].id==='32w'&&!st.branch)return;go(d)};
 Anim.ui();
-Anim.setNext(()=>{const c=P[st.pos];if(c.id==='32w'&&!st.branch)return false;
+Anim.setNext(()=>{const c=P[st.pos];if(c.id==='32w'&&!st.branch){st.branch='none';P=path()}
   if(st.pos>=P.length-1){Anim.stopAuto();return true}
   st.pos=c.id==='43'&&c.d===1?P.findIndex(x=>x.id==='44'):st.pos+1;taken=new Set();scans={};finds={};render();$('anim').scrollIntoView({block:'nearest'});return true});
 render();renderParts();
