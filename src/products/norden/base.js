@@ -305,15 +305,15 @@ function build(){
   const lab=new T3.Mesh(new T3.PlaneGeometry(9,5),new T3.MeshBasicMaterial({color:0xf2c200,side:T3.DoubleSide}));lab.rotation.y=PI/2;lab.position.set(-W/2+T+.1,T+D/2,0);inner.add(lab);window.__lab=lab;scene.add(cab);
   const v=document.getElementById('animView');let drag=null;
   let vz=1,ox=0,oy=0,pinch=null;
-  const applyView=()=>{if(!cam)return;const w=v.clientWidth,h=v.clientHeight;if(vz<=1.001){vz=1;ox=oy=0;cam.clearViewOffset()}else{ox=clamp(ox/(w-w/vz||1))*(w-w/vz);oy=clamp(oy/(h-h/vz||1))*(h-h/vz);cam.setViewOffset(w,h,ox,oy,w/vz,h/vz)}};
-  const zoomAt=(mx,my,nz)=>{nz=Math.max(1,Math.min(8,nz));ox+=mx/vz-mx/nz;oy+=my/vz-my/nz;vz=nz;applyView()};window._resetView=()=>{vz=1;applyView()};
+  const applyView=()=>{if(!cam)return;const w=v.clientWidth,h=v.clientHeight;vz=Math.max(1,vz);ox=Math.max(-w*.6,Math.min(w-w/vz+w*.6,ox));oy=Math.max(-h*.6,Math.min(h-h/vz+h*.6,oy));if(vz<=1.001&&Math.abs(ox)<1&&Math.abs(oy)<1){vz=1;ox=oy=0;cam.clearViewOffset()}else cam.setViewOffset(w,h,ox,oy,w/vz,h/vz)};
+  const zoomAt=(mx,my,nz)=>{nz=Math.max(1,Math.min(8,nz));ox+=mx/vz-mx/nz;oy+=my/vz-my/nz;vz=nz;applyView()};window._resetView=()=>{vz=1;ox=oy=0;applyView()};let panOn=false,pan=null;const pb=document.getElementById('animPan');if(pb)pb.onclick=()=>{panOn=!panOn;pb.textContent=panOn?'平移：开':'平移';pb.classList.toggle('primary',panOn);v.style.cursor=panOn?'grab':''};v.addEventListener('contextmenu',e=>e.preventDefault());
   v.addEventListener('wheel',e=>{e.preventDefault();const r=v.getBoundingClientRect();zoomAt(e.clientX-r.left,e.clientY-r.top,vz*Math.exp(-e.deltaY*.0016))},{passive:false});
-  v.addEventListener('touchstart',e=>{if(e.touches.length===2){const[a,b]=e.touches;pinch={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),z:vz};drag=null}},{passive:true});
-  v.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){e.preventDefault();const[a,b]=e.touches,r=v.getBoundingClientRect();zoomAt((a.clientX+b.clientX)/2-r.left,(a.clientY+b.clientY)/2-r.top,pinch.z*Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)/pinch.d)}},{passive:false});
+  v.addEventListener('touchstart',e=>{if(e.touches.length===2){const[a,b]=e.touches;pinch={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),z:vz,mx:(a.clientX+b.clientX)/2,my:(a.clientY+b.clientY)/2};drag=null;pan=null}},{passive:true});
+  v.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){e.preventDefault();const[a,b]=e.touches,r=v.getBoundingClientRect();const mx=(a.clientX+b.clientX)/2,my=(a.clientY+b.clientY)/2;ox-=(mx-pinch.mx)/vz;oy-=(my-pinch.my)/vz;pinch.mx=mx;pinch.my=my;zoomAt(mx-r.left,my-r.top,pinch.z*Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)/pinch.d)}},{passive:false});
   v.addEventListener('touchend',e=>{if(e.touches.length<2)pinch=null});
-  v.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY,az,el,performance.now()];v.setPointerCapture(e.pointerId)});
-  v.addEventListener('pointermove',e=>{if(drag){az=drag[2]+(e.clientX-drag[0])*.008;el=clamp(drag[3]+(e.clientY-drag[1])*.006,-.6,.8)}});
-  v.addEventListener('pointerup',e=>{if(drag&&Math.hypot(e.clientX-drag[0],e.clientY-drag[1])<7&&performance.now()-drag[4]<450)openZoom(e);drag=null});
+  v.addEventListener('pointerdown',e=>{if(pinch)return;if(panOn||e.button!==0||e.shiftKey){pan=[e.clientX,e.clientY,ox,oy];v.setPointerCapture(e.pointerId);return}drag=[e.clientX,e.clientY,az,el,performance.now()];v.setPointerCapture(e.pointerId)});
+  v.addEventListener('pointermove',e=>{if(pan){ox=pan[2]-(e.clientX-pan[0])/vz;oy=pan[3]-(e.clientY-pan[1])/vz;applyView();return}if(drag){az=drag[2]+(e.clientX-drag[0])*.008;el=clamp(drag[3]+(e.clientY-drag[1])*.006,-.6,.8)}});
+  v.addEventListener('pointerup',e=>{if(pan){const m=Math.hypot(e.clientX-pan[0],e.clientY-pan[1]);pan=null;if(m>2)return}if(drag&&Math.hypot(e.clientX-drag[0],e.clientY-drag[1])<7&&performance.now()-drag[4]<450)openZoom(e);drag=null});
   v.addEventListener('pointercancel',()=>drag=null);
   new ResizeObserver(size).observe(v);size();ready=true;
 }
