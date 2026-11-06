@@ -617,7 +617,7 @@ function render(){
   const c=P[st.pos],s=byId[c.id];
   $('jump').value=s.id;
   $('no').textContent=s.label||('第 '+s.id+' 步');
-  $('meta').textContent='说明书第 '+s.page+' 页'+(c.d?' · 第 '+c.d+'/6 个抽屉':'');
+  $('meta').textContent='说明书第 '+s.page+' 页'+(c.d?' · 这样做 6 个抽屉':'');
   $('bar').style.width=(st.pos+1)/P.length*100+'%';
   $('title').textContent=s.title;
   $('img').src='img/s'+s.id+'.png';
@@ -662,14 +662,14 @@ function renderPick(c){
 }
 function renderGrid(){
   const c=P[st.pos],m=stock(st.pos),n=need(c.id),g=$('grid');g.replaceChildren();
-  $('gridHint').textContent='当前：'+(byId[c.id].label||'第 '+c.id+' 步')+(c.d?' · 第 '+c.d+'/6 个抽屉':'')+'。绿框是这一步要取的格子。灰色的格子还没开袋。';
+  $('gridHint').textContent='当前：'+(byId[c.id].label||'第 '+c.id+' 步')+(c.d?' · 这样做 6 个抽屉':'')+'。绿框是这一步要取的格子。灰色的格子还没开袋。';
   CELLS.forEach(e=>{const has=m[e.code]!==undefined;const d=document.createElement('div');d.className='cell'+(n.some(x=>x[0]===e.code)?' need':'')+(has?'':' locked');
     const h=document.createElement('b');h.textContent=e.n+' 格';const nm=document.createElement('span');nm.textContent=e.name;const q=document.createElement('span');q.className='q';q.textContent=has?'剩 '+m[e.code]:'未开袋';const co=document.createElement('span');co.className='hint';co.textContent=e.code;
     d.append(h,thumb(e.n),nm,co,q);g.append(d)});
 }
 function nextLabel(c){return c.id==='43'&&c.d<6?'做下一个抽屉':'下一步'}
 function flag(cls,h,t){const e=document.createElement('div');e.className='flag '+cls;const b=document.createElement('b');b.textContent=h;e.append(b,t);return e}
-function go(d){const n=st.pos+d;if(n<0||n>=P.length)return;
+function go(d){const c0=P[st.pos];let n=st.pos+d;if(d>0&&c0.id==='10')n=P.findIndex(x=>x.id==='11');if(d<0&&c0.id==='11')n=P.findIndex(x=>x.id==='10');if(d<0&&c0.id==='9')n=P.findIndex(x=>x.id==='8');if(n<0||n>=P.length)return;
   if(d<0&&P[st.pos].id==='32'||d<0&&P[st.pos].id==='33')st.branch=null;
   st.pos=n;taken=new Set();scans={};finds={};render();scrollTo(0,0)}
 function jump(id){if(id==='32')st.branch='none';else if(id==='33'||id==='34')st.branch='skirt';
@@ -802,7 +802,7 @@ function bubble(who,text){const d=document.createElement('div');d.className='msg
 const scroll=()=>{const l=$v('vLog');l.scrollTop=l.scrollHeight};
 function here(){const c=P[st.pos],s=byId[c.id];return{c,s}}
 function info(){const{c,s}=here();return{step:s.id,title:s.title,drawer:c.d?c.d+'/6':null,guide:SAY[s.id]||s.do.join(''),warn:s.warn,parts:s.parts.map(([k,n])=>{const x=CELLS.find(y=>y.code===k);return{name:x?x.name:k,code:k,qty:n,cell:x?x.n:null}})}}
-function stepLine(){const i=info();return (i.drawer?'第 '+i.drawer.split('/')[0]+' 个抽屉，':'')+'好，第 '+i.step+' 步。'+i.guide}
+function stepLine(){const i=info();return '好，第 '+i.step+' 步。'+i.guide+(i.step==='10'?'一共要做六个抽屉，都做好了再说下一步。':'')}
 function partsLine(){const i=info();if(!i.parts.length)return '这一步不需要新零件。';return '这一步要用'+i.parts.map(p=>p.name+' '+p.qty+' 个'+(p.cell?'，在 '+p.cell+' 格':'')).join('；')+'。'}
 /* speech out */
 let pace=1.45;try{pace=+localStorage.getItem('norden-pace4')||1.45}catch(e){}
