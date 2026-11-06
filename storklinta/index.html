@@ -227,7 +227,7 @@ tr:last-child td{border-bottom:none}
   </section>
 </div>
 
-<script>window.PRODUCT={name:"IKEA STORKLINTA 六斗柜",steps:45,say:{},loopEnd:"43"}</script>
+<script>window.PRODUCT={name:"IKEA STORKLINTA 六斗柜",steps:45,say:{},loopEnd:"43",loops:{}}</script>
 <script src="../shim.js?v=fa93843d"></script>
 <script>
 /* Drawer animation, steps 35-44. Proportions are estimates: the manual gives no panel sizes. */
@@ -866,7 +866,9 @@ function bubble(who,text){const d=document.createElement('div');d.className='msg
 const scroll=()=>{const l=$v('vLog');l.scrollTop=l.scrollHeight};
 function here(){const c=P[st.pos],s=byId[c.id];return{c,s}}
 function info(){const{c,s}=here();return{step:s.id,title:s.title,drawer:c.d?c.d+'/6':null,guide:SAY[s.id]||s.do.join(''),warn:s.warn,parts:s.parts.map(([k,n])=>{const x=CELLS.find(y=>y.code===k);return{name:x?x.name:k,code:k,qty:n,cell:x?x.n:null}})}}
-function stepLine(){const i=info();return '好，第 '+i.step+' 步。'+i.guide+(i.step===PRD.loopEnd?'一共要做六个抽屉，都做好了再说下一步。':'')}
+function stepName(i){const s=byId[i.step];return s&&s.label?s.label:'第 '+i.step+' 步'}
+function stepLine(){const i=info(),m=PRD.loops&&PRD.loops[i.step];return '好，'+stepName(i)+'。'+i.guide+(m||(i.step===PRD.loopEnd?'一共要做六个抽屉，都做好了再说下一步。':''))}
+function stepOf(v){const t=String(v).toUpperCase();if(byId[t])return t;const n=+t;return n&&STEPS[n-1]?STEPS[n-1].id:null}
 function partsLine(){const i=info();if(!i.parts.length)return '这一步不需要新零件。';return '这一步要用'+i.parts.map(p=>p.name+' '+p.qty+' 个'+(p.cell?'，在 '+p.cell+' 格':'')).join('；')+'。'}
 /* speech out */
 let pace=1.45;try{pace=+localStorage.getItem('norden-pace4')||1.45}catch(e){}
@@ -909,7 +911,7 @@ function doneTalking(){if(spoken){lastSaid=spoken;lastEnd=Date.now()}spoken='';i
   if(autoOn()&&!paused){if(narrating===st.pos){narrPos=st.pos;narrating=-1;setS('speak');$v('vState').textContent='连续播放中';return}if(narrPos!==st.pos){setTimeout(()=>{if(chat&&autoOn())narrate()},0);setS('speak');return}setS('speak');return}if(paused){setS('pause');return}setS(micOK?'listen':'type');const m=++listenTok;setTimeout(()=>{if(m===listenTok&&state==='listen')startRec()},HALF?1000:0)}
 /* tools the model can use */
 const TOOLS=[{name:'go_step',description:'翻到下一步或上一步。用户说做好了、要继续时用 next。',inputSchema:{type:'object',properties:{direction:{type:'string',enum:['next','prev']}},required:['direction']},execute:({direction})=>{const b=st.pos;goStep(direction==='prev'?-1:1);return st.pos===b?{note:'已经到头了',...info()}:info()}},
- {name:'jump_step',description:'跳到说明书的第几步。',inputSchema:{type:'object',properties:{step:{type:'number'}},required:['step']},execute:({step})=>{if(!byId[String(step)])throw new Error('没有这一步');jump(String(step));return info()}},
+ {name:'jump_step',description:'跳到说明书的第几步。步骤编号可以是数字，也可以是 B3、E2、C4 这样的编号。',inputSchema:{type:'object',properties:{step:{type:['number','string']}},required:['step']},execute:({step})=>{const id=stepOf(step);if(!id)throw new Error('没有这一步');jump(id);return info()}},
  {name:'animation',description:'控制屏幕上的组装动画：replay 重播，pause 暂停，play 继续，slow 慢放，normal 正常速度，continuous 从当前步开始连续播放后面的步骤。',inputSchema:{type:'object',properties:{action:{type:'string',enum:['replay','pause','play','slow','normal','continuous']}},required:['action']},execute:({action})=>{anim(action);return{ok:true}}}];
 function anim(a){const c=id=>$v(id).click(),pl=$v('animPlay').textContent,sl=$v('animSlow').textContent;if(a==='replay')c('animRe');if(a==='continuous'&&$v('animAuto').textContent==='连续播放')c('animAuto');if(a==='pause'&&pl==='暂停')c('animPlay');if(a==='play'&&pl==='播放')c('animPlay');if(a==='slow'&&sl==='慢放')c('animSlow');if(a==='normal'&&sl!=='慢放')c('animSlow')}
 const CN1={一:1,二:2,两:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9};const cnNum=s=>{if(/^\d+$/.test(s))return +s;if(s==='十')return 10;const m=s.match(/^([一二两三四五六七八九])?十([一二三四五六七八九])?$/);if(m)return (m[1]?CN1[m[1]]:1)*10+(m[2]?CN1[m[2]]:0);return CN1[s]||0};
@@ -920,7 +922,8 @@ function quick(raw){const t=raw.toLowerCase().replace(/[\s，。！？、,.!?]/g
   if(here().c.id==='32w'&&typeof pick==='function'&&!st.branch){if(/没有踢脚线|无踢脚线|^没有$/.test(t)){pick('none');return stepLine()}if(/有踢脚线|^有$/.test(t)){pick('skirt');return stepLine()}if(/下一步|做好了|做完了|好了/.test(t))return '这里要先选一下：墙边有踢脚线吗？说有，或者没有。'}
   if(/^(下一步|继续下一步|做完了|好了|做好了|好的|装好了|完成了|接下来|然后呢|下一个|next)$/.test(t)){const b=st.pos;goStep(1);return st.pos===b?'已经是最后一步了。':stepLine()}
   if(/^(上一步|back)$/.test(t)||raw.trim()==='返回'){goStep(-1);return stepLine()}
-  if(m){const n=cnNum(m[1]);if(!byId[String(n)])return '没有这一步。';jump(String(n));return stepLine()}
+  const pf=t.match(/^(书柜|加高|转角)(?:单元)?第?(\d+|[一二两三四五六七八九十]{1,3})[步部布不]$/);if(pf){const id={书柜:'B',加高:'E',转角:'C'}[pf[1]]+cnNum(pf[2]);if(!byId[id])return '没有这一步。';jump(id);return stepLine()}
+  if(m){const id=stepOf(cnNum(m[1]));if(!id)return '没有这一步。';jump(id);return stepLine()}
   if(/^(再说一遍|重复|再讲一遍|没听清|怎么做|怎么装|这一?步怎么(做|装)|这一?步做什么|repeat)$/.test(t))return stepLine();
   if(/注意什么|要注意|有什么注意/.test(t)){const w=info().warn;return w.length?w.join(''):'这一步没有特别的注意事项。'}
   if(/第几步|到哪了|进度/.test(t)){const i=info();return '现在是第 '+i.step+' 步，'+i.title+(i.drawer?'，第 '+i.drawer.split('/')[0]+' 个抽屉':'')+'。'}
