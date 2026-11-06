@@ -8,19 +8,19 @@ vbtn=base[base.index('<button class="btn primary vstart"'):base.index('<div clas
 css=base[base.index('.vstart{margin-top'):base.index('</style>')]
 code=base[base.index('/* Conversational voice mode'):base.index('window.VoiceReady=true;\n')+len('window.VoiceReady=true;\n')]
 say=open('say.js',encoding='utf8').read()
-def page(h,slug,name,steps,sayjs,imgdir,voice):
+def page(h,slug,name,steps,sayjs,imgdir,voice,loop):
     if voice:
         h=h.replace('<div class="fullnav">',vbtn+'<div class="fullnav">',1).replace('</style>',css+'</style>',1)
         h=h.replace('Anim.ui();\n','Anim.ui();\n'+code,1).replace('  save();\n}\nfunction thumb','  save();if(window.VoiceReady)Voice.onStep();\n}\nfunction thumb',1)
     h=h.replace('Anim.setNext(()=>{','Anim.setNext(()=>{if(window.Voice&&Voice.hold())return false;',1).replace('Anim.stopAuto();return true','Anim.stopAuto();if(window.Voice)Voice.autoEnd();return true',1)
     pre='<meta name="robots" content="noindex">'
     h=h.replace('<title>',pre+'<title>',1)
-    h=h.replace('<script>','<script>window.PRODUCT={name:%s,steps:%d,say:%s}</script>\n<script src="../shim.js?v=%s"></script>\n<script>'%(json.dumps(name,ensure_ascii=False),steps,sayjs,ver),1)
+    h=h.replace('<script>','<script>window.PRODUCT={name:%s,steps:%d,say:%s,loopEnd:%s}</script>\n<script src="../shim.js?v=%s"></script>\n<script>'%(json.dumps(name,ensure_ascii=False),steps,sayjs,json.dumps(loop),ver),1)
     h=h.replace('<header>','<header><a href="../" style="font-size:13px">‹ 选择产品</a>',1)
     os.makedirs('site/'+slug);open('site/%s/index.html'%slug,'w',encoding='utf8').write(h);shutil.copytree(imgdir,'site/%s/img'%slug)
-page(base,'norden','IKEA NORDEN 折叠桌',11,say,'img',False)
+page(base,'norden','IKEA NORDEN 折叠桌',11,say,'img',False,'10')
 st=open('../stork/storklinta.html',encoding='utf8').read()
-page(st,'storklinta','IKEA STORKLINTA 六斗柜',45,'{}','../stork/img',True)
+page(st,'storklinta','IKEA STORKLINTA 六斗柜',45,'{}','../stork/img',True,'43')
 shutil.copy('voices.html','site/voices.html');shutil.copytree('../tts/cmpmp3','site/voices')
 P=[('norden','NORDEN','折叠桌 · 11 步 · 6 个抽屉','AA-2580705-1'),('storklinta','STORKLINTA','六斗柜 · 45 步 · 6 个抽屉','AA-2413736-7')]
 cards=''.join(f'<a class="c" href="{s}/"><b>{n}</b><span>{d}</span><small>{a}</small></a>' for s,n,d,a in P)

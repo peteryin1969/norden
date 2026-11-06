@@ -14,7 +14,7 @@ function bubble(who,text){const d=document.createElement('div');d.className='msg
 const scroll=()=>{const l=$v('vLog');l.scrollTop=l.scrollHeight};
 function here(){const c=P[st.pos],s=byId[c.id];return{c,s}}
 function info(){const{c,s}=here();return{step:s.id,title:s.title,drawer:c.d?c.d+'/6':null,guide:SAY[s.id]||s.do.join(''),warn:s.warn,parts:s.parts.map(([k,n])=>{const x=CELLS.find(y=>y.code===k);return{name:x?x.name:k,code:k,qty:n,cell:x?x.n:null}})}}
-function stepLine(){const i=info();return '好，第 '+i.step+' 步。'+i.guide+(i.step==='10'?'一共要做六个抽屉，都做好了再说下一步。':'')}
+function stepLine(){const i=info();return '好，第 '+i.step+' 步。'+i.guide+(i.step===PRD.loopEnd?'一共要做六个抽屉，都做好了再说下一步。':'')}
 function partsLine(){const i=info();if(!i.parts.length)return '这一步不需要新零件。';return '这一步要用'+i.parts.map(p=>p.name+' '+p.qty+' 个'+(p.cell?'，在 '+p.cell+' 格':'')).join('；')+'。'}
 /* speech out */
 let pace=1.45;try{pace=+localStorage.getItem('norden-pace4')||1.45}catch(e){}
