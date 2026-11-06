@@ -457,7 +457,7 @@ function applyCab(s,tt){
     }else{p.m.position.set(...p.pos);tint(p.m,false)}
     if(p.ins&&s==='1')p.m.position.x+=p.ins*(1-ease(clamp(tt/.2)));if(p.spin&&k){const off=k[0]['xyz'.indexOf(p.spin)];p.m.rotation[p.spin]=-(off<0?-1:1)*L*PI*3}if(p.tiltX&&p.tiltX[s]&&k)p.m.rotation.x=lerp(p.tiltX[s][0],p.tiltX[s][1],L)});
   hammerAt(s,tt,fr);
-  FR.key.visible=s==='5'&&tt>=.5;if(FR.key.visible){const i=Math.min(3,Math.floor((tt-.5)/.125)),q=FR.bolts[i],o=new T3.Vector3();q.getWorldPosition(o);const a=i%2?1:-1;FR.key.scale.x=o.x<0?-1:1;FR.key.position.copy(o).add(new T3.Vector3(a*7.5,0,0).applyQuaternion(fr.q));FR.key.rotation.x=-a*tt*40}
+  FR.key.visible=s==='5'&&tt>=.5;if(FR.key.visible){const i=Math.min(3,Math.floor((tt-.5)/.125)),q=FR.bolts[i],o=new T3.Vector3();q.getWorldPosition(o);const a=i%2?1:-1;FR.key.scale.x=o.x<0?-1:1;FR.key.position.copy(o).add(new T3.Vector3(a*7.5,0,0).applyQuaternion(fr.q));FR.key.rotation.x=a*tt*40}
   FR.floor.visible=s!=='9'&&s!=='10';
   FR.drs.forEach((d,i)=>{d.g.visible=s==='11';const L=ease(clamp((tt-i*.06)/.14));d.g.position.z=lerp(d.g.userData.z+d.z*44,d.g.userData.z,L)});
   stage(s,tt);
