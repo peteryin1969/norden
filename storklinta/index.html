@@ -475,7 +475,7 @@ function applyCab(s,tt){
   FR.drs.forEach((d,i)=>{d.g.visible=s==='45';const done=d.col===0&&d.row===0;const seq=[0,1,2,3,4,5][i];const L=done?1:ease(clamp((tt-(seq-1)*.09)/.1));let z=lerp(26,0,L),yy=d.y;if(d.col===0&&d.row===0){z=lerp(0,30,ease(clamp((tt-.56)/.08)));const u=ease(clamp((tt-.64)/.06));yy+=ease(clamp((u-.26)/.74))*5;z+=u*44}if(d.col===0&&d.row===1){z=lerp(z,30,ease(clamp((tt-.84)/.08)));const u=ease(clamp((tt-.92)/.06));yy+=ease(clamp((u-.26)/.74))*5;z+=u*44}d.g.position.set(d.g.position.x,yy,z)});
   if(s==='45')FR.lv.rotation.x=-1.2*ease(clamp((tt-.7)/.12));else if(s!=='2')FR.lv.rotation.x=0;
   (FR.chains||[]).forEach(ch=>{const g=s==='33'?ease(clamp(tt/.14)):1,k2=s==='33'?ease(clamp((tt-.14)/.2)):1;ch.userData.b.forEach((q,n)=>{const rx=(n-1.5)*(3.1+g*1.2),sz=(n-1.5)*.66;q.position.set(lerp(rx,0,k2),0,lerp(0,sz,k2))})});
-  {const bm=FR.sideA.body.material,cut=s==='45'&&tt>.56;bm.transparent=cut;bm.opacity=cut?.16:1;bm.depthWrite=!cut;FR.sideA.body.children[0].visible=!cut;tint(FR.lv,s==='45'&&tt>.7&&tt<.84)}
+  {const bm=FR.sideA.body.material,cut=s==='45'&&tt>.56;CP.forEach(p=>{if((p.keys[24]||p.keys[25]||p.keys[27])&&(p.G===FR.sideA||p.G===FR.top)&&cut)p.m.visible=false});bm.transparent=cut;bm.opacity=cut?.16:1;bm.depthWrite=!cut;FR.sideA.body.children[0].visible=!cut;tint(FR.lv,s==='45'&&tt>.7&&tt<.84)}
   stage(s,tt);
   if(FR.notes)0;const c=camFor(s,tt),tp=new T3.Vector3(...c[1]),base=new T3.Vector3(...c[0]).sub(tp),r=base.length(),th=Math.atan2(base.x,base.z)+az,ph=clamp(Math.asin(base.y/r)+el,-.3,1.3);
   const want=new T3.Vector3(Math.sin(th)*Math.cos(ph)*r,Math.sin(ph)*r,Math.cos(th)*Math.cos(ph)*r).add(tp);
