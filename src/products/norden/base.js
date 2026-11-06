@@ -51,7 +51,7 @@ function hole(r,axis,dark=DARK){const m=new T3.Mesh(cg(r,r,.12,14),mat(dark));if
 function tint(m,on){m.traverse(o=>{if(o.isMesh&&o.material&&o.material.color&&!o.material.isMeshBasicMaterial){if(o.material.map){o.material.emissive.setHex(on?0x23835c:0);return}if(o.userData.b==null)o.userData.b=o.material.color.getHex();const c=o.userData.b,lum=((c>>16&255)+(c>>8&255)+(c&255))/3;o.material.color.setHex(on&&lum>90?ACC:c)}})}
 const HOLE=0x1d2426,HOT=0xf07a22;let MARKS=[];
 function drill(target,pLocal,nLocal,r,steps){const g=new T3.Group();const d=new T3.Mesh(new T3.CircleGeometry(r,20),new T3.MeshBasicMaterial({color:HOLE}));d.rotation.x=-Math.PI/2;
-  const rim=new T3.Mesh(new T3.RingGeometry(r,r*1.22,24),new T3.MeshBasicMaterial({color:0x8b928d,side:T3.DoubleSide}));rim.rotation.x=-Math.PI/2;rim.position.y=.01;g.add(d,rim);
+  const rim=new T3.Mesh(new T3.RingGeometry(r,r*1.3,28),new T3.MeshBasicMaterial({color:0x8b928d,side:T3.DoubleSide}));rim.rotation.x=-Math.PI/2;rim.position.y=.01;g.add(d,rim);
   g.position.copy(pLocal).add(nLocal.clone().multiplyScalar(.05));g.quaternion.setFromUnitVectors(new T3.Vector3(0,1,0),nLocal);target.add(g);MARKS.push({d,rim,steps})}
 const RAD=o=>{let r=0;o.traverse(q=>{if(q.userData.hr)r=q.userData.hr});return r};
 function autoHoles(list,sceneObj,bodyOf,firstKey){sceneObj.updateMatrixWorld(true);const ray=new T3.Raycaster();
@@ -59,7 +59,7 @@ function autoHoles(list,sceneObj,bodyOf,firstKey){sceneObj.updateMatrixWorld(tru
     const par=p.m.parent,start=new T3.Vector3(...p.pos).add(o);par.localToWorld(start);const dirW=new T3.Vector3(-off[0],-off[1],-off[2]).normalize().transformDirection(par.matrixWorld);
     ray.set(start,dirW);const hit=ray.intersectObject(body,false)[0];if(!hit)return;const nW=hit.face.normal.clone().transformDirection(body.matrixWorld);
     const inv=new T3.Matrix4().copy(body.matrixWorld).invert();const pL=hit.point.clone().applyMatrix4(inv),nL=nW.clone().transformDirection(inv).normalize();drill(body,pL,nL,r,[k[0]])})}
-function mark(step){MARKS.forEach(h=>{const on=h.steps.includes(step);h.d.material.color.setHex(on?HOT:HOLE);h.rim.material.color.setHex(on?HOT:0x8b928d)})}
+function mark(step){MARKS.forEach(h=>{const on=h.steps.includes(step);h.d.material.color.setHex(HOLE);h.rim.material.color.setHex(on?HOT:0x8b928d)})}
 function holes(obj,list){list.forEach(([x,y,z,r,a])=>obj.add(at(hole(r,a),x,y,z)))}
 
 const wc=(fn,c)=>(...a)=>{const o=fn(...a);o.userData.code=typeof c==='function'?c(...a):c;return o};

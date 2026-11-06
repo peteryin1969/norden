@@ -98,7 +98,7 @@ function camFor(id,t=0){if(id==='9'||id==='10')return CC.dr;if(id==='11')return 
 let lastStage='';const STG={'8':[[.27,'把 2 个止动垫敲入支撑腿底端'],[.6,'两侧桌板向框架折起'],[2,'两人把桌子翻回正面']],'11':[[.52,'把 6 个抽屉从两端推入'],[.71,'抬起桌板，略高于水平'],[.88,'转出支撑腿'],[2,'放下桌板，定位销进入桌板下的孔']],'5':[[.2,'把两片支撑腿收进框架两侧'],[.5,'把 4 个 121121 放入连接木块'],[2,'用内六角扳手拧入 4 根长螺栓']],'6':[[.55,'把框架放到桌面中段'],[.72,'先拧每根钢条中间的孔'],[2,'再拧两端的椭圆孔']]};
 function stage(s,tt){const list=STG[s];let txt='';if(list)txt=list.find(x=>tt<x[0])[1];const key=s+txt;if(key!==lastStage){lastStage=key;document.getElementById('animCap').textContent='第 '+s+' 步 · '+(txt||byId[s].title)}}
 function applyCab(s,tt){
-  mark(s);MARKS.forEach(h=>{const g=h.d.parent;if(g.userData.sx==null)g.userData.sx=g.scale.x;const k=h.steps.includes(s)?1.6:1;g.scale.set(g.userData.sx*k,1,k)});const fr=frameOf(s,tt),n=ORD(s);CENTER=fr.t.clone().setY(36);
+  mark(s);MARKS.forEach(h=>{const g=h.d.parent;if(g.userData.sx==null)g.userData.sx=g.scale.x;const k=h.steps.includes(s)?1.35:1;g.scale.set(g.userData.sx*k,1,k)});const fr=frameOf(s,tt),n=ORD(s);CENTER=fr.t.clone().setY(36);
   GS.forEach(G=>{let spec=G.seq[s];const keys=Object.keys(G.seq).filter(k=>G.seq[k]!==null).map(k=>ORD(k));
     if(spec===undefined){if(n<Math.min(...keys)){G.g.visible=false;return}spec=[F,F]}
     if(spec===null){G.g.visible=false;return}
