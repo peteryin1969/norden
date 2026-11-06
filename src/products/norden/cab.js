@@ -40,7 +40,7 @@ function hammerAt(s,tt,fr){const list=CP.filter(p=>p.tap&&p.keys[s]);const H=FR.
   else{const sx=p.side;X=new T3.Vector3(-sx,0,0);Y=new T3.Vector3(0,1,0);Z=X.clone().cross(Y);const hit=new T3.Vector3((bx.min.x+bx.max.x)/2,bx.max.y,(bx.min.z+bx.max.z)/2);H.root.position.copy(hit).add(Y.clone().multiplyScalar(3.15)).sub(X.clone().multiplyScalar(H.L))}
   H.root.quaternion.setFromRotationMatrix(new T3.Matrix4().makeBasis(X,Y,Z));H.sw.rotation.z=ang}
 function buildCab(){
-  sc2=new T3.Scene();sc2.add(new T3.AmbientLight(0xffffff,.85));const d=new T3.DirectionalLight(0xffffff,.45);d.position.set(30,70,-40);sc2.add(d);
+  sc2=new T3.Scene();sc2.add(new T3.AmbientLight(0xffffff,.85));const d=new T3.DirectionalLight(0xffffff,.45);d.position.set(60,150,90);d.castShadow=true;d.shadow.mapSize.set(1536,1536);Object.assign(d.shadow.camera,{left:-110,right:110,top:110,bottom:-110,near:10,far:330});d.shadow.bias=-.0012;d.shadow.radius=4;sc2.add(d);FR.sun=d;
   FR.floor=box(420,1,300,0xdfe2dd);FR.floor.position.set(0,-.5,0);FR.floor.children[0].visible=false;sc2.add(FR.floor);
   const hideT={3:null,4:null},hideD={9:null,10:null};
   const fy=H0/2,fL=grp('frameL',null,[-BW/2-PS/2,fy,0],{1:[{f:[-6,0,0]},F],2:[F,0],...hideT,5:[F,0],6:[{f:[0,-34,0]},F],...hideD},{startAt:{1:.45},moveAt:{6:.5},anchor:[0,16,0]});
@@ -111,9 +111,9 @@ function applyCab(s,tt){
     if(k){const [a,b]=p.win||[0,1];L=clamp((tt-a)/(b-a));if(p.of>1){const gap=(p.seq?1:.5)/p.of;L=clamp((L-p.i*gap)/(1-(p.of-1)*gap))}L=ease(L);if(p.tap)L=tapL(p,tt);
       p._L=L;p.m.position.set(p.pos[0]+lerp(k[0][0],k[1][0],L),p.pos[1]+lerp(k[0][1],k[1][1],L),p.pos[2]+lerp(k[0][2],k[1][2],L));tint(p.m,L<1&&L>0)
     }else{p.m.position.set(...p.pos);tint(p.m,false)}
-    if(p.ins&&s==='1')p.m.position.x+=p.ins*(1-ease(clamp(tt/.2)));if(p.spin&&k)p.m.rotation[p.spin]=L*PI*3;if(p.tiltX&&p.tiltX[s]&&k)p.m.rotation.x=lerp(p.tiltX[s][0],p.tiltX[s][1],L)});
+    if(p.ins&&s==='1')p.m.position.x+=p.ins*(1-ease(clamp(tt/.2)));if(p.spin&&k){const off=k[0]['xyz'.indexOf(p.spin)];p.m.rotation[p.spin]=-(off<0?-1:1)*L*PI*3}if(p.tiltX&&p.tiltX[s]&&k)p.m.rotation.x=lerp(p.tiltX[s][0],p.tiltX[s][1],L)});
   hammerAt(s,tt,fr);
-  FR.key.visible=s==='5'&&tt>=.5;if(FR.key.visible){const i=Math.min(3,Math.floor((tt-.5)/.125)),q=FR.bolts[i],o=new T3.Vector3();q.getWorldPosition(o);const a=i%2?1:-1;FR.key.scale.x=o.x<0?-1:1;FR.key.position.copy(o).add(new T3.Vector3(a*7.5,0,0).applyQuaternion(fr.q));FR.key.rotation.x=tt*40}
+  FR.key.visible=s==='5'&&tt>=.5;if(FR.key.visible){const i=Math.min(3,Math.floor((tt-.5)/.125)),q=FR.bolts[i],o=new T3.Vector3();q.getWorldPosition(o);const a=i%2?1:-1;FR.key.scale.x=o.x<0?-1:1;FR.key.position.copy(o).add(new T3.Vector3(a*7.5,0,0).applyQuaternion(fr.q));FR.key.rotation.x=-a*tt*40}
   FR.floor.visible=s!=='9'&&s!=='10';
   FR.drs.forEach((d,i)=>{d.g.visible=s==='11';const L=ease(clamp((tt-i*.06)/.14));d.g.position.z=lerp(d.g.userData.z+d.z*44,d.g.userData.z,L)});
   stage(s,tt);

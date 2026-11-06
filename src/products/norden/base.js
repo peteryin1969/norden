@@ -91,12 +91,12 @@ function drawLabels(){const v=document.getElementById('animView'),w=v.clientWidt
 /* Realistic look: procedural wood, matcap metal, gloss plastic. Line look stays available. */
 let realLook=false;try{realLook=localStorage.getItem('norden-look')==='real'}catch(e){}
 function birchTex(){const W=2048,H=1024,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');let seed=23;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
-  const tone=()=>{const t=rnd(),l=204+rnd()*22+t*6;return [l,l-23-rnd()*5,l-62-rnd()*10]},css=(q,a=1)=>`rgba(${q[0]|0},${q[1]|0},${q[2]|0},${a})`;
+  const tone=()=>{const t=rnd(),l=234+rnd()*8+t*3;return [l,l-24-rnd()*3,l-54-rnd()*6]},css=(q,a=1)=>`rgba(${q[0]|0},${q[1]|0},${q[2]|0},${a})`;
   for(let y=0;y<H;){const h=72+rnd()*40|0;for(let u=-rnd()*500;u<W;){const w=420+rnd()*760|0,t=tone();const g=x.createLinearGradient(u,0,u+w,0);g.addColorStop(0,css(t));g.addColorStop(.5,css([t[0]+3,t[1]+3,t[2]+4]));g.addColorStop(1,css([t[0]-3,t[1]-3,t[2]-4]));x.fillStyle=g;x.fillRect(u,y,w,h);x.save();x.beginPath();x.rect(u,y,w,h);x.clip();
       for(let i=0;i<7;i++){const by=y+rnd()*h,bh=6+rnd()*26;x.fillStyle=css(rnd()<.5?[150,108,66]:[250,236,205],.025+rnd()*.03);x.fillRect(u,by,w,bh)}
       for(let i=0;i<34;i++){x.strokeStyle='rgb(140,102,62)';x.globalAlpha=.012+rnd()*.03;x.lineWidth=.5+rnd()*.9;const yy=y+rnd()*h,a=rnd()*7,am=.5+rnd()*2;x.beginPath();for(let k=0;k<=w;k+=60)x.lineTo(u+k,yy+Math.sin(k/260+a)*am);x.stroke()}
       for(let i=0;i<w/5;i++){x.fillStyle='rgb(120,85,50)';x.globalAlpha=.05+rnd()*.05;x.fillRect(u+rnd()*w,y+rnd()*h,6+rnd()*26,.8)}
-      if(rnd()<.24){const cx=u+rnd()*w,cy=y+rnd()*h,l=130+rnd()*200,g2=x.createRadialGradient(0,0,1,0,0,1);g2.addColorStop(0,'rgba(166,112,70,.36)');g2.addColorStop(1,'rgba(180,130,90,0)');x.save();x.globalAlpha=1;x.translate(cx,cy);x.scale(l,5+rnd()*6);x.fillStyle=g2;x.beginPath();x.arc(0,0,1,0,7);x.fill();x.restore()}
+      if(rnd()<.16){const cx=u+rnd()*w,cy=y+rnd()*h,l=130+rnd()*200,g2=x.createRadialGradient(0,0,1,0,0,1);g2.addColorStop(0,'rgba(176,126,84,.26)');g2.addColorStop(1,'rgba(180,130,90,0)');x.save();x.globalAlpha=1;x.translate(cx,cy);x.scale(l,5+rnd()*6);x.fillStyle=g2;x.beginPath();x.arc(0,0,1,0,7);x.fill();x.restore()}
       if(rnd()<.05){x.globalAlpha=.55;x.fillStyle='#5f4028';x.beginPath();x.ellipse(u+rnd()*w,y+rnd()*h,3+rnd()*6,.8+rnd()*1.1,0,0,7);x.fill()}
       x.restore();x.globalAlpha=.07;x.fillStyle='#7c5c38';x.fillRect(u+w-1,y,1.2,h);x.globalAlpha=1;u+=w}x.globalAlpha=.08;x.fillStyle='#7c5c38';x.fillRect(0,y+h-1,W,1.2);x.globalAlpha=1;y+=h}
   const d=x.getImageData(0,0,W,H),p=d.data;for(let i=0;i<p.length;i+=4){const n=(rnd()-.5)*3.2;p[i]+=n;p[i+1]+=n;p[i+2]+=n}x.putImageData(d,0,0);
@@ -109,14 +109,14 @@ function planarUV(m){const g=m.geometry;if(!g.parameters||g.type!=='BoxGeometry'
 let LOOK=null;const inCover=o=>{let c=false;o.traverseAncestors(q=>{if(q.userData.code==='10101849'||q.userData.code==='158568')c=true});return c};
 function makeLook(sceneObj){if(!LOOK)LOOK={oak:woodTex('#4d3628','#241510',900),beech:woodTex('#c9a26b','#8d6838',260),birch:birchTex(),steel:matcapTex('#ffffff','#a8b0b4','#3b4246'),black:matcapTex('#8c9296','#34383b','#0d0f10')};
   sceneObj.traverse(o=>{if(!o.isMesh||!o.material||o.material.isMeshBasicMaterial||o.userData.lineM)return;const old=o.material,c=(o.userData.b!=null?o.userData.b:old.color.getHex());let nw;
-    if(c===WOOD){const box0=o.geometry.type==='BoxGeometry';if(box0){planarUV(o);nw=new T3.MeshPhongMaterial({map:LOOK.birch,shininess:18,specular:0x2a2620})}else nw=new T3.MeshPhongMaterial({color:0xdcc49d,shininess:18,specular:0x2a2620});o.userData.birch=true}
+    if(c===WOOD){const box0=o.geometry.type==='BoxGeometry';if(box0){planarUV(o);nw=new T3.MeshPhongMaterial({map:LOOK.birch,shininess:18,specular:0x2a2620})}else nw=new T3.MeshPhongMaterial({color:0xf0d9bc,shininess:18,specular:0x2a2620});o.userData.birch=true}
     else if(c===DOW||c===WOODP){nw=new T3.MeshPhongMaterial({map:LOOK.beech,shininess:10})}
     else if(c===METAL||c===STEEL||c===ZINC||c===0x6d7478){nw=new T3.MeshMatcapMaterial({matcap:LOOK.steel,color:0xffffff})}
     else if(c===0x4a5256||c===0x333b3f||c===0x2a2f31||c===DARK||c===0x3a4246||c===0x2a3033){nw=new T3.MeshMatcapMaterial({matcap:LOOK.black,color:0xffffff})}
     else if(c===PLAST||c===0xf4f4ef||c===0xf0f0ea){nw=new T3.MeshPhongMaterial({color:0xe9e6dc,shininess:80,specular:0x555555})}
     else return;
     o.userData.lineM=old;o.userData.realM=nw;o.userData.lb=c});}
-function setLook(real){realLook=real;[scene,sc2].forEach(sc=>{if(!sc)return;sc.traverse(o=>{if(o.isLineSegments){o.visible=!real||!o.parent.userData.realM||!!o.parent.userData.birch;if(o.parent.userData.birch)o.material.color.setHex(real?0xa98a60:0x1b2420)}if(o.isMesh&&o.userData.realM){const m=real?o.userData.realM:o.userData.lineM;if(o.material!==m){o.material=m;o.userData.b=m.map?0xffffff:m.color.getHex()}}});sc.children.forEach(q=>{if(q.isAmbientLight)q.intensity=.85;if(q.isDirectionalLight)q.intensity=.45})});const b=document.getElementById('animLook');if(b)b.textContent=real?'线稿模式':'真实材质';try{localStorage.setItem('norden-look',real?'real':'line')}catch(e){}}
+function setLook(real){realLook=real;[scene,sc2].forEach(sc=>{if(!sc)return;sc.traverse(o=>{if(o.isLineSegments){o.visible=!real||!o.parent.userData.realM||!!o.parent.userData.birch;if(o.parent.userData.birch)o.material.color.setHex(real?0xa98a60:0x1b2420)}if(o.isMesh&&o.userData.realM){const m=real?o.userData.realM:o.userData.lineM;if(o.material!==m){o.material=m;o.userData.b=m.map?0xffffff:m.color.getHex()}}});sc.children.forEach(q=>{if(q.isAmbientLight)q.intensity=real?.9:.85;if(q.isDirectionalLight)q.intensity=real?.2:.45});sc.traverse(o=>{if(o.isMesh){o.castShadow=real&&!o.material.isMeshBasicMaterial;o.receiveShadow=real&&!!o.material.map||real&&o===FR.floor}})});if(FR.floor)FR.floor.material.color.setHex(real?0xffffff:0xdfe2dd);if(ren){ren.shadowMap.enabled=real;ren.shadowMap.type=T3.PCFSoftShadowMap;[scene,sc2].forEach(sc=>sc&&sc.traverse(o=>{if(o.isMesh&&o.material)o.material.needsUpdate=true}))}const b=document.getElementById('animLook');if(b)b.textContent=real?'线稿模式':'真实材质';try{localStorage.setItem('norden-look',real?'real':'line')}catch(e){}}
 /* Cabinet animation, steps 1-34 and 45. Follows the manual's order: built lying on its front, stood up at step 24. Proportions are estimates. */
 const CIDS=[...Array.from({length:31},(_,i)=>String(i+1)),'32w','32','33','34','45'];
 const ORD=id=>CIDS.indexOf(id);
@@ -304,6 +304,13 @@ function build(){
   const ar=new T3.Mesh(new T3.TorusGeometry(7,.4,8,24,Math.PI*1.1),new T3.MeshBasicMaterial({color:0x2f8f6b}));ar.rotation.y=Math.PI/2;ar.position.set(-W/2+4,24,-72);const tip=new T3.Mesh(new T3.ConeGeometry(1.1,2.4,10),new T3.MeshBasicMaterial({color:0x2f8f6b}));tip.position.set(7,0,0);tip.rotation.z=Math.PI;ar.add(tip);cab.add(ar);window.__ar=ar;[ar,tip].forEach(m=>{m.material.depthTest=false;m.renderOrder=20});lv44.traverse(m=>{if(m.isMesh){m.material.depthTest=false;m.renderOrder=19}});window.__lv44=lv44;scene.add(cab);
   const lab=new T3.Mesh(new T3.PlaneGeometry(9,5),new T3.MeshBasicMaterial({color:0xf2c200,side:T3.DoubleSide}));lab.rotation.y=PI/2;lab.position.set(-W/2+T+.1,T+D/2,0);inner.add(lab);window.__lab=lab;scene.add(cab);
   const v=document.getElementById('animView');let drag=null;
+  let vz=1,ox=0,oy=0,pinch=null;
+  const applyView=()=>{if(!cam)return;const w=v.clientWidth,h=v.clientHeight;if(vz<=1.001){vz=1;ox=oy=0;cam.clearViewOffset()}else{ox=clamp(ox/(w-w/vz||1))*(w-w/vz);oy=clamp(oy/(h-h/vz||1))*(h-h/vz);cam.setViewOffset(w,h,ox,oy,w/vz,h/vz)}};
+  const zoomAt=(mx,my,nz)=>{nz=Math.max(1,Math.min(8,nz));ox+=mx/vz-mx/nz;oy+=my/vz-my/nz;vz=nz;applyView()};window._resetView=()=>{vz=1;applyView()};
+  v.addEventListener('wheel',e=>{e.preventDefault();const r=v.getBoundingClientRect();zoomAt(e.clientX-r.left,e.clientY-r.top,vz*Math.exp(-e.deltaY*.0016))},{passive:false});
+  v.addEventListener('touchstart',e=>{if(e.touches.length===2){const[a,b]=e.touches;pinch={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),z:vz};drag=null}},{passive:true});
+  v.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){e.preventDefault();const[a,b]=e.touches,r=v.getBoundingClientRect();zoomAt((a.clientX+b.clientX)/2-r.left,(a.clientY+b.clientY)/2-r.top,pinch.z*Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)/pinch.d)}},{passive:false});
+  v.addEventListener('touchend',e=>{if(e.touches.length<2)pinch=null});
   v.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY,az,el,performance.now()];v.setPointerCapture(e.pointerId)});
   v.addEventListener('pointermove',e=>{if(drag){az=drag[2]+(e.clientX-drag[0])*.008;el=clamp(drag[3]+(e.clientY-drag[1])*.006,-.6,.8)}});
   v.addEventListener('pointerup',e=>{if(drag&&Math.hypot(e.clientX-drag[0],e.clientY-drag[1])<7&&performance.now()-drag[4]<450)openZoom(e);drag=null});
@@ -377,7 +384,7 @@ function frame(ts){raf=requestAnimationFrame(frame);if(!ready||!cur)return;const
   const keep=t;t=Math.min(t,1);if(IDS.includes(cur))apply();else applyCab(cur,t);camFit();ren.render(curScene(),cam);drawLabels();drawZoom();t=keep}
 const CAP={'35':'4 个 118331 拧入前板','36':'每块侧板插 2 根木销','37':'两块侧板插到前板上','38':'4 个 120076 放入并转动锁紧','39':'灰色底板沿槽插入','40':'用锤子敲入 1 根联锁杆','41':'后板盖到两块侧板上','42':'先插 4 个 145718，再锁 4 个 120076','43':'抽屉倒扣放桌面，装滑轨并拧 6 颗螺丝','44':'翻回正面，沿滑轨推入柜体'};
 function fail(){failed=true;document.getElementById('anim').hidden=true}
-async function show(id){const box0=document.getElementById('anim');const on=IDS.includes(id)||CIDS.includes(id);box0.hidden=!on||failed;
+async function show(id){const box0=document.getElementById('anim');if(window._resetView)window._resetView();const on=IDS.includes(id)||CIDS.includes(id);box0.hidden=!on||failed;
   if(!on){if(full)setFull(false);cur=null;cancelAnimationFrame(raf);raf=0;return}
   closeZoom();const lb=byId[id].label||('第 '+id+' 步');document.getElementById('animCap').textContent=lb+' · '+(CAP[id]||byId[id].title);cur=id;t=0;az=0;el=0;
   try{await load();if(!ready){build();buildCab();makeLook(scene);makeLook(sc2);setLook(realLook)}computeFit();buildLabels();if(!raf){last=performance.now();raf=requestAnimationFrame(frame)}}catch(e){fail()}}
