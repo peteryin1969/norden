@@ -142,6 +142,7 @@ function targets(s){const T=[],put=(name,objs,win)=>{objs=objs.filter(Boolean);i
   if(s==='11'){put('抽屉',FR.drs.map(d=>d.g),[0,.52]);put('定位销',[FR.peg],[.86,1])}if(s==='5')put('内六角扳手',[FR.key],[.5,1]);if(CP.some(p=>p.tap&&p.keys[s]))put('锤子',[FR.ham.root],[0,1]);
   const h=MARKS.filter(m=>m.steps.includes(s)).map(m=>m.d.parent);if(h.length)put('孔',h,[0,1]);return T}
 function names(s){return targets(s||cur).map(x=>x.name)}
+function vocab(){if(!cabReady)return null;return [...new Set([...Object.keys(AL),...Object.values(AL).flat(),...CIDS.flatMap(s=>names(s))])]}
 function pick(name,s){const c=canon(name,s),T=targets(s);let t=T.find(x=>x.name===c)||T.find(x=>x.name.includes(c)||c.length>1&&c.includes(x.name));if(!t){let best=0;T.forEach(x=>{const d=bi(c,x.name);if(d>best){best=d;t=x}});if(best<.5)t=null}return{t,c}}
 /* static things on screen that do not move in this step (a hinge shown in step 6, the table top in step 4) */
 function still(c){const code=(CELL().find(x=>x.name===c)||{}).code;let o=CP.filter(p=>code?(p.code||codeOf(p.m))===code:p.lbl&&p.lbl.replace(/（.*$/,'').includes(c)).map(p=>p.m);if(!o.length&&GN[c])o=GN[c].map(n=>FR[n]&&FR[n].g).filter(Boolean);return o}

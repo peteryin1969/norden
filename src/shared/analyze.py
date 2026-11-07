@@ -60,6 +60,20 @@ def report(S):
         for k,w,x in drop[-10:]:print(f'  第 {k} 步 丢弃（{w}）：{x}')
         sh=[(k,x) for s in P for k,r in s.get('steps',{}).items() for x in r.get('shows',[])]
         print('标出零件：',len(sh),'次，失败',sum(1 for _,x in sh if not x['ok']),'次',''.join(f'\n  第 {k} 步 标不出：{x["name"]}（{x["src"]}）' for k,x in sh if not x['ok']))
+        cf=[x for s in P for r in s.get('steps',{}).values() for x in r.get('confirms',[])];learn=Counter()
+        for x in cf:
+            if x['answer']=='yes':learn[(x['heard'],x['offered'])]+=1
+            elif x['answer'].startswith('word:'):learn[(x['heard'],x['answer'][5:])]+=1
+        users=defaultdict(set)
+        for s in P:
+            for r in s.get('steps',{}).values():
+                for x in r.get('confirms',[]):
+                    w=x['offered'] if x['answer']=='yes' else x['answer'][5:] if x['answer'].startswith('word:') else None
+                    if w:users[(x['heard'],w)].add(s.get('id'))
+        print('\n读音确认：',Counter(x['answer'].split(':')[0] for x in cf) or '无','，自动纠正',sum(1 for x in cf if x['answer']=='auto'),'次')
+        print('学到的别名（确认过的，按人数排序，建议加进 faq.json 的 syn）：')
+        for (h,w),n in sorted(learn.items(),key=lambda kv:(-len(users[kv[0]]),-kv[1])):print(f'  {h} → {w}  {n} 次，{len(users[(h,w)])} 人')
+        if not learn:print('  无')
         rt=[s['rating'] for s in P if s.get('rating')];hd=Counter((s.get('hardest') or {}).get('step') for s in P if s.get('hardest'))
         print('评分：',dict(sorted(Counter(rt).items())),f'平均 {statistics.mean(rt):.1f}' if rt else '无')
         print('最难的步骤：',{('第 '+k+' 步' if k else '没说清'):n for k,n in hd.most_common()} or '无')
