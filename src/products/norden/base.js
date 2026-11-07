@@ -17,9 +17,9 @@ function helix(r,len,turns,tube){return geo(`h${r}_${len}_${turns}`,()=>{const P
 const tag=(o,r)=>{o.userData.hr=r;return o};
 function point(inner,axis,sign){const o=new T3.Group();o.add(inner);if(axis==='x')inner.rotation.z=-sign*Math.PI/2;else if(axis==='z')inner.rotation.x=sign*Math.PI/2;else if(sign<0)inner.rotation.x=Math.PI;return o}
 function cross(g,r,y){g.add(at(pm(bg(r*1.5,r*.25,r*.3),DARK),0,y,0),at(pm(bg(r*.3,r*.25,r*1.5),DARK),0,y,0))}
-function screw(axis='y',sign=1,o={}){const{r=.34,len=2.4,c=0x4a5256,wide=false,nohole=false}=o,g=new T3.Group(),hr=wide?r*2.5:r*1.9,hh=r*.75;
-  g.add(at(pm(cg(hr,r*1.05,hh),c),0,len/2+hh/2,0));cross(g,hr*.75,len/2+hh);g.add(pm(cg(r*.8,r*.8,len),c));
-  g.add(at(pm(helix(r*1.1,len*.92,Math.round(len/(r*.55)),r*.17),c),0,len/2,0));g.add(at(pm(cg(r*.8,.02,r*1.3,10),c),0,-len/2-r*.6,0));return tag(point(g,axis,sign),nohole?0:.42)}
+function screw(axis='y',sign=1,o={}){const{r=.34,len=2.4,c=0x4a5256,wide=false,nohole=false,pan=false,flat=false}=o,g=new T3.Group(),hr=pan?r*2.6:wide?r*2.5:r*1.9,hh=r*.75;
+  if(pan){g.add(at(pm(cg(hr,hr,hh*.45,20),c),0,len/2+hh*.22,0),at(pm(cg(hr*.7,hr*.92,hh*.55,20),c),0,len/2+hh*.72,0))}else g.add(at(pm(cg(hr,r*1.05,hh),c),0,len/2+hh/2,0));cross(g,(pan?hr*.6:hr)*.75,len/2+hh);g.add(pm(cg(r*.8,r*.8,len),c));
+  g.add(at(pm(helix(r*1.1,len*.92,Math.round(len/(r*.55)),r*.17),c),0,len/2,0));if(flat)g.add(at(pm(cg(r*.8,r*.62,r*.3,10),c),0,-len/2-r*.15,0));else g.add(at(pm(cg(r*.8,.02,r*1.3,10),c),0,-len/2-r*.6,0));return tag(point(g,axis,sign),nohole?0:.42)}
 function conn(axis='y',sign=1){const g=new T3.Group();g.add(at(pm(cg(.62,.5,.5),STEEL),0,2.9,0));cross(g,.5,3.17);g.add(at(pm(cg(.42,.42,.6),STEEL),0,2.35,0),at(pm(cg(.72,.72,2.3,6),ZINC),0,.95,0),at(pm(cg(.85,.85,.28),ZINC),0,-.35,0),at(pm(cg(.45,.45,2.2),STEEL),0,-1.6,0),at(pm(helix(.58,2,5,.13),STEEL),0,-.55,0));return tag(point(g,axis,sign),.62)}
 function dowel(axis='y',sign=1,r=.45,l=3.2){const g=new T3.Group();g.add(pm(cg(r,r,l,10),WOODP),at(pm(cg(r*.72,r,.35,10),WOODP),0,l/2+.17,0),at(pm(cg(r,r*.72,.35,10),WOODP),0,-l/2-.17,0));for(let i=0;i<10;i++){const a=i/10*Math.PI*2;g.add(at(pm(bg(.05,l,.05),0x9a7747),Math.cos(a)*r*.98,0,Math.sin(a)*r*.98))}return tag(point(g,axis,sign),.52)}
 function lock(axis='y',sign=1,kind='a'){const g=new T3.Group(),big=kind==='b',r=big?1.15:.95,h=big?1.5:1.15,c=big?ZINC:STEEL;g.add(pm(cg(r,r,h,22),c));

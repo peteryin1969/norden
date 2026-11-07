@@ -61,6 +61,10 @@ def report(S):
         print('\n被当成随口说、用户追问后才回答的话：')
         for k,x in ms:print(f'  第 {k} 步：“{x.get("t")}”')
         if not ms:print('  无')
+        cds=Counter((k,x.get('name') or x.get('code'),x.get('src')) for s in P for k,r in s.get('steps',{}).items() for x in r.get('cards',[]))
+        print('\n查看零件卡片（用户想确认零件长什么样、在哪格）：')
+        for (k,n,src),c in sorted(cds.items(),key=lambda z:(num(z[0][0]),-z[1])):print(f'  第 {k} 步：{n} ×{c}（{"语音" if src=="local" else "AI"}）')
+        if not cds:print('  无')
         fbs=[(k,x) for s in P for k,r in s.get('steps',{}).items() for x in r.get('feedback',[])]
         print('\n用户反馈原话：')
         for k,x in fbs:print(f'  第 {k} 步：“{x.get("t") or "（未记文字）"}”')
