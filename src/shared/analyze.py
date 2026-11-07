@@ -53,6 +53,14 @@ def report(S):
         print('\n不顺和困惑的时间线：')
         for sid,k,x in neg:print(f'  {sid} 第 {k} 步 {x["at"]//60}:{x["at"]%60:02d} [{x["s"]}] {x.get("t") or "（未记文字）"}')
         if not neg:print('  无')
+        ap=[(k,x.get('q') or x.get('t')) for s in P for k,r in s.get('steps',{}).items() for x in r.get('qs',[])+r.get('remarks',[]) if x.get('s')=='app']
+        print('\n对助手本身的抱怨（听不清、没回答、太慢）：')
+        for k,t in ap:print(f'  第 {k} 步：“{t or "（未记文字）"}”')
+        if not ap:print('  无')
+        ms=[(k,x) for s in P for k,r in s.get('steps',{}).items() for x in r.get('remarks',[]) if x.get('missed')]
+        print('\n被当成随口说、用户追问后才回答的话：')
+        for k,x in ms:print(f'  第 {k} 步：“{x.get("t")}”')
+        if not ms:print('  无')
         fbs=[(k,x) for s in P for k,r in s.get('steps',{}).items() for x in r.get('feedback',[])]
         print('\n用户反馈原话：')
         for k,x in fbs:print(f'  第 {k} 步：“{x.get("t") or "（未记文字）"}”')
