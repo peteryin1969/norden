@@ -8,6 +8,7 @@ vbtn=base[base.index('<button class="btn primary vstart"'):base.index('<div clas
 css=base[base.index('.vstart{margin-top'):base.index('</style>')]
 code=base[base.index('/* Conversational voice mode'):base.index('window.VoiceReady=true;\n')+len('window.VoiceReady=true;\n')]
 say=open('say.js',encoding='utf8').read()
+appver=hashlib.md5(code.encode('utf8')).hexdigest()[:8]
 def page(h,slug,name,steps,sayjs,imgdir,voice,loop,loops=None):
     from viewpatch import addview;h=addview(h)
     if voice:
@@ -18,6 +19,7 @@ def page(h,slug,name,steps,sayjs,imgdir,voice,loop,loops=None):
     h=h.replace('<title>',pre+'<title>',1)
     h=h.replace('<script>','<script>window.PRODUCT={name:%s,steps:%d,say:%s,loopEnd:%s,loops:%s}</script>\n<script src="../shim.js?v=%s"></script>\n<script>'%(json.dumps(name,ensure_ascii=False),steps,sayjs,json.dumps(loop),json.dumps(loops or {},ensure_ascii=False),ver),1)
     h=h.replace('<header>','<header><a href="../" style="font-size:13px">‹ 选择产品</a>',1)
+    h=h.replace('window.PRODUCT={','window.PRODUCT={ver:%s,'%json.dumps(appver),1)
     os.makedirs('site/'+slug);open('site/%s/index.html'%slug,'w',encoding='utf8').write(h);shutil.copytree(imgdir,'site/%s/img'%slug)
 page(base,'norden','IKEA NORDEN 折叠桌',11,say,'img',False,'10')
 shutil.copy('faq.json','site/norden/faq.json')
