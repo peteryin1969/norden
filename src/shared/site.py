@@ -9,6 +9,7 @@ css=base[base.index('.vstart{margin-top'):base.index('</style>')]
 code=base[base.index('/* Conversational voice mode'):base.index('window.VoiceReady=true;\n')+len('window.VoiceReady=true;\n')]
 say=open('say.js',encoding='utf8').read()
 def page(h,slug,name,steps,sayjs,imgdir,voice,loop,loops=None):
+    from viewpatch import addview;h=addview(h)
     if voice:
         h=h.replace('<div class="fullnav">',vbtn+'<div class="fullnav">',1).replace('</style>',css+'</style>',1)
         h=h.replace('Anim.ui();\n','Anim.ui();\n'+code,1).replace('  save();\n}\nfunction thumb','  save();if(window.VoiceReady)Voice.onStep();\n}\nfunction thumb',1)
