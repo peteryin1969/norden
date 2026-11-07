@@ -42,6 +42,21 @@ def report(S):
             sf=Counter(r.get('safety') for r in R if r.get('safety'))
             print(f'{k:>4} {len(R):>4} {statistics.median(ms)/60000 if ms else 0:>8.1f} {sum(1 for r in R if r.get("stuck"))/len(R):>6.0%} {sum(r.get("replays",0) for r in R):>4} {c["cmd"]:>6}/{c["faq"]}/{c["ai"]:<6} {sum(1 for a in ai if a.get("rep")):>6} {sc["pos"]:>5}/{sc["neg"]}/{sc["other"]+sc["skip"]+sc[None]:<4}  {dict(sf) if sf else ""}')
         ai=[(k,a['q']) for s in P for k,r in s.get('steps',{}).items() for a in r.get('ai',[])]
+        print('\n每步的话（不是指令或提问的随口说的话）：')
+        print(f'{"步":>4} {"不顺":>4} {"困惑":>4} {"顺利":>4} {"中性":>4} {"对别人说":>6} {"反馈":>4}  帮助提议（接受/拒绝/标出/其他）  完成时回答')
+        for k in sorted(steps,key=num):
+            R=steps[k];rm=[x for r in R for x in r.get('remarks',[])];c=Counter(x['s'] for x in rm);fb=sum(len(r.get('feedback',[])) for r in R)
+            hp=[p for r in R for p in r.get('prompts',[]) if p['kind']=='help'];hc=Counter('接受' if p.get('cls') in('yes','reason') else '拒绝' if p.get('cls') in('no','ok','skip') else '标出' if p.get('cls')=='shown' else '其他' for p in hp)
+            cp=Counter(p.get('cls') for r in R for p in r.get('prompts',[]) if p['kind'] in('complete','mid'))
+            if rm or fb or hp or cp:print(f'{k:>4} {c["neg"]:>4} {c["confused"]:>4} {c["pos"]:>4} {c["neutral"]:>4} {sum(1 for x in rm if x.get("to")):>6} {fb:>4}  {hc["接受"]}/{hc["拒绝"]}/{hc["标出"]}/{hc["其他"]:<22} {dict(cp) if cp else ""}')
+        neg=sorted([(s.get('id','')[:6],k,x) for s in P for k,r in s.get('steps',{}).items() for x in r.get('remarks',[]) if x['s'] in('neg','confused')],key=lambda z:(z[0],num(z[1]),z[2]['at']))
+        print('\n不顺和困惑的时间线：')
+        for sid,k,x in neg:print(f'  {sid} 第 {k} 步 {x["at"]//60}:{x["at"]%60:02d} [{x["s"]}] {x.get("t") or "（未记文字）"}')
+        if not neg:print('  无')
+        fbs=[(k,x) for s in P for k,r in s.get('steps',{}).items() for x in r.get('feedback',[])]
+        print('\n用户反馈原话：')
+        for k,x in fbs:print(f'  第 {k} 步：“{x.get("t") or "（未记文字）"}”')
+        if not fbs:print('  无')
         print('\n未解决的问题（AI 兜底且重复问过）：')
         for k,a in [(k,a['q']) for s in P for k,r in s.get('steps',{}).items() for a in r.get('ai',[]) if a.get('rep')] or [('-','无')]:print(f'  第 {k} 步：{a}')
         print('\nFAQ 缺口（AI 回答过的问题，按相似合并，建议加进 faq.json）：')
