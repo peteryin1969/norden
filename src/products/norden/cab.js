@@ -52,13 +52,13 @@ function buildCab(){
   [-1,1].forEach((z,i)=>{const bk=box(BW,5,3,WOOD);pt(ties,bk,[0,YB,z*(LZ/2)],{1:[[0,0,z*14],[0,0,0]]},{i,of:2,win:[.2,.45],lbl:'连接木块'});
     [-1,1].forEach(a=>{drill(bk,new T3.Vector3(a*BW/2,0,0),new T3.Vector3(a,0,0),.42,['5']);[-1.5,1.5].forEach(y=>pt(ties,dowel('x',a,.4,3),[a*(BW/2-.1),YB+y,z*(LZ/2)],{1:[[0,0,z*14],[0,0,0]]},{i,of:2,win:[.2,.45],ins:a*5}));
       const fg=(a<0?fL:fR).g.children[0],post=fg.userData.posts[z<0?0:1];[-1.5,1.5].forEach(y=>drill(post,new T3.Vector3(-a*PS/2,YB+y,0),new T3.Vector3(-a,0,0),.45,['1']));drill(post,new T3.Vector3(a*PS/2,YB,0),new T3.Vector3(a,0,0),.5,['5']);
-      pt(ties,barrel('y',-1),[a*(BW/2-3.2),YB,z*(LZ/2)],{5:[[0,-9,0],[0,0,0]]},{i:(z+1)+(a+1)/2,of:4,win:[.2,.5],spin:'y',on:bk});
-      const blt=pt(ties,longBolt('x',a),[a*(BW/2+PS-5.35),YB,z*(LZ/2)],{5:[[a*12,0,0],[0,0,0]]},{i:(z+1)+(a+1)/2,of:4,win:[.5,1],spin:'x',nohole:1,seq:1});FR.bolts.push(blt)})});
+      pt(ties,barrel('y',-1),[a*(BW/2-3.2),YB,z*(LZ/2)],{5:[[0,-9,0],[0,0,0]]},{i:(z+1)+(a+1)/2,of:4,win:[.2,.5],spin:'y',on:bk,code:'121121'});
+      const blt=pt(ties,longBolt('x',a),[a*(BW/2+PS-5.35),YB,z*(LZ/2)],{5:[[a*12,0,0],[0,0,0]]},{i:(z+1)+(a+1)/2,of:4,win:[.5,1],spin:'x',nohole:1,seq:1,code:'105330'});FR.bolts.push(blt)})});
   const ky=keyL();ky.position.set(0,0,0);sc2.add(ky);FR.key=ky;
   // steel bars on the top rails
   [[fL,-1],[fR,1]].forEach(([G,a])=>[-24,24].forEach(z=>drill(G.g.children[0].userData.top,new T3.Vector3(0,1.7,z),new T3.Vector3(0,1,0),.3,['2'])));
-  [-1,1].forEach((z,i)=>{const b=bar();pt(fL,b,[BW/2+PS/2,H0/2-.125,z*24],{2:[[0,10,0],[0,0,0]]},{i,of:2,win:[0,.5]});[-1,1].forEach((a,j)=>pt(fL,screw('y',1,{r:.3,len:1.1}),[BW/2+PS/2+a*8.4,H0/2-.83,z*24],{2:[[0,9,0],[0,0,0]]},{i:i*2+j,of:4,win:[.5,1],spin:'y',nohole:1}));
-    [-5.5,0,5.5].forEach((x,j)=>pt(fL,screw('y',-1,{r:.34,len:1.2}),[BW/2+PS/2+x,H0/2+.62,z*24],{6:[[0,-14,0],[0,0,0]]},{i:x===0?i:i*2+(x>0?1:0),of:x===0?2:4,win:x===0?[.55,.72]:[.72,1],spin:'y',nohole:1}))});
+  [-1,1].forEach((z,i)=>{const b=bar();pt(fL,b,[BW/2+PS/2,H0/2-.125,z*24],{2:[[0,10,0],[0,0,0]]},{i,of:2,win:[0,.5]});[-1,1].forEach((a,j)=>pt(fL,screw('y',1,{r:.3,len:1.1}),[BW/2+PS/2+a*8.4,H0/2-.83,z*24],{2:[[0,9,0],[0,0,0]]},{i:i*2+j,of:4,win:[.5,1],spin:'y',nohole:1,code:'110733'}));
+    [-5.5,0,5.5].forEach((x,j)=>pt(fL,screw('y',-1,{r:.34,len:1.2}),[BW/2+PS/2+x,H0/2+.62,z*24],{6:[[0,-14,0],[0,0,0]]},{i:x===0?i:i*2+(x>0?1:0),of:x===0?2:4,win:x===0?[.55,.72]:[.72,1],spin:'y',nohole:1,code:'110733'}))});
   // table top, built upright then shown inverted
   const cP=box(CW-.24,TK,LZ+8,WOOD),lP=box(LW,TK,LZ+8,WOOD),rP=box(LW,TK,LZ+8,WOOD);
   const seq={1:null,2:null,3:[F,0],4:[F,0],5:null,6:[F,0],7:[F,0],9:null,10:null};
@@ -68,14 +68,14 @@ function buildCab(){
   const rf=grp('leafR',null,[CW/2,H0+TK/2,0],{...seq,8:[F,bendR],11:[bendR,{rz:.04}]},{startAt:{8:.28,11:.55},moveAt:{8:.6,11:.7},drop:{11:[.88,1]},piv:[0,-TK/2-.2,0],anchor:[LW/2,0,0]});rf.g.add(at(rP,LW/2,0,0));
   [-1,1].forEach(z=>[-5.5,0,5.5].forEach(x=>drill(cP,new T3.Vector3(x,-TK/2,z*24),new T3.Vector3(0,-1,0),.42,['6'])));
   [[lf,-1,lP],[rf,1,rP]].forEach(([G,a,P])=>{[-1,1].forEach(z=>drill(P,new T3.Vector3(a*18.5,-TK/2,z*.9),new T3.Vector3(0,-1,0),.34,['3']));[-BZ,BZ].forEach(z=>{const r=box(LW-9,1.3,2.6,WOOD);r.position.set(a*(LW/2+1.5),-TK/2-.65,z);[1].forEach(()=>{if(!((G===rf&&z<0)||(G===lf&&z>0)))drill(r,new T3.Vector3(a*16.5,-.65,0),new T3.Vector3(0,-1,0),.62,[])});G.g.add(r);if(G===rf&&z<0)drill(r,new T3.Vector3(16.5,-.65,0),new T3.Vector3(0,-1,0),.62,['11']);if(G===lf&&z>0)drill(r,new T3.Vector3(-16.5,-.65,0),new T3.Vector3(0,-1,0),.62,['11'])});const bl=box(5,1.3,4,WOOD);[-1,1].forEach(z=>drill(bl,new T3.Vector3(0,-.65,z*.9),new T3.Vector3(0,-1,0),.5,['3']));pt(G,bl,[a*50,-TK/2-.65,0],{3:[[0,-10,0],[0,0,0]]},{win:[0,.5],lbl:'垫块'});
-    [-1,1].forEach((z,i)=>pt(G,screw('y',-1,{r:.3,len:2.2}),[a*50,-TK/2+.005,z*.9],{3:[[0,-9,0],[0,0,0]]},{i,of:2,win:[.5,1],spin:'y',nohole:1}))});
+    [-1,1].forEach((z,i)=>pt(G,screw('y',-1,{r:.3,len:2.2}),[a*50,-TK/2+.005,z*.9],{3:[[0,-9,0],[0,0,0]]},{i,of:2,win:[.5,1],spin:'y',nohole:1,code:'117494'}))});
   [[-1,lf,lP],[1,rf,rP]].forEach(([a,LF,P],i)=>[-31,31].forEach((z,j)=>{
     pt(ct,hingeP(-a,true),[a*CW/2,-TK/2-.14,z],{4:[[0,-9,0],[0,0,0]]},{i:i*2+j,of:4,win:[0,.45]});pt(LF,hingeP(a,false),[0,-TK/2-.14,z],{4:[[0,-9,0],[0,0,0]]},{i:i*2+j,of:4,win:[0,.45]});
-    for(let k=0;k<8;k++){const sx=(k%4<2?-1:1)*(k%2?3:.9),sz=k<4?-1.8:1.8,inner=sx*a<0;drill(inner?cP:P,new T3.Vector3(inner?a*CW/2+sx:sx-a*LW/2,-TK/2,z+sz),new T3.Vector3(0,-1,0),.3,['4']);pt(inner?ct:LF,screw('y',-1,{r:.26,len:1.2}),[inner?a*CW/2+sx:sx,-TK/2+.55,z+sz],{4:[[0,-8,0],[0,0,0]]},{i:i*2+j,of:4,win:[.45,1],nohole:1})}}));
+    for(let k=0;k<8;k++){const sx=(k%4<2?-1:1)*(k%2?3:.9),sz=k<4?-1.8:1.8,inner=sx*a<0;drill(inner?cP:P,new T3.Vector3(inner?a*CW/2+sx:sx-a*LW/2,-TK/2,z+sz),new T3.Vector3(0,-1,0),.3,['4']);pt(inner?ct:LF,screw('y',-1,{r:.26,len:1.2}),[inner?a*CW/2+sx:sx,-TK/2+.55,z+sz],{4:[[0,-8,0],[0,0,0]]},{i:i*2+j,of:4,win:[.45,1],nohole:1,code:'110733'})}}));
   // feet and pads on leg ends
   [[fL,-1,-1],[fL,-1,1],[fR,1,-1],[fR,1,1]].forEach(([G,a,z],i)=>drill(G.g.children[0].userData.posts[z<0?0:1],new T3.Vector3(0,-H0/2,0),new T3.Vector3(0,-1,0),.75,['7']));
-  [[fL,-1,-1],[fL,-1,1],[fR,1,-1],[fR,1,1]].forEach(([G,a,z],i)=>pt(G,foot('y',-1),[0,-H0/2+.67,z*(LZ/2)],{7:[[0,-10,0],[0,0,0]]},{tap:[i/4,(i+1)/4],taps:3,side:a}));
-  [gt,gr].forEach((G,i)=>{const s=i?1:-1;[-.9,.9].forEach(x=>drill(G.g.children[0].children[0]||G.g.children[0],new T3.Vector3(x,-(H0-1.3)/2,0),new T3.Vector3(0,-1,0),.45,['8']));pt(G,pad('y',-1),[s*GL,-H0/2+.65,0],{8:[[0,-9,0],[0,0,0]]},{tap:[i*.135,(i+1)*.135],taps:2,side:s});if(i===0)FR.padObj=G.g.children[G.g.children.length-1]});
+  [[fL,-1,-1],[fL,-1,1],[fR,1,-1],[fR,1,1]].forEach(([G,a,z],i)=>pt(G,foot('y',-1),[0,-H0/2+.67,z*(LZ/2)],{7:[[0,-10,0],[0,0,0]]},{tap:[i/4,(i+1)/4],taps:3,side:a,code:'107271'}));
+  [gt,gr].forEach((G,i)=>{const s=i?1:-1;[-.9,.9].forEach(x=>drill(G.g.children[0].children[0]||G.g.children[0],new T3.Vector3(x,-(H0-1.3)/2,0),new T3.Vector3(0,-1,0),.45,['8']));pt(G,pad('y',-1),[s*GL,-H0/2+.65,0],{8:[[0,-9,0],[0,0,0]]},{tap:[i*.135,(i+1)*.135],taps:2,side:s,code:'156508'});if(i===0)FR.padObj=G.g.children[G.g.children.length-1]});
   // drawer parts for steps 9-10, one drawer at the origin
   const dw=14.8,dh=16.4,dd=30,th=1.8;const D={};
   const dg=grp('drawer',null,[0,0,0],{},{});sc2.remove(dg.g);GS.pop();
@@ -85,7 +85,7 @@ function buildCab(){
   const be=endP(false);[-1,1].forEach(a=>[3,14.7].forEach(y=>drill(be.children[0],new T3.Vector3(a*(dw/2-th),y,0),new T3.Vector3(a,0,0),.3,['9'])));pt(null,be,[0,1,-dd/2+th/2],{9:[[0,0,-9],[0,0,0]]},{win:[.2,.5],lbl:'无缺口端板',only2:1,anchor:[0,dh-.5,0]});
   const fr=endP(true);[-1,1].forEach(a=>[3,14.7].forEach(y=>drill(fr.children[0],new T3.Vector3(a*(dw/2-th),y,0),new T3.Vector3(a,0,0),.3,['10'])));pt(null,fr,[0,1,dd/2-th/2],{10:[[0,-3,12],[0,0,0]]},{win:[.3,.6],lbl:'有缺口端板（缺口朝上）',only2:1,anchor:[-5,dh*.55,th/2],tiltX:{10:[.9,0]}});
   pt(null,m('b',dw-2*th+.6,.5,dd-1.6,GREY),[0,2.6,-.4],{10:[[0,0,dd+8],[0,0,0]]},{win:[0,.3],lbl:'抽屉底板',only2:1});
-  [-1,1].forEach((a,i)=>[3,14.7].forEach((y,j)=>{pt(null,bolt116('x',a),[a*(dw/2-1),y+1,-dd/2+th/2],{9:[[a*9,0,0],[0,0,0]]},{tap:[.5+(i*2+j)*.125,.5+(i*2+j+1)*.125],taps:2,side:a,only2:1,nohole:1});pt(null,bolt116('x',a),[a*(dw/2-1),y+1,dd/2-th/2],{10:[[a*9,0,0],[0,0,0]]},{tap:[.6+(i*2+j)*.1,.6+(i*2+j+1)*.1],taps:2,side:a,only2:1,nohole:1})}));
+  [-1,1].forEach((a,i)=>[3,14.7].forEach((y,j)=>{pt(null,bolt116('x',a),[a*(dw/2-1),y+1,-dd/2+th/2],{9:[[a*9,0,0],[0,0,0]]},{tap:[.5+(i*2+j)*.125,.5+(i*2+j+1)*.125],taps:2,side:a,only2:1,nohole:1,code:'116546'});pt(null,bolt116('x',a),[a*(dw/2-1),y+1,dd/2-th/2],{10:[[a*9,0,0],[0,0,0]]},{tap:[.6+(i*2+j)*.1,.6+(i*2+j+1)*.1],taps:2,side:a,only2:1,nohole:1,code:'116546'})}));
   FR.ham=hammerRig();sc2.add(FR.ham.root);
   const drs=[];[-1,1].forEach(z=>[58.1,38.2,18.2].forEach((y,r)=>{const g=new T3.Group(),f=endP(true);f.position.set(0,1.5,z*14.9);if(z<0)f.rotation.y=0;const bd=box(13.6,16.2,30,WOOD);bd.position.set(0,9.7,0);g.add(bd,f);g.position.set(0,y-8,z*21.8);g.userData.z=z*21.8;sc2.add(g);drs.push({g,z,r})}));FR.drs=drs;
   GS.forEach(G=>{G.g.position.set(0,0,0);G.g.quaternion.identity();G.g.position.set(...G.final)});
@@ -112,7 +112,7 @@ function applyCab(s,tt){
       p._L=L;p.m.position.set(p.pos[0]+lerp(k[0][0],k[1][0],L),p.pos[1]+lerp(k[0][1],k[1][1],L),p.pos[2]+lerp(k[0][2],k[1][2],L));tint(p.m,L<1&&L>0)
     }else{p.m.position.set(...p.pos);tint(p.m,false)}
     if(p.ins&&s==='1')p.m.position.x+=p.ins*(1-ease(clamp(tt/.2)));if(p.spin&&k){const off=k[0]['xyz'.indexOf(p.spin)];p.m.rotation[p.spin]=-(off<0?-1:1)*L*PI*3}if(p.tiltX&&p.tiltX[s]&&k)p.m.rotation.x=lerp(p.tiltX[s][0],p.tiltX[s][1],L)});
-  hammerAt(s,tt,fr);
+  hammerAt(s,tt,fr);if(FOC)FOC.objs.forEach(o=>hl(o,true));
   FR.key.visible=s==='5'&&tt>=.5;if(FR.key.visible){const i=Math.min(3,Math.floor((tt-.5)/.125)),q=FR.bolts[i],o=new T3.Vector3();q.getWorldPosition(o);const a=i%2?1:-1;FR.key.scale.x=o.x<0?-1:1;FR.key.position.copy(o).add(new T3.Vector3(a*7.5,0,0).applyQuaternion(fr.q));FR.key.rotation.x=a*tt*40}
   FR.floor.visible=s!=='9'&&s!=='10';
   FR.drs.forEach((d,i)=>{d.g.visible=s==='11';const L=ease(clamp((tt-i*.06)/.14));d.g.position.z=lerp(d.g.userData.z+d.z*44,d.g.userData.z,L)});
@@ -121,3 +121,23 @@ function applyCab(s,tt){
   const want=new T3.Vector3(Math.sin(th)*Math.cos(ph)*r,Math.sin(ph)*r,Math.cos(th)*Math.cos(ph)*r).add(tp);
   camPos=camPos?camPos.lerp(want,.14):want.clone();camTgt=camTgt?camTgt.lerp(tp,.14):tp.clone();cam.position.copy(camPos);cam.lookAt(camTgt);
 }
+
+/* Answer visuals: focus the camera on a named part, highlight it, replay a window of the step. Names match part codes, cell names, labels and group names. */
+let FOC=null;const GN={'框架':['frameL','frameR'],'支撑腿':['gateL','gateR'],'桌板':['leafL','leafR'],'活动桌板':['leafL','leafR'],'中段桌板':['topC'],'桌面':['topC','leafL','leafR']};
+const vis=o=>{let v=o.visible;o.traverseAncestors(a=>{if(!a.visible)v=false});return v};
+function findObjs(name){const s=String(name||'').replace(/[\s，。]/g,'');if(!s)return[];const cell=(typeof CELLS!=='undefined'?CELLS:[]).find(x=>x.code===s||x.name===s)||(typeof CELLS!=='undefined'?CELLS:[]).find(x=>s.includes(x.name));const code=cell?cell.code:/^\d{5,}$/.test(s)?s:null;
+  const L=CP.filter(p=>{const c=p.code||codeOf(p.m);if(code)return c===code;return p.lbl&&(p.lbl.includes(s)||s.includes(p.lbl.replace(/（.*$/,'')))});const now=L.filter(p=>p.keys[cur]);let o=(now.length?now:L).map(p=>p.m);
+  if(!o.length&&!code){const g=GN[s]||Object.keys(GN).filter(k=>s.includes(k)).map(k=>GN[k]).flat();o=g.map(n=>FR[n]&&FR[n].g).filter(Boolean);
+    if(/抽屉/.test(s)&&cur==='11')o=FR.drs.map(d=>d.g);if(/定位销/.test(s))o=[FR.peg];if(/扳手/.test(s))o=[FR.key];if(/锤/.test(s))o=[FR.ham.root];if(code==='120139'||/钢条/.test(s))o=CP.filter(p=>codeOf(p.m)==='120139').map(p=>p.m)}
+  if(!o.length&&code==='10083377')o=[FR.key];return o}
+function hl(m,on){m.traverse(o=>{const M=o.material;if(!o.isMesh||!M||!M.color||M.isMeshBasicMaterial)return;if(M.map){if(M.emissive)M.emissive.setHex(on?0x8a3a00:0);return}if(on){if(M.color.getHex()!==HOT)M.userData.hb=M.color.getHex();M.color.setHex(HOT)}else if(M.userData.hb!=null)M.color.setHex(M.userData.hb)})}
+function focus(name,w){unfocus(1);if(!cabReady||!cur||IDS.includes(cur))return null;const L=findObjs(name);if(!L.length)return null;const w0=Array.isArray(w)&&w.length===2&&w.every(x=>isFinite(+x))?[clamp(+w[0]),clamp(Math.max(+w[0]+.05,+w[1]))]:null;
+  poseAt(w0?w0[1]:Math.min(t,1));const objs=L.filter(vis);if(!objs.length){poseAt(Math.min(t,1));return null}const box=new T3.Box3();objs.forEach(o=>box.expandByObject(o));poseAt(Math.min(t,1));
+  const ct=box.getCenter(new T3.Vector3()),r=box.getSize(new T3.Vector3()).length()/2,vt=Math.tan(cam.fov*PI/360)*Math.min(1,cam.aspect);
+  FOC={objs,w:w0,ct,D:Math.max(r/vt*1.25,16),d:viewDir(),n:0,name:String(name),stop:false};if(window._resetView)window._resetView();
+  if(w0){t=w0[0];playing=true;const p=document.getElementById('animPlay');if(p)p.textContent='暂停'}
+  const d=document.createElement('div');d.className='alabel foc';d.textContent=(cell=>cell?cell.n+' 格 · '+cell.name:String(name))((typeof CELLS!=='undefined'?CELLS:[]).find(x=>x.code===name||x.name===name));d.style.cssText='background:#f07a22;color:#fff;border-color:#f07a22';document.getElementById('animLabels').append(d);const ln=document.createElementNS('http://www.w3.org/2000/svg','line');document.getElementById('animLines').append(ln);FOC.lbl={obj:objs[0],win:[-1,2],d,line:ln,text:d.textContent,dir:false};LBL.push(FOC.lbl);
+  return{part:FOC.name,count:objs.length,window:w0}}
+function focLoop(){if(!FOC||!FOC.w||!playing)return;if(t>FOC.w[1]+.08){if(++FOC.n>=3){t=Math.min(FOC.w[1],.97);playing=false;FOC.stop=true;const p=document.getElementById('animPlay');if(p)p.textContent='播放'}else t=FOC.w[0]}}
+function focCam(){const th=Math.atan2(FOC.d.x,FOC.d.z)+az,ph=clamp(Math.asin(FOC.d.y)+el,-.3,1.35),v=new T3.Vector3(Math.sin(th)*Math.cos(ph),Math.sin(ph),Math.cos(th)*Math.cos(ph)).multiplyScalar(FOC.D).add(FOC.ct);if(!FOC.cp){FOC.cp=camPos.clone();FOC.ctg=camTgt.clone()}FOC.cp.lerp(v,.2);FOC.ctg.lerp(FOC.ct,.2);camPos.copy(FOC.cp);camTgt.copy(FOC.ctg);cam.position.copy(camPos);cam.lookAt(camTgt)}
+function unfocus(quiet){if(!FOC)return;const f=FOC;FOC=null;f.objs.forEach(o=>hl(o,false));if(f.lbl){f.lbl.d.remove();f.lbl.line.remove();LBL=LBL.filter(x=>x!==f.lbl)}if(f.stop&&!quiet){playing=true;const p=document.getElementById('animPlay');if(p)p.textContent='暂停'}if(!quiet)computeFit()}

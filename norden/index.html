@@ -221,7 +221,7 @@ tr:last-child td{border-bottom:none}
 
 <script>window.PRODUCT={name:"IKEA NORDEN 折叠桌",steps:11,say:{"1":"先拿两块连接木块，每块两头各插两根木销。然后把木块放到腿柱下面那段中间，再把两片框架往里合，让木销对上腿柱内侧的孔。","2":"把两根钢条搭到框架顶上，有喇叭口的那面朝上，别放反了。每根钢条两头各拧一颗短螺丝。","3":"先把桌面翻过来，朝下放在软垫上。两块活动桌板上各放一个小垫块，每个拧两颗木螺丝就行。","4":"合页要跨在拼缝上，圆轴朝上。每条缝装两个，一共四个。每个合页要拧八颗短螺丝，孔对准桌板上的小孔再拧。","5":"把框架倒过来，两片支撑腿收进框架两侧。先把四个横销放进连接木块，用一字螺丝刀转一下，调好方向。然后用内六角扳手，把长螺栓穿过腿柱，拧进横销里。","6":"把倒着的框架放到桌面中间。每根钢条先拧中间那个孔，再拧两边的椭圆孔，一共六颗。","7":"拿锤子，把四个脚垫敲进腿端。先放正，再轻轻敲到位，别太用力。","8":"用锤子把两个止动垫敲进支撑腿底端。然后把两边桌板折起来，这时候叫上另一个人，一起把桌子翻回来。","9":"这一步做抽屉。长板的凸条朝外，靠上；里面的槽朝里，靠下。把没缺口的端板放到两块长板中间，然后用锤子从两边敲螺栓，上下各一颗，一共四颗。","10":"把底板顺着槽滑进去。再转入有缺口的那块端板，缺口朝上。最后在这一头敲进四颗螺栓，上下各一颗。","11":"快完成了。先把抽屉从两头推进去，每头三个。然后抬起桌板，把支撑腿转出来，再慢慢放下桌板，让定位销进到下面的孔里。放下前先看一眼支撑腿到位了没有。"}
 ,loopEnd:"10",loops:{}}</script>
-<script src="../shim.js?v=fa93843d"></script>
+<script src="../shim.js?v=2859ef9d"></script>
 <script>
 /* Drawer animation, steps 35-44. Proportions are estimates: the manual gives no panel sizes. */
 const Anim=(()=>{
@@ -396,13 +396,13 @@ function buildCab(){
   [-1,1].forEach((z,i)=>{const bk=box(BW,5,3,WOOD);pt(ties,bk,[0,YB,z*(LZ/2)],{1:[[0,0,z*14],[0,0,0]]},{i,of:2,win:[.2,.45],lbl:'连接木块'});
     [-1,1].forEach(a=>{drill(bk,new T3.Vector3(a*BW/2,0,0),new T3.Vector3(a,0,0),.42,['5']);[-1.5,1.5].forEach(y=>pt(ties,dowel('x',a,.4,3),[a*(BW/2-.1),YB+y,z*(LZ/2)],{1:[[0,0,z*14],[0,0,0]]},{i,of:2,win:[.2,.45],ins:a*5}));
       const fg=(a<0?fL:fR).g.children[0],post=fg.userData.posts[z<0?0:1];[-1.5,1.5].forEach(y=>drill(post,new T3.Vector3(-a*PS/2,YB+y,0),new T3.Vector3(-a,0,0),.45,['1']));drill(post,new T3.Vector3(a*PS/2,YB,0),new T3.Vector3(a,0,0),.5,['5']);
-      pt(ties,barrel('y',-1),[a*(BW/2-3.2),YB,z*(LZ/2)],{5:[[0,-9,0],[0,0,0]]},{i:(z+1)+(a+1)/2,of:4,win:[.2,.5],spin:'y',on:bk});
-      const blt=pt(ties,longBolt('x',a),[a*(BW/2+PS-5.35),YB,z*(LZ/2)],{5:[[a*12,0,0],[0,0,0]]},{i:(z+1)+(a+1)/2,of:4,win:[.5,1],spin:'x',nohole:1,seq:1});FR.bolts.push(blt)})});
+      pt(ties,barrel('y',-1),[a*(BW/2-3.2),YB,z*(LZ/2)],{5:[[0,-9,0],[0,0,0]]},{i:(z+1)+(a+1)/2,of:4,win:[.2,.5],spin:'y',on:bk,code:'121121'});
+      const blt=pt(ties,longBolt('x',a),[a*(BW/2+PS-5.35),YB,z*(LZ/2)],{5:[[a*12,0,0],[0,0,0]]},{i:(z+1)+(a+1)/2,of:4,win:[.5,1],spin:'x',nohole:1,seq:1,code:'105330'});FR.bolts.push(blt)})});
   const ky=keyL();ky.position.set(0,0,0);sc2.add(ky);FR.key=ky;
   // steel bars on the top rails
   [[fL,-1],[fR,1]].forEach(([G,a])=>[-24,24].forEach(z=>drill(G.g.children[0].userData.top,new T3.Vector3(0,1.7,z),new T3.Vector3(0,1,0),.3,['2'])));
-  [-1,1].forEach((z,i)=>{const b=bar();pt(fL,b,[BW/2+PS/2,H0/2-.125,z*24],{2:[[0,10,0],[0,0,0]]},{i,of:2,win:[0,.5]});[-1,1].forEach((a,j)=>pt(fL,screw('y',1,{r:.3,len:1.1}),[BW/2+PS/2+a*8.4,H0/2-.83,z*24],{2:[[0,9,0],[0,0,0]]},{i:i*2+j,of:4,win:[.5,1],spin:'y',nohole:1}));
-    [-5.5,0,5.5].forEach((x,j)=>pt(fL,screw('y',-1,{r:.34,len:1.2}),[BW/2+PS/2+x,H0/2+.62,z*24],{6:[[0,-14,0],[0,0,0]]},{i:x===0?i:i*2+(x>0?1:0),of:x===0?2:4,win:x===0?[.55,.72]:[.72,1],spin:'y',nohole:1}))});
+  [-1,1].forEach((z,i)=>{const b=bar();pt(fL,b,[BW/2+PS/2,H0/2-.125,z*24],{2:[[0,10,0],[0,0,0]]},{i,of:2,win:[0,.5]});[-1,1].forEach((a,j)=>pt(fL,screw('y',1,{r:.3,len:1.1}),[BW/2+PS/2+a*8.4,H0/2-.83,z*24],{2:[[0,9,0],[0,0,0]]},{i:i*2+j,of:4,win:[.5,1],spin:'y',nohole:1,code:'110733'}));
+    [-5.5,0,5.5].forEach((x,j)=>pt(fL,screw('y',-1,{r:.34,len:1.2}),[BW/2+PS/2+x,H0/2+.62,z*24],{6:[[0,-14,0],[0,0,0]]},{i:x===0?i:i*2+(x>0?1:0),of:x===0?2:4,win:x===0?[.55,.72]:[.72,1],spin:'y',nohole:1,code:'110733'}))});
   // table top, built upright then shown inverted
   const cP=box(CW-.24,TK,LZ+8,WOOD),lP=box(LW,TK,LZ+8,WOOD),rP=box(LW,TK,LZ+8,WOOD);
   const seq={1:null,2:null,3:[F,0],4:[F,0],5:null,6:[F,0],7:[F,0],9:null,10:null};
@@ -412,14 +412,14 @@ function buildCab(){
   const rf=grp('leafR',null,[CW/2,H0+TK/2,0],{...seq,8:[F,bendR],11:[bendR,{rz:.04}]},{startAt:{8:.28,11:.55},moveAt:{8:.6,11:.7},drop:{11:[.88,1]},piv:[0,-TK/2-.2,0],anchor:[LW/2,0,0]});rf.g.add(at(rP,LW/2,0,0));
   [-1,1].forEach(z=>[-5.5,0,5.5].forEach(x=>drill(cP,new T3.Vector3(x,-TK/2,z*24),new T3.Vector3(0,-1,0),.42,['6'])));
   [[lf,-1,lP],[rf,1,rP]].forEach(([G,a,P])=>{[-1,1].forEach(z=>drill(P,new T3.Vector3(a*18.5,-TK/2,z*.9),new T3.Vector3(0,-1,0),.34,['3']));[-BZ,BZ].forEach(z=>{const r=box(LW-9,1.3,2.6,WOOD);r.position.set(a*(LW/2+1.5),-TK/2-.65,z);[1].forEach(()=>{if(!((G===rf&&z<0)||(G===lf&&z>0)))drill(r,new T3.Vector3(a*16.5,-.65,0),new T3.Vector3(0,-1,0),.62,[])});G.g.add(r);if(G===rf&&z<0)drill(r,new T3.Vector3(16.5,-.65,0),new T3.Vector3(0,-1,0),.62,['11']);if(G===lf&&z>0)drill(r,new T3.Vector3(-16.5,-.65,0),new T3.Vector3(0,-1,0),.62,['11'])});const bl=box(5,1.3,4,WOOD);[-1,1].forEach(z=>drill(bl,new T3.Vector3(0,-.65,z*.9),new T3.Vector3(0,-1,0),.5,['3']));pt(G,bl,[a*50,-TK/2-.65,0],{3:[[0,-10,0],[0,0,0]]},{win:[0,.5],lbl:'垫块'});
-    [-1,1].forEach((z,i)=>pt(G,screw('y',-1,{r:.3,len:2.2}),[a*50,-TK/2+.005,z*.9],{3:[[0,-9,0],[0,0,0]]},{i,of:2,win:[.5,1],spin:'y',nohole:1}))});
+    [-1,1].forEach((z,i)=>pt(G,screw('y',-1,{r:.3,len:2.2}),[a*50,-TK/2+.005,z*.9],{3:[[0,-9,0],[0,0,0]]},{i,of:2,win:[.5,1],spin:'y',nohole:1,code:'117494'}))});
   [[-1,lf,lP],[1,rf,rP]].forEach(([a,LF,P],i)=>[-31,31].forEach((z,j)=>{
     pt(ct,hingeP(-a,true),[a*CW/2,-TK/2-.14,z],{4:[[0,-9,0],[0,0,0]]},{i:i*2+j,of:4,win:[0,.45]});pt(LF,hingeP(a,false),[0,-TK/2-.14,z],{4:[[0,-9,0],[0,0,0]]},{i:i*2+j,of:4,win:[0,.45]});
-    for(let k=0;k<8;k++){const sx=(k%4<2?-1:1)*(k%2?3:.9),sz=k<4?-1.8:1.8,inner=sx*a<0;drill(inner?cP:P,new T3.Vector3(inner?a*CW/2+sx:sx-a*LW/2,-TK/2,z+sz),new T3.Vector3(0,-1,0),.3,['4']);pt(inner?ct:LF,screw('y',-1,{r:.26,len:1.2}),[inner?a*CW/2+sx:sx,-TK/2+.55,z+sz],{4:[[0,-8,0],[0,0,0]]},{i:i*2+j,of:4,win:[.45,1],nohole:1})}}));
+    for(let k=0;k<8;k++){const sx=(k%4<2?-1:1)*(k%2?3:.9),sz=k<4?-1.8:1.8,inner=sx*a<0;drill(inner?cP:P,new T3.Vector3(inner?a*CW/2+sx:sx-a*LW/2,-TK/2,z+sz),new T3.Vector3(0,-1,0),.3,['4']);pt(inner?ct:LF,screw('y',-1,{r:.26,len:1.2}),[inner?a*CW/2+sx:sx,-TK/2+.55,z+sz],{4:[[0,-8,0],[0,0,0]]},{i:i*2+j,of:4,win:[.45,1],nohole:1,code:'110733'})}}));
   // feet and pads on leg ends
   [[fL,-1,-1],[fL,-1,1],[fR,1,-1],[fR,1,1]].forEach(([G,a,z],i)=>drill(G.g.children[0].userData.posts[z<0?0:1],new T3.Vector3(0,-H0/2,0),new T3.Vector3(0,-1,0),.75,['7']));
-  [[fL,-1,-1],[fL,-1,1],[fR,1,-1],[fR,1,1]].forEach(([G,a,z],i)=>pt(G,foot('y',-1),[0,-H0/2+.67,z*(LZ/2)],{7:[[0,-10,0],[0,0,0]]},{tap:[i/4,(i+1)/4],taps:3,side:a}));
-  [gt,gr].forEach((G,i)=>{const s=i?1:-1;[-.9,.9].forEach(x=>drill(G.g.children[0].children[0]||G.g.children[0],new T3.Vector3(x,-(H0-1.3)/2,0),new T3.Vector3(0,-1,0),.45,['8']));pt(G,pad('y',-1),[s*GL,-H0/2+.65,0],{8:[[0,-9,0],[0,0,0]]},{tap:[i*.135,(i+1)*.135],taps:2,side:s});if(i===0)FR.padObj=G.g.children[G.g.children.length-1]});
+  [[fL,-1,-1],[fL,-1,1],[fR,1,-1],[fR,1,1]].forEach(([G,a,z],i)=>pt(G,foot('y',-1),[0,-H0/2+.67,z*(LZ/2)],{7:[[0,-10,0],[0,0,0]]},{tap:[i/4,(i+1)/4],taps:3,side:a,code:'107271'}));
+  [gt,gr].forEach((G,i)=>{const s=i?1:-1;[-.9,.9].forEach(x=>drill(G.g.children[0].children[0]||G.g.children[0],new T3.Vector3(x,-(H0-1.3)/2,0),new T3.Vector3(0,-1,0),.45,['8']));pt(G,pad('y',-1),[s*GL,-H0/2+.65,0],{8:[[0,-9,0],[0,0,0]]},{tap:[i*.135,(i+1)*.135],taps:2,side:s,code:'156508'});if(i===0)FR.padObj=G.g.children[G.g.children.length-1]});
   // drawer parts for steps 9-10, one drawer at the origin
   const dw=14.8,dh=16.4,dd=30,th=1.8;const D={};
   const dg=grp('drawer',null,[0,0,0],{},{});sc2.remove(dg.g);GS.pop();
@@ -429,7 +429,7 @@ function buildCab(){
   const be=endP(false);[-1,1].forEach(a=>[3,14.7].forEach(y=>drill(be.children[0],new T3.Vector3(a*(dw/2-th),y,0),new T3.Vector3(a,0,0),.3,['9'])));pt(null,be,[0,1,-dd/2+th/2],{9:[[0,0,-9],[0,0,0]]},{win:[.2,.5],lbl:'无缺口端板',only2:1,anchor:[0,dh-.5,0]});
   const fr=endP(true);[-1,1].forEach(a=>[3,14.7].forEach(y=>drill(fr.children[0],new T3.Vector3(a*(dw/2-th),y,0),new T3.Vector3(a,0,0),.3,['10'])));pt(null,fr,[0,1,dd/2-th/2],{10:[[0,-3,12],[0,0,0]]},{win:[.3,.6],lbl:'有缺口端板（缺口朝上）',only2:1,anchor:[-5,dh*.55,th/2],tiltX:{10:[.9,0]}});
   pt(null,m('b',dw-2*th+.6,.5,dd-1.6,GREY),[0,2.6,-.4],{10:[[0,0,dd+8],[0,0,0]]},{win:[0,.3],lbl:'抽屉底板',only2:1});
-  [-1,1].forEach((a,i)=>[3,14.7].forEach((y,j)=>{pt(null,bolt116('x',a),[a*(dw/2-1),y+1,-dd/2+th/2],{9:[[a*9,0,0],[0,0,0]]},{tap:[.5+(i*2+j)*.125,.5+(i*2+j+1)*.125],taps:2,side:a,only2:1,nohole:1});pt(null,bolt116('x',a),[a*(dw/2-1),y+1,dd/2-th/2],{10:[[a*9,0,0],[0,0,0]]},{tap:[.6+(i*2+j)*.1,.6+(i*2+j+1)*.1],taps:2,side:a,only2:1,nohole:1})}));
+  [-1,1].forEach((a,i)=>[3,14.7].forEach((y,j)=>{pt(null,bolt116('x',a),[a*(dw/2-1),y+1,-dd/2+th/2],{9:[[a*9,0,0],[0,0,0]]},{tap:[.5+(i*2+j)*.125,.5+(i*2+j+1)*.125],taps:2,side:a,only2:1,nohole:1,code:'116546'});pt(null,bolt116('x',a),[a*(dw/2-1),y+1,dd/2-th/2],{10:[[a*9,0,0],[0,0,0]]},{tap:[.6+(i*2+j)*.1,.6+(i*2+j+1)*.1],taps:2,side:a,only2:1,nohole:1,code:'116546'})}));
   FR.ham=hammerRig();sc2.add(FR.ham.root);
   const drs=[];[-1,1].forEach(z=>[58.1,38.2,18.2].forEach((y,r)=>{const g=new T3.Group(),f=endP(true);f.position.set(0,1.5,z*14.9);if(z<0)f.rotation.y=0;const bd=box(13.6,16.2,30,WOOD);bd.position.set(0,9.7,0);g.add(bd,f);g.position.set(0,y-8,z*21.8);g.userData.z=z*21.8;sc2.add(g);drs.push({g,z,r})}));FR.drs=drs;
   GS.forEach(G=>{G.g.position.set(0,0,0);G.g.quaternion.identity();G.g.position.set(...G.final)});
@@ -456,7 +456,7 @@ function applyCab(s,tt){
       p._L=L;p.m.position.set(p.pos[0]+lerp(k[0][0],k[1][0],L),p.pos[1]+lerp(k[0][1],k[1][1],L),p.pos[2]+lerp(k[0][2],k[1][2],L));tint(p.m,L<1&&L>0)
     }else{p.m.position.set(...p.pos);tint(p.m,false)}
     if(p.ins&&s==='1')p.m.position.x+=p.ins*(1-ease(clamp(tt/.2)));if(p.spin&&k){const off=k[0]['xyz'.indexOf(p.spin)];p.m.rotation[p.spin]=-(off<0?-1:1)*L*PI*3}if(p.tiltX&&p.tiltX[s]&&k)p.m.rotation.x=lerp(p.tiltX[s][0],p.tiltX[s][1],L)});
-  hammerAt(s,tt,fr);
+  hammerAt(s,tt,fr);if(FOC)FOC.objs.forEach(o=>hl(o,true));
   FR.key.visible=s==='5'&&tt>=.5;if(FR.key.visible){const i=Math.min(3,Math.floor((tt-.5)/.125)),q=FR.bolts[i],o=new T3.Vector3();q.getWorldPosition(o);const a=i%2?1:-1;FR.key.scale.x=o.x<0?-1:1;FR.key.position.copy(o).add(new T3.Vector3(a*7.5,0,0).applyQuaternion(fr.q));FR.key.rotation.x=a*tt*40}
   FR.floor.visible=s!=='9'&&s!=='10';
   FR.drs.forEach((d,i)=>{d.g.visible=s==='11';const L=ease(clamp((tt-i*.06)/.14));d.g.position.z=lerp(d.g.userData.z+d.z*44,d.g.userData.z,L)});
@@ -465,6 +465,26 @@ function applyCab(s,tt){
   const want=new T3.Vector3(Math.sin(th)*Math.cos(ph)*r,Math.sin(ph)*r,Math.cos(th)*Math.cos(ph)*r).add(tp);
   camPos=camPos?camPos.lerp(want,.14):want.clone();camTgt=camTgt?camTgt.lerp(tp,.14):tp.clone();cam.position.copy(camPos);cam.lookAt(camTgt);
 }
+
+/* Answer visuals: focus the camera on a named part, highlight it, replay a window of the step. Names match part codes, cell names, labels and group names. */
+let FOC=null;const GN={'框架':['frameL','frameR'],'支撑腿':['gateL','gateR'],'桌板':['leafL','leafR'],'活动桌板':['leafL','leafR'],'中段桌板':['topC'],'桌面':['topC','leafL','leafR']};
+const vis=o=>{let v=o.visible;o.traverseAncestors(a=>{if(!a.visible)v=false});return v};
+function findObjs(name){const s=String(name||'').replace(/[\s，。]/g,'');if(!s)return[];const cell=(typeof CELLS!=='undefined'?CELLS:[]).find(x=>x.code===s||x.name===s)||(typeof CELLS!=='undefined'?CELLS:[]).find(x=>s.includes(x.name));const code=cell?cell.code:/^\d{5,}$/.test(s)?s:null;
+  const L=CP.filter(p=>{const c=p.code||codeOf(p.m);if(code)return c===code;return p.lbl&&(p.lbl.includes(s)||s.includes(p.lbl.replace(/（.*$/,'')))});const now=L.filter(p=>p.keys[cur]);let o=(now.length?now:L).map(p=>p.m);
+  if(!o.length&&!code){const g=GN[s]||Object.keys(GN).filter(k=>s.includes(k)).map(k=>GN[k]).flat();o=g.map(n=>FR[n]&&FR[n].g).filter(Boolean);
+    if(/抽屉/.test(s)&&cur==='11')o=FR.drs.map(d=>d.g);if(/定位销/.test(s))o=[FR.peg];if(/扳手/.test(s))o=[FR.key];if(/锤/.test(s))o=[FR.ham.root];if(code==='120139'||/钢条/.test(s))o=CP.filter(p=>codeOf(p.m)==='120139').map(p=>p.m)}
+  if(!o.length&&code==='10083377')o=[FR.key];return o}
+function hl(m,on){m.traverse(o=>{const M=o.material;if(!o.isMesh||!M||!M.color||M.isMeshBasicMaterial)return;if(M.map){if(M.emissive)M.emissive.setHex(on?0x8a3a00:0);return}if(on){if(M.color.getHex()!==HOT)M.userData.hb=M.color.getHex();M.color.setHex(HOT)}else if(M.userData.hb!=null)M.color.setHex(M.userData.hb)})}
+function focus(name,w){unfocus(1);if(!cabReady||!cur||IDS.includes(cur))return null;const L=findObjs(name);if(!L.length)return null;const w0=Array.isArray(w)&&w.length===2&&w.every(x=>isFinite(+x))?[clamp(+w[0]),clamp(Math.max(+w[0]+.05,+w[1]))]:null;
+  poseAt(w0?w0[1]:Math.min(t,1));const objs=L.filter(vis);if(!objs.length){poseAt(Math.min(t,1));return null}const box=new T3.Box3();objs.forEach(o=>box.expandByObject(o));poseAt(Math.min(t,1));
+  const ct=box.getCenter(new T3.Vector3()),r=box.getSize(new T3.Vector3()).length()/2,vt=Math.tan(cam.fov*PI/360)*Math.min(1,cam.aspect);
+  FOC={objs,w:w0,ct,D:Math.max(r/vt*1.25,16),d:viewDir(),n:0,name:String(name),stop:false};if(window._resetView)window._resetView();
+  if(w0){t=w0[0];playing=true;const p=document.getElementById('animPlay');if(p)p.textContent='暂停'}
+  const d=document.createElement('div');d.className='alabel foc';d.textContent=(cell=>cell?cell.n+' 格 · '+cell.name:String(name))((typeof CELLS!=='undefined'?CELLS:[]).find(x=>x.code===name||x.name===name));d.style.cssText='background:#f07a22;color:#fff;border-color:#f07a22';document.getElementById('animLabels').append(d);const ln=document.createElementNS('http://www.w3.org/2000/svg','line');document.getElementById('animLines').append(ln);FOC.lbl={obj:objs[0],win:[-1,2],d,line:ln,text:d.textContent,dir:false};LBL.push(FOC.lbl);
+  return{part:FOC.name,count:objs.length,window:w0}}
+function focLoop(){if(!FOC||!FOC.w||!playing)return;if(t>FOC.w[1]+.08){if(++FOC.n>=3){t=Math.min(FOC.w[1],.97);playing=false;FOC.stop=true;const p=document.getElementById('animPlay');if(p)p.textContent='播放'}else t=FOC.w[0]}}
+function focCam(){const th=Math.atan2(FOC.d.x,FOC.d.z)+az,ph=clamp(Math.asin(FOC.d.y)+el,-.3,1.35),v=new T3.Vector3(Math.sin(th)*Math.cos(ph),Math.sin(ph),Math.cos(th)*Math.cos(ph)).multiplyScalar(FOC.D).add(FOC.ct);if(!FOC.cp){FOC.cp=camPos.clone();FOC.ctg=camTgt.clone()}FOC.cp.lerp(v,.2);FOC.ctg.lerp(FOC.ct,.2);camPos.copy(FOC.cp);camTgt.copy(FOC.ctg);cam.position.copy(camPos);cam.lookAt(camTgt)}
+function unfocus(quiet){if(!FOC)return;const f=FOC;FOC=null;f.objs.forEach(o=>hl(o,false));if(f.lbl){f.lbl.d.remove();f.lbl.line.remove();LBL=LBL.filter(x=>x!==f.lbl)}if(f.stop&&!quiet){playing=true;const p=document.getElementById('animPlay');if(p)p.textContent='暂停'}if(!quiet)computeFit()}
 
 function load(){return loading||(loading=new Promise((ok,no)=>{if(window.THREE)return ok();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';s.onload=ok;s.onerror=no;document.head.append(s)}))}
 function mat(c){return new T3.MeshLambertMaterial({color:c})}
@@ -522,7 +542,7 @@ function computeFit(){if(!full||!cur||!ready||cur==='8'||cur==='11'){FIT=null;re
   const ct=box.getCenter(new T3.Vector3()),d=viewDir(),up=new T3.Vector3(0,1,0),rt=new T3.Vector3().crossVectors(up,d).normalize(),u=new T3.Vector3().crossVectors(d,rt).normalize(),vt=Math.tan(cam.fov*Math.PI/360),ht=vt*cam.aspect;let D=0;
   for(const x of[box.min.x,box.max.x])for(const y of[box.min.y,box.max.y])for(const z of[box.min.z,box.max.z]){const r=new T3.Vector3(x,y,z).sub(ct),a=Math.abs(r.dot(rt)),b=Math.abs(r.dot(u)),c=r.dot(d);D=Math.max(D,a/ht+c,b/vt+c)}
   FIT={ct,d,D:Math.max(D*1.14,26)}}
-function camFit(){if(!FIT)return;const th=Math.atan2(FIT.d.x,FIT.d.z)+az,ph=clamp(Math.asin(FIT.d.y)+el,-.3,1.35),v=new T3.Vector3(Math.sin(th)*Math.cos(ph),Math.sin(ph),Math.cos(th)*Math.cos(ph)).multiplyScalar(FIT.D).add(FIT.ct);
+function camFit(){if(FOC)return focCam();if(!FIT)return;const th=Math.atan2(FIT.d.x,FIT.d.z)+az,ph=clamp(Math.asin(FIT.d.y)+el,-.3,1.35),v=new T3.Vector3(Math.sin(th)*Math.cos(ph),Math.sin(ph),Math.cos(th)*Math.cos(ph)).multiplyScalar(FIT.D).add(FIT.ct);
   camPos.lerp(v,.16);camTgt.lerp(FIT.ct,.16);cam.position.copy(camPos);cam.lookAt(camTgt)}
 function setFull(on){const box0=document.getElementById('anim'),b=document.getElementById('animFull');full=on;box0.classList.toggle('full',on);document.documentElement.classList.toggle('noscroll',on);b.textContent=on?'退出全屏':'全屏';
   if(on){const q=box0.requestFullscreen&&box0.requestFullscreen();if(q&&q.catch)q.catch(()=>{})}else if(document.fullscreenElement){const q=document.exitFullscreen();if(q&&q.catch)q.catch(()=>{})}setTimeout(()=>{size();computeFit()},80)}
@@ -556,14 +576,14 @@ function apply(){
   camPos=camPos?camPos.lerp(want,.12):want.clone();camTgt=camTgt?camTgt.lerp(tp,.12):tp.clone();cam.position.copy(camPos);cam.lookAt(camTgt);
 }
 function frame(ts){raf=requestAnimationFrame(frame);if(!ready||!cur)return;const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
-  if(playing){t+=dt*speed/4/(DUR[cur]||1);if(auto&&t>=1.12){if(zoomPt||!nextAuto())t=1.12}else if(t>=1.15)t=0}
+  if(playing){t+=dt*speed/4/(DUR[cur]||1);focLoop();if(auto&&t>=1.12){if(zoomPt||!nextAuto())t=1.12}else if(t>=1.15)t=0}
   const sl=document.getElementById('animT');if(sl&&document.activeElement!==sl)sl.value=Math.round(Math.min(t,1)*100);
   const keep=t;t=Math.min(t,1);if(IDS.includes(cur))apply();else applyCab(cur,t);camFit();ren.render(curScene(),cam);drawLabels();drawZoom();t=keep}
 const CAP={'35':'4 个 118331 拧入前板','36':'每块侧板插 2 根木销','37':'两块侧板插到前板上','38':'4 个 120076 放入并转动锁紧','39':'灰色底板沿槽插入','40':'用锤子敲入 1 根联锁杆','41':'后板盖到两块侧板上','42':'先插 4 个 145718，再锁 4 个 120076','43':'抽屉倒扣放桌面，装滑轨并拧 6 颗螺丝','44':'翻回正面，沿滑轨推入柜体'};
 function fail(){failed=true;document.getElementById('anim').hidden=true}
 async function show(id){const box0=document.getElementById('anim');if(window._resetView)window._resetView();const on=IDS.includes(id)||CIDS.includes(id);box0.hidden=!on||failed;
   if(!on){if(full)setFull(false);cur=null;cancelAnimationFrame(raf);raf=0;return}
-  closeZoom();const lb=byId[id].label||('第 '+id+' 步');document.getElementById('animCap').textContent=lb+' · '+(CAP[id]||byId[id].title);cur=id;t=0;az=0;el=0;
+  unfocus(1);closeZoom();const lb=byId[id].label||('第 '+id+' 步');document.getElementById('animCap').textContent=lb+' · '+(CAP[id]||byId[id].title);cur=id;t=0;az=0;el=0;
   try{await load();if(!ready){build();buildCab();makeLook(scene);makeLook(sc2);setLook(realLook)}computeFit();buildLabels();if(!raf){last=performance.now();raf=requestAnimationFrame(frame)}}catch(e){fail()}}
 const mq=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;if(mq)playing=false;
 function ui(){const p=document.getElementById('animPlay');p.textContent=playing?'暂停':'播放';
@@ -585,7 +605,7 @@ function ui(){const p=document.getElementById('animPlay');p.textContent=playing?
   document.getElementById('zoomPlay').onclick=()=>{p.onclick();document.getElementById('zoomPlay').textContent=p.textContent};
   addEventListener('resize',sizeZoom);
   document.getElementById('animRe').onclick=()=>{t=0;playing=true;p.textContent='暂停'}}
-return{_fit:()=>FIT&&{D:FIT.D},setNext:f=>{nextAuto=f},stopAuto:()=>{auto=false;const a=document.getElementById('animAuto');a.textContent='连续播放';a.classList.remove('primary');const p=document.getElementById('animPlay');playing=false;p.textContent='播放'},show,ui,_zoom:()=>!!zoomPt,_set:(id,v)=>{cur=id;t=v;playing=false}};
+return{focus,unfocus:()=>unfocus(),_foc:()=>FOC&&{name:FOC.name,n:FOC.objs.length,D:FOC.D,w:FOC.w,ct:FOC.ct.toArray(),hot:FOC.objs.some(o=>{let h=false;o.traverse(q=>{const M=q.material;if(q.isMesh&&M&&(M.color&&M.color.getHex()===HOT||M.emissive&&M.emissive.getHex()===0x8a3a00))h=true});return h})},_cam:()=>cam&&cam.position.toArray(),_t:()=>t,_fit:()=>FIT&&{D:FIT.D},setNext:f=>{nextAuto=f},stopAuto:()=>{auto=false;const a=document.getElementById('animAuto');a.textContent='连续播放';a.classList.remove('primary');const p=document.getElementById('animPlay');playing=false;p.textContent='播放'},show,ui,_zoom:()=>!!zoomPt,_set:(id,v)=>{cur=id;t=v;playing=false}};
 })();
 
 const STEPS=[{"id":"1","page":3,"crop":[0,0.6,1,0.95],"title":"用连接木块连接两片框架","do":["在 2 块连接木块两端各插 2 根 101352，共 8 根。","把木块放到两端腿柱下部之间。","把两片框架向中间合拢，让木销插入腿柱。"],"parts":[["101352",8]],"warn":[],"unsure":[]},{"id":"2","page":4,"crop":[0,0,1,0.56],"title":"在框架顶部装钢条","do":["把 2 根 120139 放到框架顶部，按图保持沉孔朝上。","每根用 2 颗 110733 固定两端，共 4 颗。"],"parts":[["120139",2],["110733",4]],"warn":["钢条两端的沉孔要朝上，打叉的是错的。"],"unsure":[]},{"id":"3","page":5,"crop":[0,0,1,0.42],"title":"在桌板下面装垫块","do":["桌面朝下放在软垫上。","在两块桌板的小木块上各拧 2 颗 117494，共 4 颗。"],"parts":[["117494",4]],"warn":[],"unsure":[]},{"id":"4","page":5,"crop":[0,0.47,1,0.96],"title":"安装铰链","do":["在两条拼缝处各装 2 个 10005601，共 4 个。","每个铰链用 8 颗 110733，共 32 颗。"],"parts":[["10005601",4],["110733",32]],"warn":[],"unsure":[]},{"id":"5","page":6,"crop":[0,0,1,0.96],"title":"装入横销和长螺栓","do":["把框架倒置，把两片支撑腿收进框架两侧。","把 4 个 121121 放入连接木块的孔，用一字螺丝刀调整到位。","用 10083377 内六角扳手把 4 根 105330 穿过腿柱，拧入 121121。"],"parts":[["121121",4],["105330",4]],"warn":[],"unsure":["支撑腿没有单独的安装步骤，这里推断铰接部分已预装。"]},{"id":"6","page":7,"crop":[0,0,1,0.82],"title":"把框架固定到桌面","do":["把倒置的框架放到桌面中段。","穿过 2 根钢条的沉孔拧入 110733，共 6 颗：先拧每根钢条中间的孔，再拧两端的椭圆孔。"],"parts":[["110733",6]],"warn":[],"unsure":[]},{"id":"7","page":8,"crop":[0,0,1,0.45],"title":"敲入脚垫","do":["用锤子把 4 个 107271 敲入腿端。"],"parts":[["107271",4]],"warn":[],"unsure":[]},{"id":"8","page":8,"crop":[0,0.46,1,0.93],"title":"敲入止动垫并翻转桌子","do":["用锤子把 2 个 156508 敲入支撑腿底端。","把两侧桌板折起。","把桌子翻回正面。"],"parts":[["156508",2]],"warn":["翻转时要小心，说明书不建议一人组装。"],"unsure":[]},{"id":"9","page":9,"crop":[0,0,1,0.44],"title":"组装抽屉框","do":["一共要做 6 个抽屉。","把无缺口的端板放到两块长板之间。两块长板分左右摆放：外侧的凸条朝外、靠上，内侧的槽朝里、靠下。","用锤子从两侧敲入 4 个 116546：每块长板这一端的上下两个孔各 1 个，对准端板侧边的孔。"],"parts":[["116546",4]],"warn":["注意长板和端板的方向，按图摆放。"],"unsure":[]},{"id":"10","page":9,"crop":[0,0.48,1,0.95],"title":"装抽屉底板和另一端板","do":["把底板插入两块长板的槽中。","转入带缺口的端板，缺口朝上。","再敲入 4 个 116546，位置是长板另一端的上下两个孔。"],"parts":[["116546",4]],"warn":[],"unsure":[]},{"id":"11","page":10,"crop":[0,0,1,0.93],"title":"推入抽屉并打开支撑腿","do":["从两端各推入 3 个抽屉，共 6 个。","抬起桌板，转出支撑腿。","把桌板放下，让支撑腿顶部的定位销进入桌板下面的孔。"],"parts":[],"warn":["放下桌板前，先确认支撑腿到位。"],"unsure":[]}];
@@ -800,34 +820,59 @@ function setS(s){state=s;const o=$v('vOrb');o.className='orb '+s;$v('vState').te
 function paintListen(){$v('vOrb').classList.toggle('ready',recLive);$v('vState').textContent=recLive?'红色，现在请说':LABEL.listen}
 function bubble(who,text){const d=document.createElement('div');d.className='msg '+who;d.textContent=text;if(who==='ai')d.onclick=()=>{if(chat&&syn){const m=alive+1;stopSpeech();streamDone=true;if(m)sayAll(d.textContent)}};const l=$v('vLog');l.append(d);l.scrollTop=l.scrollHeight;return d}
 const scroll=()=>{const l=$v('vLog');l.scrollTop=l.scrollHeight};
-function here(){const c=P[st.pos],s=byId[c.id];return{c,s}}
-function info(){const{c,s}=here();return{step:s.id,title:s.title,drawer:c.d?c.d+'/6':null,guide:SAY[s.id]||s.do.join(''),warn:s.warn,parts:s.parts.map(([k,n])=>{const x=CELLS.find(y=>y.code===k);return{name:x?x.name:k,code:k,qty:n,cell:x?x.n:null}})}}
+function here(pos=st.pos){const c=P[pos],s=byId[c.id];return{c,s}}
+function info(pos){const{c,s}=here(pos);return{step:s.id,title:s.title,drawer:c.d?c.d+'/6':null,guide:SAY[s.id]||s.do.join(''),warn:s.warn,parts:s.parts.map(([k,n])=>{const x=CELLS.find(y=>y.code===k);return{name:x?x.name:k,code:k,qty:n,cell:x?x.n:null}})}}
 function stepName(i){const s=byId[i.step];return s&&s.label?s.label:'第 '+i.step+' 步'}
-function stepLine(){const i=info(),m=PRD.loops&&PRD.loops[i.step];return '好，'+stepName(i)+'。'+i.guide+(m||(i.step===PRD.loopEnd?'一共要做六个抽屉，都做好了再说下一步。':''))}
+function stepLine(pos){const i=info(pos),m=PRD.loops&&PRD.loops[i.step];return '好，'+stepName(i)+'。'+i.guide+(m||(i.step===PRD.loopEnd?'一共要做六个抽屉，都做好了再说下一步。':''))}
 function stepOf(v){const t=String(v).toUpperCase();if(byId[t])return t;const n=+t;return n&&STEPS[n-1]?STEPS[n-1].id:null}
+/* per-step FAQ answered on the device, and answers shown on the 3D view */
+let FAQ=null,SYR=null,SYM={},qLayer='';try{fetch('faq.json').then(r=>r.ok?r.json():null).then(j=>{if(!j||!j.syn)return;for(const[c,vs]of Object.entries(j.syn))vs.forEach(v=>SYM[v]=c);const ks=Object.keys(SYM).sort((a,b)=>b.length-a.length).map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));SYR=ks.length?new RegExp(ks.join('|'),'g'):null;FAQ=j;for(const k in j)if(k!=='syn')j[k].forEach(e=>e._q=(e.q||[]).map(fnorm))}).catch(()=>{})}catch(e){}
+const bare=t=>String(t).toLowerCase().replace(/[\s，。！？、,.!?；;：:“”"'（）()]/g,''),fnorm=t=>{const s=bare(t);return SYR?s.replace(SYR,m=>SYM[m]):s};
+const big=s=>{const o=new Set();for(let i=0;i<s.length-1;i++)o.add(s.slice(i,i+2));return o},dice=(a,b)=>{const A=big(a),B=big(b);if(!A.size||!B.size)return 0;let n=0;A.forEach(x=>{if(B.has(x))n++});return 2*n/(A.size+B.size)};
+function fscore(e,s){if(e.x&&e.x.some(w=>s.includes(w)))return 0;const k=e.k||[],hit=k.filter(g=>g.some(w=>s.includes(w))).length;if(!hit)return 0;return .6*hit/k.length+.4*Math.max(0,...e._q.map(q=>dice(s,q)))}
+const TROUBLE=/卡住|卡死|坏了|断了|裂|滑丝|不进去|不进|不上|不住|不动|松了|晃|歪|弯|丢了|少了|不够|多了|怎么办|为什么|为啥|干嘛用/;
+function faqFind(raw){if(!FAQ||TROUBLE.test(raw))return null;const cur=here().s.id,m=raw.match(/第\s*(\d+|[一二两三四五六七八九十]{1,3})\s*[步部布不]/);let sid=cur;if(m){const id=stepOf(cnNum(m[1]));if(id)sid=id}const s=fnorm(raw),L=[...(FAQ[sid]||[]).map(e=>[e,fscore(e,s)]),...(FAQ['*']||[]).map(e=>[e,fscore(e,s)-.02])].sort((a,b)=>b[1]-a[1]),[a,b]=L;
+  if(!a||a[1]<.55||b&&b[1]>a[1]-.05&&b[0].a!==a[0].a)return null;return{e:a[0],sid,other:sid!==cur,score:+a[1].toFixed(2)}}
+function faqAns(raw){const f=faqFind(raw);if(!f)return null;qLayer='faq';tr('FAQ '+f.sid+' · '+f.score);if(!f.other&&f.e.show)show(f.e.show.part,f.e.show.win);return (f.other?'第 '+f.sid+' 步，':'')+f.e.a}
+const hasAnim=()=>typeof Anim!=='undefined'&&!!Anim.focus;
+function show(part,win){try{return hasAnim()?Anim.focus(part,win):null}catch(e){return null}}
+function unshow(){try{if(hasAnim()&&Anim._foc())Anim.unfocus()}catch(e){}}
+const VK='vstats:'+PNAME;let VS=[],vLine='',curQ=null,speechEnd=0;try{VS=JSON.parse(localStorage.getItem(VK)||'[]')}catch(e){}
+function vstats(){const by={},med=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);return s[s.length>>1]};VS.forEach(r=>{const b=by[r.layer]=by[r.layer]||{n:0,ms:[]};b.n++;if(r.ms!=null)b.ms.push(r.ms)});const layers={};for(const k in by)layers[k]={n:by[k].n,medianMs:med(by[k].ms)};return{n:VS.length,repeats:VS.filter(r=>r.rep).length,layers,recent:VS.slice(-20)}}
+window.voiceStats=vstats;
+function saveVS(){if(VS.length>300)VS=VS.slice(-300);try{localStorage.setItem(VK,JSON.stringify(VS))}catch(e){}const s=vstats(),f=k=>{const L=s.layers[k];return L?L.n+(L.medianMs!=null?'/'+L.medianMs+'ms':''):'0'};vLine=s.n?'统计 '+s.n+' 问：本地 '+f('cmd')+'，FAQ '+f('faq')+'，AI '+f('ai')+'，重复 '+s.repeats:''}
+function qStart(text){const now=Date.now(),n=bare(text).slice(0,40),rep=VS.some(r=>now-r.t<60000&&dice(r.n,n)>=.7);curQ={t:now,t0:speechEnd&&now-speechEnd<5000?speechEnd:now,q:text.slice(0,40),n,layer:'ai',rep,ms:null};VS.push(curQ);speechEnd=0}
+function heard(){if(curQ&&curQ.ms==null){curQ.ms=Date.now()-curQ.t0;saveVS();tr(trace)}}
+const ACK='好，我看一下。',SENT=/[^。！？!?；]+[。！？!?；]?/g;
+function preNext(){if(!nReady||!chat)return;const c=P[st.pos];((FAQ&&FAQ[c.id])||[]).forEach(e=>{const x=(e.a.match(SENT)||[e.a]).flatMap(clauses)[0];if(x)synth(x,1)});const n=c.id===PRD.loopEnd?P.findIndex((x,i)=>i>st.pos&&x.id!==c.id&&!x.d):st.pos+1;if(n<0||!P[n])return;const t=stepLine(n);(t.match(SENT)||[t]).flatMap(clauses).slice(0,3).forEach(x=>synth(x,1))}
 function partsLine(){const i=info();if(!i.parts.length)return '这一步不需要新零件。';return '这一步要用'+i.parts.map(p=>p.name+' '+p.qty+' 个'+(p.cell?'，在 '+p.cell+' 格':'')).join('；')+'。'}
 /* speech out */
 let pace=1.45;try{pace=+localStorage.getItem('norden-pace4')||1.45}catch(e){}
 function setPace(d){pace=Math.max(.9,Math.min(2,Math.round((pace+d)*100)/100));nMemo.clear();try{localStorage.setItem('norden-pace4',pace)}catch(e){}}
 let actx=null,nReady=false,nW=null,nId=0,cur=null,nChain=Promise.resolve();const nWait=new Map(),nMemo=new Map();
 function unlock(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume();const s=actx.createBufferSource();s.buffer=actx.createBuffer(1,1,22050);s.connect(actx.destination);s.start()}catch(e){}}
-function initN(){if(nW||!window.NORDEN_TTS||!window.Worker)return;try{nW=new Worker(window.NORDEN_TTS+'worker.js');nW.onerror=()=>tr('语音模型加载失败');nW.onmessage=({data:d})=>{if(d.type==='progress')tr('首次下载语音模型 '+d.pct+'%');else if(d.type==='ready'){nReady=true;tr('语音模型已就绪')}else if(d.type==='pcm'){const f=nWait.get(d.id);nWait.delete(d.id);f&&f.res(d.pcm)}else if(d.type==='error'){if(d.id){const f=nWait.get(d.id);nWait.delete(d.id);f&&f.rej(new Error(d.message))}else tr('语音模型错误：'+d.message)}};nW.postMessage({type:'init'})}catch(e){tr('语音模型无法启动')}}
+function initN(){if(nW||!window.NORDEN_TTS||!window.Worker)return;try{nW=new Worker(window.NORDEN_TTS+'worker.js');nW.onerror=()=>tr('语音模型加载失败');nW.onmessage=({data:d})=>{if(d.type==='progress')tr('首次下载语音模型 '+d.pct+'%');else if(d.type==='ready'){nReady=true;tr('语音模型已就绪');synth(ACK)}else if(d.type==='pcm'){const f=nWait.get(d.id);nWait.delete(d.id);f&&f.res(d.pcm)}else if(d.type==='error'){if(d.id){const f=nWait.get(d.id);nWait.delete(d.id);f&&f.rej(new Error(d.message))}else tr('语音模型错误：'+d.message)}};nW.postMessage({type:'init'})}catch(e){tr('语音模型无法启动')}}
 const ZD='零一二三四五六七八九';
 function zn(n){if(n<10)return ZD[n];if(n<20)return '十'+(n%10?ZD[n%10]:'');if(n<100)return ZD[n/10|0]+'十'+(n%10?ZD[n%10]:'');return String(n).split('').map(c=>ZD[+c]).join('')}
 function norm(t){return t.replace(/第\s*(\d+)/g,(m,n)=>'第'+zn(+n)).replace(/\d{5,}/g,'').replace(/(^|[^\d.])2\s*(?=[根颗个块条次张片格])/g,'$1两').replace(/\d+/g,m=>m.length>3?m.split('').map(c=>ZD[+c]).join(''):zn(+m)).replace(/[A-Za-z]+/g,' ').replace(/[“”"'（）()]/g,'').replace(/\s+/g,'')}
-function synth(t){if(nMemo.has(t))return nMemo.get(t);const p=nChain.then(()=>new Promise((res,rej)=>{const id=++nId;nWait.set(id,{res,rej});nW.postMessage({type:'say',id,text:norm(t),len:pace})}));nChain=p.catch(()=>{});nMemo.set(t,p);if(nMemo.size>40)nMemo.delete(nMemo.keys().next().value);return p}
+/* one job at a time; spoken text goes before low-priority warm-ups, and stopSpeech drops jobs not yet started */
+const nQ=[];let nBusy=false;
+function nRun(){if(nBusy||!nQ.length)return;const j=nQ.shift(),id=++nId;nBusy=true;const fin=f=>x=>{nBusy=false;f(x);nRun()};nWait.set(id,{res:fin(j.res),rej:fin(j.rej)});nW.postMessage({type:'say',id,text:norm(j.t),len:pace})}
+function nPut(j){const i=nQ.findIndex(x=>x.low);if(j.low||i<0)nQ.push(j);else nQ.splice(i,0,j)}
+function synth(t,low){if(nMemo.has(t)){const j=!low&&nQ.find(x=>x.t===t&&x.low);if(j){nQ.splice(nQ.indexOf(j),1);j.low=false;nPut(j)}return nMemo.get(t)}const j={t,low:!!low};const p=new Promise((a,b)=>{j.res=a;j.rej=b});p.catch(()=>{});nPut(j);nMemo.set(t,p);if(nMemo.size>40)nMemo.delete(nMemo.keys().next().value);nRun();return p}
+function nDrop(){for(const j of nQ.splice(0)){nMemo.delete(j.t);j.rej(new Error('dropped'))}}
 function softOut(s,dur){const hi=actx.createBiquadFilter(),lp=actx.createBiquadFilter(),lo=actx.createBiquadFilter(),cp=actx.createDynamicsCompressor(),g=actx.createGain(),t=actx.currentTime;hi.type='highshelf';hi.frequency.value=3500;hi.gain.value=-5;lp.type='lowpass';lp.frequency.value=7500;lo.type='lowshelf';lo.frequency.value=250;lo.gain.value=1.5;cp.threshold.value=-20;cp.ratio.value=2.5;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.95,t+.02);g.gain.setValueAtTime(.95,t+Math.max(.03,dur-.03));g.gain.linearRampToValueAtTime(0,t+dur);s.connect(hi);hi.connect(lp);lp.connect(lo);lo.connect(cp);cp.connect(g);g.connect(actx.destination)}
-async function playN(txt,my,n){const next=()=>{if(my!==alive)return;cur=null;playing=false;pump()};tr('朗读 '+n+'：合成中');try{const pcm=await synth(txt);if(my!==alive)return;unlock();const b=actx.createBuffer(1,pcm.length,22050);b.copyToChannel(pcm,0);const s=actx.createBufferSource();s.buffer=b;s.playbackRate.value=.97;softOut(s,b.duration/.97);const gap=/[。！？!?]$/.test(txt)?.5:.22;s.onended=()=>{tr('朗读 '+n+'：结束');setTimeout(next,gap*1000)};cur=s;tr('朗读 '+n+'：播放中');s.start()}catch(e){tr('朗读 '+n+'：错误 '+(e&&e.message));nMemo.delete(txt);next()}}function ding(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume();const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.value=.35;o.connect(g).connect(actx.destination);o.start();o.stop(actx.currentTime+.35)}catch(e){}}
+async function playN(txt,my,n){const next=()=>{if(my!==alive)return;cur=null;playing=false;pump()};tr('朗读 '+n+'：合成中');try{const pcm=await synth(txt);if(my!==alive)return;unlock();const b=actx.createBuffer(1,pcm.length,22050);b.copyToChannel(pcm,0);const s=actx.createBufferSource();s.buffer=b;s.playbackRate.value=.97;softOut(s,b.duration/.97);const gap=/[。！？!?]$/.test(txt)?.5:.22;s.onended=()=>{tr('朗读 '+n+'：结束');setTimeout(next,gap*1000)};cur=s;tr('朗读 '+n+'：播放中');s.start();heard()}catch(e){tr('朗读 '+n+'：错误 '+(e&&e.message));nMemo.delete(txt);next()}}function ding(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume();const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.value=.35;o.connect(g).connect(actx.destination);o.start();o.stop(actx.currentTime+.35)}catch(e){}}
 let barge=false;try{barge=localStorage.getItem('norden-barge2')==='1'}catch(e){}
-let listenTok=0,recEnd=0,lastCancel=0,uCount=0,trace='';const tr=t=>{trace=t;$v('vTrace').textContent=t};
-function stopSpeech(){alive++;q=[];playing=false;clearTimeout(guard);if(cur){try{cur.onended=null;cur.stop()}catch(e){}cur=null}if(syn&&(syn.speaking||syn.pending)){syn.cancel();lastCancel=Date.now()}}
+let listenTok=0,recEnd=0,lastCancel=0,uCount=0,trace='';const tr=t=>{trace=t;$v('vTrace').textContent=t+(vLine?' ｜ '+vLine:'')};
+function stopSpeech(){alive++;q=[];nDrop();playing=false;clearTimeout(guard);if(cur){try{cur.onended=null;cur.stop()}catch(e){}cur=null}if(syn&&(syn.speaking||syn.pending)){syn.cancel();lastCancel=Date.now()}}
 function pump(){if(playing)return;if(!q.length){if(streamDone&&(state==='speak'||state==='think'))doneTalking();return}if(!syn){noSound();q=[];if(streamDone)doneTalking();return}
   const w=250-(Date.now()-lastCancel);if(w>0){const m1=alive;setTimeout(()=>{if(m1===alive)pump()},w);return}
   if(HALF&&!barge){if(recOn){stopRec();recEnd=Date.now()}const w2=(nReady?350:1500)-(Date.now()-recEnd);if(w2>0){setS('speak');tr('等麦克风释放…');const m0=alive;setTimeout(()=>{if(m0===alive)pump()},w2);return}}
-  const my=alive,txt=q.shift();playing=true;setS('speak');const n=++uCount;if(nReady){playN(txt,my,n);return}
+  const my=alive,txt=q.shift();playing=true;if(window.__vlog)window.__vlog.push(txt);setS('speak');const n=++uCount;if(nReady){playN(txt,my,n);return}
   const go=(retry)=>{const u=new SpeechSynthesisUtterance(txt);u.lang='zh-CN';if(voice)u.voice=voice;let began=false;tr('朗读 '+n+'：已发出'+(retry?'（重试）':'')+' speaking='+(syn.speaking?1:0));
     const next=()=>{if(my!==alive)return;clearTimeout(guard);playing=false;pump()};
-    u.onstart=()=>{began=true;started=true;tr('朗读 '+n+'：开始')};u.onend=()=>{tr('朗读 '+n+'：结束'+(began?'':'（未开始）'));next()};
+    u.onstart=()=>{began=true;started=true;heard();tr('朗读 '+n+'：开始')};u.onend=()=>{tr('朗读 '+n+'：结束'+(began?'':'（未开始）'));next()};
     u.onerror=e=>{lastErr=e&&e.error||'';tr('朗读 '+n+'：错误 '+lastErr);if(lastErr&&lastErr!=='interrupted'&&lastErr!=='canceled'&&!began)noSound();next()};
     window._u=u;guard=setTimeout(()=>{if(syn)syn.cancel();lastCancel=Date.now();tr('朗读 '+n+'：超时');next()},txt.length*420+12000);
     setTimeout(()=>{if(my!==alive||began||!playing)return;clearTimeout(guard);if(!retry){syn.cancel();lastCancel=Date.now();tr('朗读 '+n+'：1.5 秒未开始，重试');setTimeout(()=>{if(my===alive)go(true)},300)}else{tr('朗读 '+n+'：重试后仍未开始');noSound();syn.cancel();lastCancel=Date.now();next()}},retry?4000:1500);
@@ -839,16 +884,18 @@ function testSound(){if(!syn){bubble('ai note','测试：这个页面没有语�
   setTimeout(()=>one('测试声音，一二三。','zh-CN','中文',()=>one('Testing sound, one two three.','en-US','英文')),300)}
 function clauses(t){if(!nReady||t.length<=12)return [t];const out=[];let cur='';for(const p of t.split(/(?<=[，、,：:])/)){if(cur&&(cur+p).length>18){out.push(cur);cur=p}else cur+=p}if(cur)out.push(cur);return out}
 function feed(t){for(const c of clauses(t)){q.push(c);if(nReady)synth(c)}pump()}
-function sayAll(t){streamDone=false;spoken=t;(t.match(/[^。！？!?；]+[。！？!?；]?/g)||[t]).forEach(feed);streamDone=true;pump()}
+function sayAll(t){streamDone=false;spoken=t;(t.match(SENT)||[t]).forEach(feed);streamDone=true;pump()}
 let lastSaid='',lastEnd=0;
 const autoOn=()=>$v('animAuto').textContent==='停止连续';let narrPos=-1,narrating=-1;
 function narrate(){narrating=st.pos;sayAll(stepLine())}
 function doneTalking(){if(spoken){lastSaid=spoken;lastEnd=Date.now()}spoken='';if(!chat)return;
-  if(autoOn()&&!paused){if(narrating===st.pos){narrPos=st.pos;narrating=-1;setS('speak');$v('vState').textContent='连续播放中';return}if(narrPos!==st.pos){setTimeout(()=>{if(chat&&autoOn())narrate()},0);setS('speak');return}setS('speak');return}if(paused){setS('pause');return}setS(micOK?'listen':'type');const m=++listenTok;setTimeout(()=>{if(m===listenTok&&state==='listen')startRec()},HALF?1000:0)}
+  if(autoOn()&&!paused){if(narrating===st.pos){narrPos=st.pos;narrating=-1;setS('speak');$v('vState').textContent='连续播放中';return}if(narrPos!==st.pos){setTimeout(()=>{if(chat&&autoOn())narrate()},0);setS('speak');return}setS('speak');return}if(paused){setS('pause');return}setS(micOK?'listen':'type');setTimeout(preNext,300);const m=++listenTok;setTimeout(()=>{if(m===listenTok&&state==='listen')startRec()},HALF?1000:0)}
 /* tools the model can use */
 const TOOLS=[{name:'go_step',description:'翻到下一步或上一步。用户说做好了、要继续时用 next。',inputSchema:{type:'object',properties:{direction:{type:'string',enum:['next','prev']}},required:['direction']},execute:({direction})=>{const b=st.pos;goStep(direction==='prev'?-1:1);return st.pos===b?{note:'已经到头了',...info()}:info()}},
  {name:'jump_step',description:'跳到说明书的第几步。步骤编号可以是数字，也可以是 B3、E2、C4 这样的编号。',inputSchema:{type:'object',properties:{step:{type:['number','string']}},required:['step']},execute:({step})=>{const id=stepOf(step);if(!id)throw new Error('没有这一步');jump(id);return info()}},
- {name:'animation',description:'控制屏幕上的组装动画：replay 重播，pause 暂停，play 继续，slow 慢放，normal 正常速度，continuous 从当前步开始连续播放后面的步骤。',inputSchema:{type:'object',properties:{action:{type:'string',enum:['replay','pause','play','slow','normal','continuous']}},required:['action']},execute:({action})=>{anim(action);return{ok:true}}}];
+ {name:'animation',description:'控制屏幕上的组装动画：replay 重播，pause 暂停，play 继续，slow 慢放，normal 正常速度，continuous 从当前步开始连续播放后面的步骤。',inputSchema:{type:'object',properties:{action:{type:'string',enum:['replay','pause','play','slow','normal','continuous']}},required:['action']},execute:({action})=>{anim(action);return{ok:true}}},
+ {name:'show',description:'在屏幕上把镜头对准一个零件并高亮，可同时重播这一步动画的一段。part 用零件名或编号，比如 短螺丝、钢条、支撑腿、横销、110733。start、end 是这一步动画里的时间，零到一。用户问在哪、哪个、朝哪时配合回答使用。',inputSchema:{type:'object',properties:{part:{type:'string'},start:{type:'number'},end:{type:'number'}},required:['part']},execute:({part,start,end})=>{const r=show(part,start!=null&&end!=null?[start,end]:null);return r?{ok:true,...r}:{ok:false,note:'这一步的画面里找不到这个零件'}}},
+ {name:'look_at_manual',description:'查看这一步的说明书原图。只在问外观、方向或位置，而步骤信息和已知问答答不了时才用。',inputSchema:{type:'object',properties:{}},execute:async()=>({image:await stepImage(),text:'第 '+here().s.id+' 步的说明书图'})}];
 function anim(a){const c=id=>$v(id).click(),pl=$v('animPlay').textContent,sl=$v('animSlow').textContent;if(a==='replay')c('animRe');if(a==='continuous'&&$v('animAuto').textContent==='连续播放')c('animAuto');if(a==='pause'&&pl==='暂停')c('animPlay');if(a==='play'&&pl==='播放')c('animPlay');if(a==='slow'&&sl==='慢放')c('animSlow');if(a==='normal'&&sl!=='慢放')c('animSlow')}
 const CN1={一:1,二:2,两:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9};const cnNum=s=>{if(/^\d+$/.test(s))return +s;if(s==='十')return 10;const m=s.match(/^([一二两三四五六七八九])?十([一二三四五六七八九])?$/);if(m)return (m[1]?CN1[m[1]]:1)*10+(m[2]?CN1[m[2]]:0);return CN1[s]||0};
 /* short exact commands answer at once, without waiting for the model */
@@ -861,6 +908,7 @@ function quick(raw){const t=raw.toLowerCase().replace(/[\s，。！？、,.!?]/g
   const pf=t.match(/^(书柜|加高|转角|门)(?:单元)?第?(\d+|[一二两三四五六七八九十]{1,3})[步部布不]$/);if(pf){const id={书柜:'B',加高:'E',转角:'C',门:'D'}[pf[1]]+cnNum(pf[2]);if(!byId[id])return '没有这一步。';jump(id);return stepLine()}
   if(m){const id=stepOf(cnNum(m[1]));if(!id)return '没有这一步。';jump(id);return stepLine()}
   if(/^(再说一遍|重复|再讲一遍|没听清|怎么做|怎么装|这一?步怎么(做|装)|这一?步做什么|repeat)$/.test(t))return stepLine();
+  const fa=faqAns(raw);if(fa)return fa;
   if(/注意什么|要注意|有什么注意/.test(t)){const w=info().warn;return w.length?w.join(''):'这一步没有特别的注意事项。'}
   if(/第几步|到哪了|进度/.test(t)){const i=info();return '现在是第 '+i.step+' 步，'+i.title+(i.drawer?'，第 '+i.drawer.split('/')[0]+' 个抽屉':'')+'。'}
   if(/^(再演示一遍|重播|再看一遍|replay)$/.test(t)){anim('replay');return '好，再看一遍。'}
@@ -870,21 +918,23 @@ function quick(raw){const t=raw.toLowerCase().replace(/[\s，。！？、,.!?]/g
   if(/^(动画慢放|慢放|slow)$/.test(t)){anim('slow');return '好，慢放。'}
   if(/什么零件|哪些零件|要什么|用什么|几个零件|零件/.test(t))return partsLine();
   return null}
+function ctx(){const i=info(),s=here().s,f=FAQ&&FAQ[s.id]||[],a=hasAnim()&&Anim._t?{t:+Math.min(1,Anim._t()).toFixed(2),focus:Anim._foc()?Anim._foc().name:null}:null;return{step:i.step,title:i.title,drawer:i.drawer,parts:i.parts.map(p=>p.name+' '+p.qty+' 个'+(p.cell?'，'+p.cell+' 格':'')),guide:i.guide,warn:i.warn,unsure:s.unsure||[],faq:f.map(e=>e.q[0]+'：'+e.a),anim:a}}
 const PROMPT=()=>`你是陪用户组装 ${PNAME} 的语音助手，语气像身边有经验的朋友。
 你的话会被朗读，要像朋友站在旁边说话：用短句和大白话，每句不超过 15 字，多用逗号断句，可以用“好”“对”“先”“然后”“别急”这样的词。一次回答一般不超过 50 字，不用列表、编号、符号和括号，不提“图片”或“数据”这类词，不读零件编号，数字用汉字写，比如两根、四颗。一次只说一件事。用户说英文就用英文答，否则用简体中文。
-只依据随附的说明书原图和下面的内容回答，不确定就直说并建议对照说明书，不要猜。翻转大件、防倾倒和墙体固定要提醒注意安全。
+只依据下面的步骤信息和已知问答回答，不确定就直说并建议对照说明书，不要猜。墙面固定、翻转桌子、要不要两个人这类安全问题，不要自己推断，只说说明书怎么画的，并建议对照说明书。
 用户的话已经转成文字给你了，不要说没听见、没听清或没听懂。语音转文字可能有错字或只有半句，请结合这一步推断最可能的意思并直接回答，开头可以用一句话说你的理解。只有几种理解的答案差别很大时，才问一句，并说出你想到的具体选项让用户选。用户打断你时，你上一句会标着“被用户打断”，此时不要重复或继续原来的话，先按用户的新说法修正理解。
-用户说做好了或想继续时调用 go_step，再用返回的 guide 口语化地讲下一步；想回看时调用 jump_step；想再看动作时调用 animation。
-现在：${JSON.stringify(info())}
+用户说做好了或想继续时调用 go_step，再用返回的 guide 口语化地讲下一步；想回看时调用 jump_step；想再看动作时调用 animation。${hasAnim()?'说到某个零件在哪、朝哪时，调用 show 在屏幕上指给用户看。':''}${sample&&sample.toolImages?'问外观、方向或位置，而下面的信息答不了时，才调用 look_at_manual 看这一步的说明书图。':''}
+现在：${JSON.stringify(ctx())}
 全部步骤：${JSON.stringify(STEPS.map(x=>({id:x.id,title:x.title})))}`;
-async function turn(text){const q0=text.trim();if(!q0||!chat)return;const my=++turnId;if(ctl)ctl.abort();stopSpeech();streamDone=true;paused=false;bubble('me',q0);hist.push({role:'user',content:q0});
-  const fastA=quick(q0);if(fastA!==null){bubble('ai',fastA);hist.push({role:'assistant',content:fastA});sayAll(fastA);return}
+async function turn(text){const q0=text.trim();if(!q0||!chat)return;const my=++turnId;if(ctl)ctl.abort();stopSpeech();streamDone=true;paused=false;bubble('me',q0);hist.push({role:'user',content:q0});unshow();qStart(q0);
+  qLayer='';const fastA=quick(q0);if(fastA!==null){curQ.layer=qLayer||'cmd';saveVS();bubble('ai',fastA);hist.push({role:'assistant',content:fastA});sayAll(fastA);return}
   if(!sample){const x='这句要设置密钥后才能回答。现在可以说下一步、上一步、第三步、再说一遍、要什么零件、注意什么。';bubble('ai',x);hist.push({role:'assistant',content:x});sayAll(x);return}
   setS('think');startRec();streamDone=false;ctl=new AbortController();let all='',buf='';const b=bubble('ai','');
-  let moved=false,acted=false;const tools=TOOLS.map(t=>({...t,execute:async i=>{const r=await t.execute(i);acted=true;if(t.name!=='animation')moved=true;return r}}));const take=d=>{all+=d;spoken=all;buf+=d;b.textContent=all;scroll();let m;while((m=buf.match(/^[\s\S]*?[。！？!?；\n]/))){buf=buf.slice(m[0].length);if(m[0].trim())feed(m[0].trim())}};
-  try{let images;try{images=[await stepImage()]}catch(e){}const r=await sample([{role:'user',content:PROMPT()},...hist.slice(-12)],{tools,images,modelTier:'quick',cache:false,signal:ctl.signal,onText:({text:t,delta})=>{if(my===turnId)take(delta!=null?delta:t.slice(all.length))}});
-    if(my!==turnId)return;if(!all&&r.text)take(r.text);if(buf.trim())feed(buf.trim());buf='';hist.push({role:'assistant',content:all||'好。'});streamDone=true;pump()}
-  catch(e){if(my!==turnId||(e&&e.code==='cancelled'))return;const x=all?'':moved?stepLine():acted?'好。':(e&&e.code==='overloaded'?'服务器现在太忙，请再说一次。':msg(e&&e.code));tr('接口错误：'+(e&&(e.message||e.code)));if(x)b.textContent=x+(!acted&&e&&e.message?'（'+e.message+'）':'');if(!all)hist.pop();streamDone=true;if(x)sayAll(x);else pump()}}
+  let moved=false,acted=false,fed=false;const tools=TOOLS.filter(t=>t.name==='show'?hasAnim():t.name==='look_at_manual'?!!sample.toolImages:true).map(t=>({...t,execute:async i=>{const r=await t.execute(i);acted=true;if(!/^(animation|show|look_at_manual)$/.test(t.name))moved=true;return r}}));const ack=setTimeout(()=>{if(my===turnId&&!all){tr('先回应：'+ACK);feed(ACK)}},600);
+  const take=d=>{all+=d;spoken=all;buf+=d;b.textContent=all;scroll();let m;while((m=buf.match(/^[\s\S]*?[。！？!?；\n]/))){buf=buf.slice(m[0].length);if(m[0].trim()){fed=true;feed(m[0].trim())}}if(!fed&&(m=buf.match(/^[\s\S]{4,}?[，,、：:]/))){buf=buf.slice(m[0].length);fed=true;feed(m[0].trim())}};
+  try{let images;if(!sample.toolImages)try{images=[await stepImage()]}catch(e){}const r=await sample([{role:'user',content:PROMPT()},...hist.slice(-6)],{tools,images,modelTier:'quick',cache:false,signal:ctl.signal,onText:({text:t,delta})=>{if(my===turnId)take(delta!=null?delta:t.slice(all.length))}});
+    clearTimeout(ack);if(my!==turnId)return;if(!all&&r.text)take(r.text);if(buf.trim())feed(buf.trim());buf='';hist.push({role:'assistant',content:all||'好。'});streamDone=true;pump()}
+  catch(e){clearTimeout(ack);if(my!==turnId||(e&&e.code==='cancelled'))return;const x=all?'':moved?stepLine():acted?'好。':(e&&e.code==='overloaded'?'服务器现在太忙，请再说一次。':msg(e&&e.code));tr('接口错误：'+(e&&(e.message||e.code)));if(x)b.textContent=x+(!acted&&e&&e.message?'（'+e.message+'）':'');if(!all)hist.pop();streamDone=true;if(x)sayAll(x);else pump()}}
 /* speech in */
 let pend='',sendT=0;
 function flushSpeech(){clearTimeout(sendT);const t=pend;pend='';if(live){live.remove();live=null}if(t)turn(t)}
@@ -895,7 +945,7 @@ function startRec(){if(!chat||!micOK||paused||recOn)return;if(HALF&&!barge&&(sta
     if(Date.now()-lastEnd<8000&&t.replace(/\s/g,'').length>=4&&isEcho(t,lastSaid)){if(live){live.remove();live=null}tr('已忽略回声');return}
     if((state==='speak'||state==='think')&&isEcho(t))return;
     if(state==='speak'||state==='think'){if(!/(等等|等一下|停一下|停下|打断|不对|不是)/.test(t))return;interrupt(true);return}
-    clearTimeout(sendT);const shown=(pend+t).trim();if(!live)live=bubble('me live','');live.textContent=shown;scroll();if(fin){pend=shown;if(pend.length<=5&&/(步|遍|了|停|播放|暂停|重播|零件)$/.test(pend))flushSpeech();else sendT=setTimeout(flushSpeech,1500)}};
+    clearTimeout(sendT);const shown=(pend+t).trim();if(!live)live=bubble('me live','');live.textContent=shown;scroll();if(fin){pend=shown;speechEnd=Date.now();if(pend.length<=5&&/(步|遍|了|停|播放|暂停|重播|零件)$/.test(pend))flushSpeech();else sendT=setTimeout(flushSpeech,1500)}};
   rec.onerror=e=>{tr('麦克风：'+e.error);if(e.error==='not-allowed'||e.error==='service-not-allowed'||e.error==='audio-capture'){if(!window.NORDEN_TTS){try{localStorage.setItem('norden-mic','no')}catch(x){}}micOff()}};
   rec.onend=()=>{recEnd=Date.now();ready(false);if(me!==rec)return;recOn=false;if(!micOK||!chat||paused)return;if(Date.now()-t0<400){if(++fast>5){if(!window.NORDEN_TTS){micOff();return}fast=0;setTimeout(startRec,2500);return}}else fast=0;setTimeout(startRec,350)};
   try{rec.start();recOn=true}catch(e){recOn=false}}
@@ -914,7 +964,7 @@ function askVoice(btn){const q=$v('q'),idle=()=>{btn.textContent='语音提问';
 function ui(){$v('vStart').onclick=open;const ar=$v('send')&&$v('send').closest('.askrow');if(ar&&window.NORDEN_TTS){const b=document.createElement('button');b.className='btn';b.id='askVoice';b.style.cssText='width:100%;margin-top:8px';b.textContent='语音提问';b.onclick=()=>askVoice(b);ar.after(b)}$v('vInt').onclick=()=>interrupt();const bb=$v('vBarge'),bs=()=>{bb.textContent=barge?'开口打断：开':'开口打断：关';bb.classList.toggle('primary',barge)};bs();bb.onclick=()=>{barge=!barge;try{localStorage.setItem('norden-barge2',barge?'1':'0')}catch(e){}bs();if(barge&&(state==='speak'||state==='think'))startRec()};$v('vKb').onclick=()=>{const c=$v('vChat');c.classList.toggle('kb');if(c.classList.contains('kb'))$v('vTxt').focus()};$v('vEnd').onclick=close;$v('vOrb').onclick=orb;if($v('vTest'))$v('vTest').onclick=testSound;
   const send=()=>{const i=$v('vTxt'),t=i.value;i.value='';if(!micOK){i.blur();recEnd=Date.now()}turn(t)};$v('vSend').onclick=()=>{clearTimeout(dict);send()};$v('vTxt').oninput=()=>{if(micOK)return;clearTimeout(dict);if(state==='speak'||state==='think'){turnId++;if(ctl)ctl.abort();stopSpeech();streamDone=true;setS('type')}if($v('vTxt').value.trim())dict=setTimeout(send,1800)};$v('vTxt').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();clearTimeout(dict);send()}};
   document.addEventListener('fullscreenchange',()=>{if(chat&&!document.fullscreenElement&&!$v('anim').classList.contains('full'))close()})}
-return{ui,hold:()=>chat&&autoOn()&&narrPos!==st.pos,autoEnd(){if(chat&&!playing&&!q.length){narrating=-1;narrPos=-1;doneTalking()}},onStep(){if(chat&&autoOn()&&narrPos!==st.pos&&narrating!==st.pos&&streamDone&&!playing&&!q.length)setTimeout(()=>{if(chat&&autoOn()&&narrating!==st.pos&&narrPos!==st.pos&&!playing&&!q.length)narrate()},120)},_s:()=>({chat,state,micOK,hist})}})();
+return{ui,hold:()=>chat&&autoOn()&&narrPos!==st.pos,autoEnd(){if(chat&&!playing&&!q.length){narrating=-1;narrPos=-1;doneTalking()}},onStep(){if(chat)setTimeout(preNext,400);if(chat&&autoOn()&&narrPos!==st.pos&&narrating!==st.pos&&streamDone&&!playing&&!q.length)setTimeout(()=>{if(chat&&autoOn()&&narrating!==st.pos&&narrPos!==st.pos&&!playing&&!q.length)narrate()},120)},_s:()=>({chat,state,micOK,hist,faq:!!FAQ}),_faq:t=>faqFind(t),show,stats:vstats}})();
 
 Voice.ui();window.Voice=Voice;window.VoiceReady=true;
 Anim.setNext(()=>{if(window.Voice&&Voice.hold())return false;const c=P[st.pos];

@@ -19,6 +19,7 @@ def page(h,slug,name,steps,sayjs,imgdir,voice,loop,loops=None):
     h=h.replace('<header>','<header><a href="../" style="font-size:13px">‹ 选择产品</a>',1)
     os.makedirs('site/'+slug);open('site/%s/index.html'%slug,'w',encoding='utf8').write(h);shutil.copytree(imgdir,'site/%s/img'%slug)
 page(base,'norden','IKEA NORDEN 折叠桌',11,say,'img',False,'10')
+shutil.copy('faq.json','site/norden/faq.json')
 st=open('../stork/storklinta.html',encoding='utf8').read()
 page(st,'storklinta','IKEA STORKLINTA 六斗柜',45,'{}','../stork/img',True,'43')
 by=open('../billy/billy.html',encoding='utf8').read()
