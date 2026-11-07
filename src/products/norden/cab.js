@@ -112,7 +112,7 @@ function applyCab(s,tt){
       p._L=L;p.m.position.set(p.pos[0]+lerp(k[0][0],k[1][0],L),p.pos[1]+lerp(k[0][1],k[1][1],L),p.pos[2]+lerp(k[0][2],k[1][2],L));tint(p.m,L<1&&L>0)
     }else{p.m.position.set(...p.pos);tint(p.m,false)}
     if(p.ins&&s==='1')p.m.position.x+=p.ins*(1-ease(clamp(tt/.2)));if(p.spin&&k){const off=k[0]['xyz'.indexOf(p.spin)];p.m.rotation[p.spin]=-(off<0?-1:1)*L*PI*3}if(p.tiltX&&p.tiltX[s]&&k)p.m.rotation.x=lerp(p.tiltX[s][0],p.tiltX[s][1],L)});
-  hammerAt(s,tt,fr);if(FOC)FOC.objs.forEach(o=>hl(o,true));
+  hammerAt(s,tt,fr);focPulse();
   FR.key.visible=s==='5'&&tt>=.5;if(FR.key.visible){const i=Math.min(3,Math.floor((tt-.5)/.125)),q=FR.bolts[i],o=new T3.Vector3();q.getWorldPosition(o);const a=i%2?1:-1;FR.key.scale.x=o.x<0?-1:1;FR.key.position.copy(o).add(new T3.Vector3(a*7.5,0,0).applyQuaternion(fr.q));FR.key.rotation.x=a*tt*40}
   FR.floor.visible=s!=='9'&&s!=='10';
   FR.drs.forEach((d,i)=>{d.g.visible=s==='11';const L=ease(clamp((tt-i*.06)/.14));d.g.position.z=lerp(d.g.userData.z+d.z*44,d.g.userData.z,L)});
@@ -122,22 +122,45 @@ function applyCab(s,tt){
   camPos=camPos?camPos.lerp(want,.14):want.clone();camTgt=camTgt?camTgt.lerp(tp,.14):tp.clone();cam.position.copy(camPos);cam.lookAt(camTgt);
 }
 
-/* Answer visuals: focus the camera on a named part, highlight it, replay a window of the step. Names match part codes, cell names, labels and group names. */
-let FOC=null;const GN={'框架':['frameL','frameR'],'支撑腿':['gateL','gateR'],'桌板':['leafL','leafR'],'活动桌板':['leafL','leafR'],'中段桌板':['topC'],'桌面':['topC','leafL','leafR']};
+/* Answer visuals: resolve a spoken part name to what is on screen in a step, focus the camera on it, highlight it unmistakably, replay its time window. */
+let FOC=null;const GN={'框架':['frameL','frameR'],'支撑腿':['gateL','gateR'],'桌板':['leafL','leafR'],'中段桌板':['topC'],'桌面':['topC','leafL','leafR']};
+const AL={'长螺栓':['长螺丝','长螺杆','长杆','长钉'],'抽屉螺栓':['抽屉螺丝','圆头螺栓','圆头螺丝'],'短螺丝':['短螺钉','沉头螺丝','平头螺丝'],'木螺丝':['尖头螺丝','尖尾螺丝','自攻螺丝'],'木销':['木钉','木棍','木棒','销子'],'横销':['圆柱螺母','螺母','圆柱'],'钢条':['钢片','铁条','铁片','金属条'],'铰链':['合页'],'脚垫':['垫脚','脚钉','脚套'],'止动垫':['止动片','塑料片'],'定位销':['定位钉','定位柱'],'垫块':['小木块','小垫块'],'连接木块':['连接块','木块'],'内六角扳手':['六角扳手','扳手'],'锤子':['榔头'],'长板':['侧板'],'端板':['挡板','前板','后板'],'底板':['抽屉底'],'支撑腿':['活动腿','折叠腿','撑腿','门腿','支腿'],'框架':['桌架','架子','腿柱'],'桌板':['翻板','活动桌板','桌面板'],'抽屉':[],'孔':['孔位','螺丝孔','洞','眼']};
+const ALK=Object.entries(AL).flatMap(([k,v])=>[k,...v].map(w=>[w,k])).sort((x,y)=>y[0].length-x[0].length);
 const vis=o=>{let v=o.visible;o.traverseAncestors(a=>{if(!a.visible)v=false});return v};
-function findObjs(name){const s=String(name||'').replace(/[\s，。]/g,'');if(!s)return[];const cell=(typeof CELLS!=='undefined'?CELLS:[]).find(x=>x.code===s||x.name===s)||(typeof CELLS!=='undefined'?CELLS:[]).find(x=>s.includes(x.name));const code=cell?cell.code:/^\d{5,}$/.test(s)?s:null;
-  const L=CP.filter(p=>{const c=p.code||codeOf(p.m);if(code)return c===code;return p.lbl&&(p.lbl.includes(s)||s.includes(p.lbl.replace(/（.*$/,'')))});const now=L.filter(p=>p.keys[cur]);let o=(now.length?now:L).map(p=>p.m);
-  if(!o.length&&!code){const g=GN[s]||Object.keys(GN).filter(k=>s.includes(k)).map(k=>GN[k]).flat();o=g.map(n=>FR[n]&&FR[n].g).filter(Boolean);
-    if(/抽屉/.test(s)&&cur==='11')o=FR.drs.map(d=>d.g);if(/定位销/.test(s))o=[FR.peg];if(/扳手/.test(s))o=[FR.key];if(/锤/.test(s))o=[FR.ham.root];if(code==='120139'||/钢条/.test(s))o=CP.filter(p=>codeOf(p.m)==='120139').map(p=>p.m)}
-  if(!o.length&&code==='10083377')o=[FR.key];return o}
-function hl(m,on){m.traverse(o=>{const M=o.material;if(!o.isMesh||!M||!M.color||M.isMeshBasicMaterial)return;if(M.map){if(M.emissive)M.emissive.setHex(on?0x8a3a00:0);return}if(on){if(M.color.getHex()!==HOT)M.userData.hb=M.color.getHex();M.color.setHex(HOT)}else if(M.userData.hb!=null)M.color.setHex(M.userData.hb)})}
-function focus(name,w){unfocus(1);if(!cabReady||!cur||IDS.includes(cur))return null;const L=findObjs(name);if(!L.length)return null;const w0=Array.isArray(w)&&w.length===2&&w.every(x=>isFinite(+x))?[clamp(+w[0]),clamp(Math.max(+w[0]+.05,+w[1]))]:null;
-  poseAt(w0?w0[1]:Math.min(t,1));const objs=L.filter(vis);if(!objs.length){poseAt(Math.min(t,1));return null}const box=new T3.Box3();objs.forEach(o=>box.expandByObject(o));poseAt(Math.min(t,1));
-  const ct=box.getCenter(new T3.Vector3()),r=box.getSize(new T3.Vector3()).length()/2,vt=Math.tan(cam.fov*PI/360)*Math.min(1,cam.aspect);
-  FOC={objs,w:w0,ct,D:Math.max(r/vt*1.25,16),d:viewDir(),n:0,name:String(name),stop:false};if(window._resetView)window._resetView();
-  if(w0){t=w0[0];playing=true;const p=document.getElementById('animPlay');if(p)p.textContent='暂停'}
-  const d=document.createElement('div');d.className='alabel foc';d.textContent=(cell=>cell?cell.n+' 格 · '+cell.name:String(name))((typeof CELLS!=='undefined'?CELLS:[]).find(x=>x.code===name||x.name===name));d.style.cssText='background:#f07a22;color:#fff;border-color:#f07a22';document.getElementById('animLabels').append(d);const ln=document.createElementNS('http://www.w3.org/2000/svg','line');document.getElementById('animLines').append(ln);FOC.lbl={obj:objs[0],win:[-1,2],d,line:ln,text:d.textContent,dir:false};LBL.push(FOC.lbl);
-  return{part:FOC.name,count:objs.length,window:w0}}
+const bi=(a,b)=>{const A=new Set(),B=new Set();for(let i=0;i<a.length-1;i++)A.add(a.slice(i,i+2));for(let i=0;i<b.length-1;i++)B.add(b.slice(i,i+2));let n=0;A.forEach(x=>{if(B.has(x))n++});return A.size&&B.size?2*n/(A.size+B.size):0};
+const CN={一:1,二:2,两:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9,十:10,十一:11},CELL=()=>typeof CELLS!=='undefined'?CELLS:[];
+/* canonical part name for a spoken name in step s */
+function canon(raw,s){let n=String(raw||'').replace(/[\s，。、！？“”"'（）()：:]/g,'').replace(/^(那个|这个|那|这|哪个是|哪个)/,'').replace(/(的位置|的地方|的细节|在哪里?|在哪儿)$/,'');
+  const g=n.match(/第?(\d+|十一|[一二两三四五六七八九十])号?格/);if(g){const c=CELL().find(x=>x.n===(+g[1]||CN[g[1]]));if(c)return c.name}
+  const code=n.match(/\d{5,}/);if(code){const c=CELL().find(x=>x.code===code[0]);if(c)return c.name}
+  for(const[w,k]of ALK)if(n.includes(w))return k;
+  if(/螺栓/.test(n))return s==='9'||s==='10'?'抽屉螺栓':'长螺栓';if(/螺丝|螺钉/.test(n))return s==='3'?'木螺丝':'短螺丝';if(/端板|缺口/.test(n))return '端板';return n}
+/* everything that can be pointed at in step s, with the time window where it moves */
+function targets(s){const T=[],put=(name,objs,win)=>{objs=objs.filter(Boolean);if(!objs.length)return;const o=T.find(x=>x.name===name);if(o){o.objs.push(...objs);o.win=[Math.min(o.win[0],win[0]),Math.max(o.win[1],win[1])]}else T.push({name,objs,win:[...win]})};
+  CP.forEach(p=>{if(!p.keys[s])return;const code=p.code||codeOf(p.m),c=code&&CELL().find(x=>x.code===code),nm=c?c.name:p.lbl?p.lbl.replace(/（.*$/,''):null;if(nm)put(nm,[p.m],p.tap||p.win||[0,1])});
+  GS.forEach(G=>{const q=G.seq[s];if(q&&q[1]!==0&&q[0]!==q[1]&&PANEL[G.name])put(PANEL[G.name],[G.g],[(G.startAt&&G.startAt[s])||0,(G.moveAt&&G.moveAt[s])||G.move||1])});
+  if(s==='11'){put('抽屉',FR.drs.map(d=>d.g),[0,.52]);put('定位销',[FR.peg],[.86,1])}if(s==='5')put('内六角扳手',[FR.key],[.5,1]);if(CP.some(p=>p.tap&&p.keys[s]))put('锤子',[FR.ham.root],[0,1]);
+  const h=MARKS.filter(m=>m.steps.includes(s)).map(m=>m.d.parent);if(h.length)put('孔',h,[0,1]);return T}
+function names(s){return targets(s||cur).map(x=>x.name)}
+function pick(name,s){const c=canon(name,s),T=targets(s);let t=T.find(x=>x.name===c)||T.find(x=>x.name.includes(c)||c.length>1&&c.includes(x.name));if(!t){let best=0;T.forEach(x=>{const d=bi(c,x.name);if(d>best){best=d;t=x}});if(best<.5)t=null}return{t,c}}
+/* static things on screen that do not move in this step (a hinge shown in step 6, the table top in step 4) */
+function still(c){const code=(CELL().find(x=>x.name===c)||{}).code;let o=CP.filter(p=>code?(p.code||codeOf(p.m))===code:p.lbl&&p.lbl.replace(/（.*$/,'').includes(c)).map(p=>p.m);if(!o.length&&GN[c])o=GN[c].map(n=>FR[n]&&FR[n].g).filter(Boolean);return o}
+function where(name){for(const s of CIDS){if(pick(name,s).t)return s}return null}
+function hl(m,on,k=0){m.traverse(o=>{const M=o.material;if(!o.isMesh||!M||!M.color||M.isMeshBasicMaterial)return;if(on&&!M.userData.hon){M.userData.hb=M.color.getHex();M.userData.he=M.emissive?M.emissive.getHex():0;M.userData.hon=1}
+  if(!on){if(M.userData.hon){M.color.setHex(M.userData.hb);if(M.emissive)M.emissive.setHex(M.userData.he);M.userData.hon=0}return}if(M.map){if(M.emissive)M.emissive.setRGB(.55+.3*k,.22+.12*k,0);return}M.color.setRGB(.94+.06*k,.48+.3*k,.13+.25*k)})}
+function focus(name,w){unfocus(1);if(!cabReady||!cur||IDS.includes(cur))return null;const{t:tg,c}=pick(name,cur);let L=tg?tg.objs:still(c),note=null;if(!L.length)return null;
+  const ok=a=>Array.isArray(a)&&a.length===2&&a.every(x=>isFinite(+x)),norm=a=>[clamp(+a[0]),clamp(Math.max(+a[0]+.05,+a[1]))];let w0=ok(w)?norm(w):tg?norm(tg.win):null;
+  const at=x=>{poseAt(x);return L.filter(vis)};let objs=at(w0?w0[1]:Math.min(t,1));if(!objs.length&&tg){w0=norm(tg.win);objs=at(w0[1]);note='这个零件在动画 '+Math.round(w0[0]*100)+'% 到 '+Math.round(w0[1]*100)+'% 才出现，已跳到那一段'}
+  if(!objs.length){poseAt(Math.min(t,1));return null}const box=new T3.Box3(),cen=o=>new T3.Box3().setFromObject(o).getCenter(new T3.Vector3()),c0=cen(objs[0]);const cl=objs.filter(o=>cen(o).distanceTo(c0)<14);cl.forEach(o=>box.expandByObject(o));if(w0){poseAt(w0[0]);cl.forEach(o=>{if(vis(o))box.expandByObject(o)});poseAt(w0[1])}
+  const ct=box.getCenter(new T3.Vector3()),r=Math.max(box.getSize(new T3.Vector3()).length()/2,1.2),vt=Math.tan(cam.fov*PI/360)*Math.min(1,cam.aspect),label=tg?tg.name:c,cell=CELL().find(x=>x.name===label);
+  FOC={objs,w:w0,ct,D:Math.max(r/vt*1.35,9),d:viewDir(),n:0,name:label,stop:false,box:[]};if(window._resetView)window._resetView();
+  if(w0){t=w0[0];playing=true;const p=document.getElementById('animPlay');if(p)p.textContent='暂停'}else poseAt(Math.min(t,1));
+  FOC.box=objs.slice(0,10).map(o=>{const b=new T3.BoxHelper(o,HOT);b.material.depthTest=false;b.renderOrder=9;sc2.add(b);return b});
+  const d=document.createElement('div');d.className='alabel foc';d.textContent=(cell?cell.n+' 格 · ':'')+label;d.style.cssText='background:#f07a22;color:#fff;border-color:#f07a22;font-weight:600';document.getElementById('animLabels').append(d);const ln=document.createElementNS('http://www.w3.org/2000/svg','line');ln.setAttribute('stroke','#f07a22');ln.setAttribute('stroke-width','2.5');document.getElementById('animLines').append(ln);FOC.lbl={obj:objs[0],win:[-1,2],d,line:ln,text:d.textContent,dir:false};LBL.push(FOC.lbl);
+  const bn=document.createElement('div');bn.id='focBanner';bn.textContent='已标出：'+label;bn.style.cssText='position:absolute;left:50%;top:8px;transform:translateX(-50%);background:#f07a22;color:#fff;padding:4px 12px;border-radius:14px;font:600 14px system-ui,sans-serif;z-index:6;pointer-events:none;white-space:nowrap';const av=document.getElementById('animView');if(getComputedStyle(av).position==='static')av.style.position='relative';av.append(bn);FOC.bn=bn;
+  return{part:label,count:objs.length,window:w0,note}}
+function focPulse(){if(!FOC)return;const k=.5+.5*Math.sin(performance.now()/170);FOC.objs.forEach(o=>hl(o,true,k));(FOC.box||[]).forEach(b=>{b.update();b.material.color.setRGB(.94,.48+.35*k,.13+.4*k)})}
+function showable(text,s){const n=String(text||'');let best=null;for(const[w,k]of ALK)if(n.includes(w)){const c=k==='孔'?'孔':k;if(pick(c,s||cur).t||where(c)){best=c;break}}if(!best){const T=targets(s||cur);for(const x of T)if(n.includes(x.name)){best=x.name;break}}if(!best&&/螺栓|螺丝/.test(n))best=canon(n.match(/螺栓|螺丝/)[0],s||cur);if(!best){const g=n.match(/第?(\d+|十一|[一二两三四五六七八九十])号?格/);if(g)best=canon(g[0],s||cur)}return best}
 function focLoop(){if(!FOC||!FOC.w||!playing)return;if(t>FOC.w[1]+.08){if(++FOC.n>=3){t=Math.min(FOC.w[1],.97);playing=false;FOC.stop=true;const p=document.getElementById('animPlay');if(p)p.textContent='播放'}else t=FOC.w[0]}}
 function focCam(){const th=Math.atan2(FOC.d.x,FOC.d.z)+az,ph=clamp(Math.asin(FOC.d.y)+el,-.3,1.35),v=new T3.Vector3(Math.sin(th)*Math.cos(ph),Math.sin(ph),Math.cos(th)*Math.cos(ph)).multiplyScalar(FOC.D).add(FOC.ct);if(!FOC.cp){FOC.cp=camPos.clone();FOC.ctg=camTgt.clone()}FOC.cp.lerp(v,.2);FOC.ctg.lerp(FOC.ct,.2);camPos.copy(FOC.cp);camTgt.copy(FOC.ctg);cam.position.copy(camPos);cam.lookAt(camTgt)}
-function unfocus(quiet){if(!FOC)return;const f=FOC;FOC=null;f.objs.forEach(o=>hl(o,false));if(f.lbl){f.lbl.d.remove();f.lbl.line.remove();LBL=LBL.filter(x=>x!==f.lbl)}if(f.stop&&!quiet){playing=true;const p=document.getElementById('animPlay');if(p)p.textContent='暂停'}if(!quiet)computeFit()}
+function unfocus(quiet){if(!FOC)return;const f=FOC;FOC=null;f.objs.forEach(o=>hl(o,false));(f.box||[]).forEach(b=>{sc2.remove(b);b.geometry.dispose()});if(f.bn)f.bn.remove();if(f.lbl){f.lbl.d.remove();f.lbl.line.remove();LBL=LBL.filter(x=>x!==f.lbl)}if(f.stop&&!quiet){playing=true;const p=document.getElementById('animPlay');if(p)p.textContent='暂停'}if(!quiet)computeFit()}

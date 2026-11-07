@@ -52,8 +52,14 @@ def report(S):
         if not ai:print('  无')
         reasons=[(k,p['a']) for s in P for k,r in s.get('steps',{}).items() for p in r.get('prompts',[]) if p.get('cls') in ('neg','reason') and p.get('a')]
         print('\n不顺的原因：');[print(f'  第 {k} 步：{a}') for k,a in reasons] or print('  无')
-        cap=Counter();[cap.update(r.get('cap',{})) for s in P for r in s.get('steps',{}).values()]
-        print('\n识别问题：空结果',cap['empty'],'，识别错误',cap['err'],'，用户纠正',cap['corrected'])
+        cap=Counter();why=Counter();drop=[]
+        for s in P:
+            for k,r in s.get('steps',{}).items():
+                c=r.get('cap',{});cap.update({x:v for x,v in c.items() if isinstance(v,int)});why.update(c.get('why',{}));drop+=[(k,x['why'],x['t']) for x in c.get('dropped',[])]
+        print('\n识别问题：空结果',cap['empty'],'，识别错误',cap['err'],'，用户纠正',cap['corrected'],'| 原因',dict(why) or '无')
+        for k,w,x in drop[-10:]:print(f'  第 {k} 步 丢弃（{w}）：{x}')
+        sh=[(k,x) for s in P for k,r in s.get('steps',{}).items() for x in r.get('shows',[])]
+        print('标出零件：',len(sh),'次，失败',sum(1 for _,x in sh if not x['ok']),'次',''.join(f'\n  第 {k} 步 标不出：{x["name"]}（{x["src"]}）' for k,x in sh if not x['ok']))
         rt=[s['rating'] for s in P if s.get('rating')];hd=Counter((s.get('hardest') or {}).get('step') for s in P if s.get('hardest'))
         print('评分：',dict(sorted(Counter(rt).items())),f'平均 {statistics.mean(rt):.1f}' if rt else '无')
         print('最难的步骤：',{('第 '+k+' 步' if k else '没说清'):n for k,n in hd.most_common()} or '无')
