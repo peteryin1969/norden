@@ -66,7 +66,7 @@ def report(S):
         for (k,n,src),c in sorted(cds.items(),key=lambda z:(num(z[0][0]),-z[1])):print(f'  第 {k} 步：{n} ×{c}（{"语音" if src=="local" else "AI"}）')
         if not cds:print('  无')
         imp=sorted([(k,x) for s in P for k,r in s.get('steps',{}).items() for x in r.get('feedback',[]) if x.get('kind')=='improve'],key=lambda z:num(z[0]))
-        cpl=[p for s in P for r in s.get('steps',{}).values() for p in r.get('prompts',[]) if p['kind']=='complete']
+        cpl=[p for s in P for r in s.get('steps',{}).values() for p in r.get('prompts',[]) if p['kind'] in ('complete','done')]
         cc=Counter(p.get('cls') for p in cpl)
         print(f'\n每步结束问“有要改进的地方吗”：问了 {len(cpl)} 次，提了建议 {sum(1 for p in cpl if p.get("improve"))} 次，说没有 {cc["none"]} 次，没回答 {cc["timeout"]+cc["unanswered"]} 次，跳过 {cc["skip"]} 次')
         for k,x in imp:print(f'  第 {k} 步 [{x.get("s")}]：“{x.get("t") or "（未记文字）"}”')
