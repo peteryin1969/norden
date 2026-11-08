@@ -77,6 +77,10 @@ def report(S):
         qm=sorted(m for s in P for r in s.get('steps',{}).values() for m in r.get('cap',{}).get('qms',[]))
         eng=Counter(s.get('asr','chrome') for s in P);fb=[s.get('asrFallback') for s in P if s.get('asrFallback')]
         print(f'\n语音识别：{dict(eng)}'+(f'；千问每句耗时中位 {qm[len(qm)//2]} 毫秒（{len(qm)} 句）' if qm else '')+(f'；换回手机识别 {len(fb)} 次：{fb[:3]}' if fb else ''))
+        pk=Counter((k,x.get('name'),a) for s in P for k,r in s.get('steps',{}).items() for x in r.get('picks',[]) for a in (x.get('acts') or ['-']))
+        print('\n点选零件（点了哪个、接着做了什么）：')
+        for (k,n,a),c in sorted(pk.items(),key=lambda z:(num(z[0][0]),-z[1])):print(f'  第 {k} 步：{n} ×{c}（{ {"look":"看样子","where":"在哪","how":"怎么装","ask":"提问","-":"只点选"}.get(a,a)}）')
+        if not pk:print('  无')
         fbs=[(k,x) for s in P for k,r in s.get('steps',{}).items() for x in r.get('feedback',[]) if x.get('kind')!='improve']
         print('\n用户反馈原话：')
         for k,x in fbs:print(f'  第 {k} 步：“{x.get("t") or "（未记文字）"}”')
