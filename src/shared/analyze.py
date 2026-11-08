@@ -74,6 +74,9 @@ def report(S):
         print('\n整体设计改进建议（组装完成后）：')
         for sid,x in ds:print(f'  {sid}：“{x.get("t") or "（未记文字）"}”')
         if not ds:print('  无')
+        qm=sorted(m for s in P for r in s.get('steps',{}).values() for m in r.get('cap',{}).get('qms',[]))
+        eng=Counter(s.get('asr','chrome') for s in P);fb=[s.get('asrFallback') for s in P if s.get('asrFallback')]
+        print(f'\n语音识别：{dict(eng)}'+(f'；千问每句耗时中位 {qm[len(qm)//2]} 毫秒（{len(qm)} 句）' if qm else '')+(f'；换回手机识别 {len(fb)} 次：{fb[:3]}' if fb else ''))
         fbs=[(k,x) for s in P for k,r in s.get('steps',{}).items() for x in r.get('feedback',[]) if x.get('kind')!='improve']
         print('\n用户反馈原话：')
         for k,x in fbs:print(f'  第 {k} 步：“{x.get("t") or "（未记文字）"}”')
