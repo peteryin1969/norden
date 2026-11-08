@@ -82,9 +82,13 @@ def report(S):
         print('\n点选零件（点了哪个、接着做了什么）：')
         for (k,n,a),c in sorted(pk.items(),key=lambda z:(num(z[0][0]),-z[1])):print(f'  第 {k} 步：{n} ×{c}（{ {"look":"看样子","where":"在哪","how":"怎么装","ask":"提问","-":"只点选"}.get(a,a)}）')
         if not pk:print('  无')
+        qa=[(k,x.get('layer'),x.get('q'),x.get('a')) for s in P for k,r in s.get('steps',{}).items() for x in r.get('qs',[]) if x.get('a') and x.get('layer')=='ai']
+        print('\nAI 问答（问 → 答）：')
+        for k,l,q,a in qa:print(f'  第 {k} 步：“{q}” → “{a}”')
+        if not qa:print('  无（旧版本记录没有存回答）')
         fbs=[(k,x) for s in P for k,r in s.get('steps',{}).items() for x in r.get('feedback',[]) if x.get('kind')!='improve']
         print('\n用户反馈原话：')
-        for k,x in fbs:print(f'  第 {k} 步：“{x.get("t") or "（未记文字）"}”')
+        for k,x in fbs:print(f'  第 {k} 步：“{x.get("t") or "（未记文字）"}”'+(f'（{ {"remark":"随口说的建议","asked":"让助手记下","said":"说出建议","ai":"AI 记下"}.get(x.get("src"),"")}）' if x.get('src') else ''))
         if not fbs:print('  无')
         print('\n未解决的问题（AI 兜底且重复问过）：')
         for k,a in [(k,a['q']) for s in P for k,r in s.get('steps',{}).items() for a in r.get('ai',[]) if a.get('rep')] or [('-','无')]:print(f'  第 {k} 步：{a}')
