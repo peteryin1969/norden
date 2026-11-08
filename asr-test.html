@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>识别对比测试</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e2e0da;--acc:#0b6e4f;--acc2:#e6f2ed;--bad:#b3261e;--bad2:#fbeaea;--warn:#8a5a00}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--card:#20201e;--ink:#ecebe7;--mute:#a09f9a;--line:#33322f;--acc:#4fc79b;--acc2:#1d3229;--bad:#f2867e;--bad2:#3a2321;--warn:#e0b04f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif}
+main{max-width:640px;margin:0 auto;padding:12px 16px 40px}
+h1{font-size:19px;margin:6px 0 2px}
+.sub{color:var(--mute);font-size:13px;margin:0 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}
+label{display:block;font-size:13px;color:var(--mute);margin:8px 0 3px}
+input,select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px}
+textarea{min-height:70px;resize:vertical}
+button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 12px;cursor:pointer}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row>*{flex:0 0 auto}
+details summary{cursor:pointer;font-weight:600}
+.target{font-size:22px;font-weight:600;text-align:center;padding:10px 4px;min-height:1.6em}
+.tmode{display:flex;gap:6px;justify-content:center;margin-bottom:6px}
+.tmode button{font-size:13px;padding:5px 10px}
+.tmode button.on{background:var(--acc2);border-color:var(--acc);color:var(--acc)}
+#mic{display:block;margin:10px auto 4px;width:120px;height:120px;border-radius:50%;font-size:17px;font-weight:600;background:var(--acc);color:#fff;border:none}
+#mic.rec{background:var(--bad);animation:p 1.2s infinite}
+@keyframes p{50%{transform:scale(1.05)}}
+#status{text-align:center;color:var(--mute);font-size:13px;min-height:1.4em}
+.lvl{height:5px;background:var(--line);border-radius:3px;overflow:hidden;max-width:220px;margin:4px auto}
+.lvl i{display:block;height:100%;width:0;background:var(--acc)}
+.res{display:grid;grid-template-columns:1fr;gap:6px;margin-top:6px}
+.eng{border:1px solid var(--line);border-radius:8px;padding:8px}
+.eng b{font-size:12px;color:var(--mute);font-weight:600;display:flex;justify-content:space-between;gap:6px}
+.eng .t{font-size:16px;min-height:1.4em;word-break:break-all}
+.eng .t.err{color:var(--bad);font-size:13px}
+.eng.win{border-color:var(--acc);background:var(--acc2)}
+.mk{display:flex;gap:6px;margin-top:4px}
+.mk button{padding:2px 10px;font-size:13px}
+.mk button.on.y{background:var(--acc2);border-color:var(--acc);color:var(--acc)}
+.mk button.on.n{background:var(--bad2);border-color:var(--bad);color:var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:5px 4px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--mute);font-weight:600;font-size:12px}
+.hist .h{border-bottom:1px solid var(--line);padding:6px 0;font-size:13px}
+.hist .h .tg{color:var(--mute)}
+.note{font-size:12px;color:var(--warn)}
+.small{font-size:12px;color:var(--mute)}
+</style>
+</head>
+<body>
+<main>
+<h1>语音识别对比</h1>
+<p class="sub">同一句话同时交给“手机自带识别”和“千问 qwen3-asr-flash”，并排比较准确率。</p>
+
+<details class="card" id="setBox">
+<summary>设置（第一次使用先填密钥）</summary>
+<label for="key">千问 API 密钥（阿里云国际版 Model Studio）</label>
+<input id="key" type="password" autocomplete="off" placeholder="sk-...">
+<label for="base">接口地址</label>
+<select id="baseSel">
+<option value="https://dashscope-intl.aliyuncs.com/compatible-mode/v1">新加坡（国际版，默认）</option>
+<option value="https://dashscope.aliyuncs.com/compatible-mode/v1">北京（中国大陆版）</option>
+<option value="custom">自定义（控制台给的工作空间地址）</option>
+</select>
+<input id="base" style="margin-top:6px;display:none" placeholder="https://xxxx.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1">
+<label for="hot">提示词：可能听到的零件名和指令（千问会优先识别成这些词）</label>
+<textarea id="hot"></textarea>
+<div class="row" style="margin-top:8px">
+<label style="margin:0;display:flex;gap:6px;align-items:center;color:var(--ink)"><input id="usePhone" type="checkbox" style="width:auto" checked> 同时用手机自带识别</label>
+</div>
+<p class="small">密钥只保存在这部手机的浏览器里。如果两种识别同时开时手机自带识别报错，取消勾选“同时用手机自带识别”，改为同一句话分两次测。</p>
+<div class="row" style="margin-top:8px"><button class="pri" id="save">保存</button><span id="saved" class="small"></span></div>
+</details>
+
+<section class="card">
+<div class="tmode"><button id="mTest" class="on">读测试句</button><button id="mFree">随便说</button></div>
+<div class="target" id="target"></div>
+<div class="row" style="justify-content:center" id="tnav"><button id="prevT">上一句</button><button id="nextT">换一句</button></div>
+<button id="mic">点我说话</button>
+<div class="lvl"><i id="lvl"></i></div>
+<div id="status">说完停一下会自动结束，也可以再点一次结束</div>
+<div class="res">
+<div class="eng" id="ePhone"><b><span>手机自带</span><span id="sPhone"></span></b><div class="t" id="tPhone"></div><div class="mk" data-e="phone"></div></div>
+<div class="eng" id="eQwen"><b><span>千问 qwen3-asr-flash</span><span id="sQwen"></span></b><div class="t" id="tQwen"></div><div class="mk" data-e="qwen"></div></div>
+</div>
+</section>
+
+<section class="card">
+<div class="row" style="justify-content:space-between"><b>统计</b><span class="row"><button id="copy">复制结果</button><button id="clear">清空</button></span></div>
+<table><thead><tr><th></th><th>测试句字准率</th><th>人工判对</th><th>平均等待</th></tr></thead><tbody id="stats"></tbody></table>
+<p class="small">字准率 = 1 − 错字率（只在“读测试句”模式下自动计算，忽略标点）。“随便说”模式请在每条结果下点“对/错”。</p>
+<div class="hist" id="hist"></div>
+</section>
+</main>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const DEF_HOT='组装家具说明书。常用词：横销、长螺栓、短螺丝、螺丝、螺母、垫片、木销、凸轮锁、偏心件、内六角扳手、十字螺丝刀、侧板、背板、顶板、底板、隔板、抽屉、滑轨、铰链、桌腿、桌面、钢条、零件包、有孔的一面、朝里、朝外、拧紧、插到底。指令：下一步、上一步、再说一遍、跳到第几步、把动画再放一遍、暂停、继续、帮我检查一下。';
+const SENT=['下一步','上一步','再说一遍','跳到第五步','把动画再放一遍','这颗长螺栓应该装在哪个孔','横销要插到底吗','我找不到短螺丝','木销装反了怎么办','凸轮锁要拧多少圈','侧板有孔的一面朝里还是朝外','这一步需要两个人吗','抽屉滑轨左右怎么分','内六角扳手放在哪里了','背板的钉子要钉几颗','桌腿拧不紧怎么办','我装好了帮我检查一下','零件包里少了一个螺母','偏心件的箭头要对准哪里','钢条是从上面插还是从下面插'];
+
+// settings
+$('key').value=LS.get('qw_key','');
+$('hot').value=LS.get('qw_hot',DEF_HOT);
+$('usePhone').checked=LS.get('use_phone','1')==='1';
+const savedBase=LS.get('qw_base','https://dashscope-intl.aliyuncs.com/compatible-mode/v1');
+const opts=[...$('baseSel').options].map(o=>o.value);
+if(opts.includes(savedBase)){$('baseSel').value=savedBase}else{$('baseSel').value='custom';$('base').value=savedBase;$('base').style.display='block'}
+$('baseSel').onchange=()=>{$('base').style.display=$('baseSel').value==='custom'?'block':'none'};
+function base(){return($('baseSel').value==='custom'?$('base').value.trim():$('baseSel').value).replace(/\/+$/,'')}
+$('save').onclick=()=>{LS.set('qw_key',$('key').value.trim());LS.set('qw_hot',$('hot').value);LS.set('qw_base',base());LS.set('use_phone',$('usePhone').checked?'1':'0');$('saved').textContent='已保存';setTimeout(()=>$('saved').textContent='',1500)};
+if(!LS.get('qw_key',''))$('setBox').open=true;
+
+// target sentence
+let mode='test',ti=Math.floor(Math.random()*SENT.length);
+function showT(){$('target').textContent=mode==='test'?SENT[ti]:'（随便说一句组装时会说的话）';$('tnav').style.visibility=mode==='test'?'visible':'hidden'}
+$('nextT').onclick=()=>{ti=(ti+1)%SENT.length;showT()};
+$('prevT').onclick=()=>{ti=(ti-1+SENT.length)%SENT.length;showT()};
+$('mTest').onclick=()=>{mode='test';$('mTest').classList.add('on');$('mFree').classList.remove('on');showT()};
+$('mFree').onclick=()=>{mode='free';$('mFree').classList.add('on');$('mTest').classList.remove('on');showT()};
+showT();
+
+// history
+let hist=[];try{hist=JSON.parse(LS.get('asr_hist','[]'))||[]}catch(e){hist=[]}
+function saveHist(){LS.set('asr_hist',JSON.stringify(hist.slice(-300)))}
+
+function norm(s){return(s||'').replace(/[\s\p{P}\p{S}]/gu,'')}
+function cer(ref,hyp){ref=[...norm(ref)];hyp=[...norm(hyp)];if(!ref.length)return null;let p=Array(hyp.length+1).fill(0).map((_,j)=>j);for(let i=1;i<=ref.length;i++){const c=[i];for(let j=1;j<=hyp.length;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(ref[i-1]===hyp[j-1]?0:1));p=c}return Math.min(1,p[hyp.length]/ref.length)}
+
+function renderStats(){
+  const rows=[['phone','手机自带'],['qwen','千问']].map(([e,n])=>{
+    const tested=hist.filter(h=>h.target&&h[e]&&h[e].text!=null);
+    const acc=tested.length?(1-tested.reduce((s,h)=>s+cer(h.target,h[e].text),0)/tested.length):null;
+    const exact=tested.filter(h=>cer(h.target,h[e].text)===0).length;
+    const marked=hist.filter(h=>h[e]&&h[e].ok!=null);const ok=marked.filter(h=>h[e].ok).length;
+    const lat=hist.filter(h=>h[e]&&h[e].ms);const ms=lat.length?Math.round(lat.reduce((s,h)=>s+h[e].ms,0)/lat.length):null;
+    return `<tr><td>${n}</td><td>${acc==null?'—':(acc*100).toFixed(1)+'%'}<div class="small">${tested.length?exact+'/'+tested.length+' 句全对':''}</div></td><td>${marked.length?ok+'/'+marked.length:'—'}</td><td>${ms==null?'—':(ms/1000).toFixed(1)+' 秒'}</td></tr>`});
+  $('stats').innerHTML=rows.join('');
+  $('hist').innerHTML=hist.slice().reverse().slice(0,30).map(h=>{
+    const f=(e,n)=>h[e]?`<div>${n}：${esc(h[e].text!=null?h[e].text:('出错：'+h[e].err))}${h.target&&h[e].text!=null?` <span class="tg">(${Math.round((1-cer(h.target,h[e].text))*100)}%)</span>`:''}</div>`:'';
+    return `<div class="h">${h.target?`<div class="tg">目标：${esc(h.target)}</div>`:''}${f('phone','手机')}${f('qwen','千问')}</div>`}).join('');
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+$('clear').onclick=()=>{if(confirm('清空全部测试记录？')){hist=[];saveHist();renderStats()}};
+$('copy').onclick=async()=>{
+  const lines=hist.map(h=>[h.target||'(随便说)',h.phone?(h.phone.text??'ERR '+h.phone.err):'-',h.qwen?(h.qwen.text??'ERR '+h.qwen.err):'-',h.qwen&&h.qwen.ms?h.qwen.ms+'ms':''].join(' | '));
+  const txt='目标 | 手机 | 千问 | 千问耗时\n'+lines.join('\n')+'\n\n'+$('stats').innerText;
+  try{await navigator.clipboard.writeText(txt);$('copy').textContent='已复制'}catch(e){prompt('复制下面内容',txt)}
+  setTimeout(()=>$('copy').textContent='复制结果',1500)};
+renderStats();
+
+// marking buttons
+let cur=null;
+function marks(){document.querySelectorAll('.mk').forEach(m=>{const e=m.dataset.e;const r=cur&&cur[e];
+  if(!r||r.text==null){m.innerHTML='';return}
+  m.innerHTML=`<button class="y ${r.ok===true?'on':''}">对</button><button class="n ${r.ok===false?'on':''}">错</button>`;
+  m.children[0].onclick=()=>{r.ok=true;saveHist();marks();renderStats()};
+  m.children[1].onclick=()=>{r.ok=false;saveHist();marks();renderStats()}})}
+
+function setT(e,txt,err,extra){const el=$(e==='phone'?'tPhone':'tQwen');el.textContent=txt;el.classList.toggle('err',!!err);$(e==='phone'?'sPhone':'sQwen').textContent=extra||''}
+function win(){['ePhone','eQwen'].forEach(i=>$(i).classList.remove('win'));if(!cur||!cur.target)return;
+  const a=cur.phone&&cur.phone.text!=null?cer(cur.target,cur.phone.text):null,b=cur.qwen&&cur.qwen.text!=null?cer(cur.target,cur.qwen.text):null;
+  if(a!=null&&b!=null){if(a<b)$('ePhone').classList.add('win');else if(b<a)$('eQwen').classList.add('win')}}
+
+// ---------- recording ----------
+let recState='idle',stream=null,ctx=null,node=null,src=null,chunks=[],sr=48000,t0=0,spoke=false,lastVoice=0,floor=0.01,calib=[],sreco=null,phoneDone=null;
+function status(s){$('status').textContent=s}
+
+async function start(){
+  if(recState!=='idle')return;
+  const key=LS.get('qw_key','');
+  if(!key){$('setBox').open=true;status('请先在设置里填写千问密钥并保存');return}
+  cur={t:Date.now(),target:mode==='test'?SENT[ti]:null};
+  setT('phone','');setT('qwen','');win();marks();
+  recState='rec';$('mic').classList.add('rec');$('mic').textContent='在听…';status('请说话');
+  chunks=[];spoke=false;calib=[];t0=performance.now();lastVoice=t0;
+  // phone recognizer
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  phoneDone=null;
+  if(LS.get('use_phone','1')==='1'){
+    if(!SR){cur.phone={text:null,err:'此浏览器没有自带语音识别'};setT('phone','此浏览器没有自带语音识别',1)}
+    else{
+      cur.phone={text:null,err:null};let finalTxt='',interim='';
+      phoneDone=new Promise(res=>{
+        try{
+          sreco=new SR();sreco.lang='zh-CN';sreco.interimResults=true;sreco.continuous=true;sreco.maxAlternatives=1;
+          sreco.onresult=ev=>{interim='';for(let i=ev.resultIndex;i<ev.results.length;i++){const r=ev.results[i];if(r.isFinal)finalTxt+=r[0].transcript;else interim+=r[0].transcript}setT('phone',finalTxt+interim)};
+          sreco.onerror=ev=>{cur.phone.err=ev.error||'error'};
+          sreco.onend=()=>res(finalTxt||interim);
+          sreco.start();
+        }catch(e){cur.phone.err=String(e.message||e);res('')}
+      });
+    }
+  }
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+  }catch(e){stopAll(true);status('无法使用麦克风：'+(e.name||e.message)+'。请允许浏览器使用麦克风');return}
+  ctx=new (window.AudioContext||window.webkitAudioContext)();sr=ctx.sampleRate;
+  src=ctx.createMediaStreamSource(stream);node=ctx.createScriptProcessor(4096,1,1);
+  node.onaudioprocess=ev=>{
+    if(recState!=='rec')return;
+    const d=ev.inputBuffer.getChannelData(0);chunks.push(new Float32Array(d));
+    let s=0;for(let i=0;i<d.length;i++)s+=d[i]*d[i];const rms=Math.sqrt(s/d.length);
+    $('lvl').style.width=Math.min(100,rms*600)+'%';
+    const now=performance.now();
+    if(now-t0<350){calib.push(rms);floor=Math.max(0.006,calib.reduce((a,b)=>a+b,0)/calib.length);return}
+    const thr=Math.max(floor*2.5,0.015);
+    if(rms>thr){spoke=true;lastVoice=now}
+    if(spoke&&now-lastVoice>1200)finish();
+    else if(!spoke&&now-t0>8000){status('没听到声音');stopAll(true)}
+    else if(now-t0>30000)finish();
+  };
+  src.connect(node);node.connect(ctx.destination);
+}
+
+function stopAll(cancel){
+  recState=cancel?'idle':'busy';
+  $('mic').classList.remove('rec');$('mic').textContent=cancel?'点我说话':'识别中…';$('lvl').style.width='0';
+  try{node&&node.disconnect();src&&src.disconnect()}catch(e){}
+  try{stream&&stream.getTracks().forEach(t=>t.stop())}catch(e){}
+  try{ctx&&ctx.close()}catch(e){}
+  try{sreco&&sreco.stop()}catch(e){}
+  node=src=stream=ctx=null;
+}
+
+async function finish(){
+  if(recState!=='rec')return;
+  const tEnd=performance.now();
+  stopAll(false);status('识别中…');
+  const wav=toWav(chunks,sr,16000);chunks=[];
+  const pPhone=phoneDone?Promise.race([phoneDone,new Promise(r=>setTimeout(()=>r(null),4000))]).then(txt=>{
+    const ms=Math.round(performance.now()-tEnd);
+    if(txt==null&&!cur.phone.err)cur.phone.err='超时没有结果';
+    if(txt)cur.phone={text:txt,ms};else{setT('phone','出错：'+(cur.phone.err||'没识别到内容'),1);if(!cur.phone.err)cur.phone.err='没识别到内容'}
+    if(cur.phone.text!=null)setT('phone',cur.phone.text,0,(ms/1000).toFixed(1)+' 秒');
+  }):Promise.resolve();
+  const pQwen=qwen(wav).then(r=>{const ms=Math.round(performance.now()-tEnd);cur.qwen={text:r,ms};setT('qwen',r||'（空）',0,(ms/1000).toFixed(1)+' 秒')})
+    .catch(e=>{cur.qwen={text:null,err:e.message};setT('qwen','出错：'+e.message,1)});
+  await Promise.all([pPhone,pQwen]);
+  hist.push(cur);saveHist();renderStats();win();marks();
+  recState='idle';$('mic').textContent='点我说话';
+  status(mode==='test'?'可以点“换一句”继续':'可以继续说下一句');
+}
+
+$('mic').onclick=()=>{if(recState==='idle')start();else if(recState==='rec'){if(spoke)finish();else{stopAll(true);status('已取消')}}};
+
+function toWav(bufs,inRate,outRate){
+  let len=0;bufs.forEach(b=>len+=b.length);const all=new Float32Array(len);let o=0;bufs.forEach(b=>{all.set(b,o);o+=b.length});
+  const ratio=inRate/outRate,n=Math.floor(all.length/ratio),pcm=new Int16Array(n);
+  for(let i=0;i<n;i++){const a=Math.floor(i*ratio),b=Math.min(all.length,Math.floor((i+1)*ratio));let s=0;for(let j=a;j<b;j++)s+=all[j];let v=s/Math.max(1,b-a);v=Math.max(-1,Math.min(1,v));pcm[i]=v<0?v*0x8000:v*0x7fff}
+  const buf=new ArrayBuffer(44+pcm.length*2),dv=new DataView(buf);
+  const w=(p,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(p+i,s.charCodeAt(i))};
+  w(0,'RIFF');dv.setUint32(4,36+pcm.length*2,true);w(8,'WAVE');w(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);
+  dv.setUint32(24,outRate,true);dv.setUint32(28,outRate*2,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);w(36,'data');dv.setUint32(40,pcm.length*2,true);
+  new Int16Array(buf,44).set(pcm);return new Blob([buf],{type:'audio/wav'});
+}
+function b64(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob)})}
+
+async function qwen(wav){
+  const key=LS.get('qw_key',''),url=(LS.get('qw_base','')||'https://dashscope-intl.aliyuncs.com/compatible-mode/v1').replace(/\/+$/,'')+'/chat/completions';
+  const data=await b64(wav);
+  const hot=LS.get('qw_hot',DEF_HOT).trim();
+  const messages=[];
+  if(hot)messages.push({role:'system',content:[{text:hot}]});
+  messages.push({role:'user',content:[{type:'input_audio',input_audio:{data}}]});
+  let r;
+  try{
+    r=await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
+      body:JSON.stringify({model:'qwen3-asr-flash',messages,stream:false,asr_options:{language:'zh',enable_itn:true}})});
+  }catch(e){throw new Error('连不上接口（可能是网络问题，或接口不允许网页直接调用）：'+(e.message||e))}
+  const txt=await r.text();let j=null;try{j=JSON.parse(txt)}catch(e){}
+  if(!r.ok){const m=j&&(j.error&&(j.error.message||j.error.code)||j.message||j.code)||txt.slice(0,200);
+    throw new Error((r.status===401?'密钥无效或没有权限':'HTTP '+r.status)+'：'+m)}
+  const c=j&&j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content;
+  if(typeof c==='string')return c.trim();
+  if(Array.isArray(c))return c.map(x=>x.text||'').join('').trim();
+  throw new Error('返回格式无法识别：'+txt.slice(0,200));
+}
+})();
+</script>
+</body>
+</html>
