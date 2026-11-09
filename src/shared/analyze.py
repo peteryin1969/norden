@@ -86,6 +86,11 @@ def report(S):
         print('\nAI 问答（问 → 答）：')
         for k,l,q,a in qa:print(f'  第 {k} 步：“{q}” → “{a}”')
         if not qa:print('  无（旧版本记录没有存回答）')
+        ch=[(k,x) for s in P for k,r in s.get('steps',{}).items() for x in r.get('checks',[])]
+        cc=Counter(x.get('verdict') for k,x in ch)
+        print(f'\n拍照检查：{len(ch)} 次 {dict(cc)}')
+        for k,x in ch:
+            if x.get('verdict') in ('fail','unsure'):print(f'  第 {k} 步 [{x["verdict"]}] {x.get("say") or ""} '+'；'.join(x.get('issues') or [])+(f' 补拍：{x["need"]}' if x.get('need') else ''))
         fbs=[(k,x) for s in P for k,r in s.get('steps',{}).items() for x in r.get('feedback',[]) if x.get('kind')!='improve']
         print('\n用户反馈原话：')
         for k,x in fbs:print(f'  第 {k} 步：“{x.get("t") or "（未记文字）"}”'+(f'（{ {"remark":"随口说的建议","asked":"让助手记下","said":"说出建议","ai":"AI 记下"}.get(x.get("src"),"")}）' if x.get('src') else ''))
