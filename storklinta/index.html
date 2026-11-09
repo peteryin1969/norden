@@ -227,7 +227,7 @@ tr:last-child td{border-bottom:none}
   </section>
 </div>
 
-<script>window.PRODUCT={ver:"b982a47c",name:"IKEA STORKLINTA 六斗柜",steps:45,say:{},loopEnd:"43",loops:{}}</script>
+<script>window.PRODUCT={ver:"7f09bcf2",name:"IKEA STORKLINTA 六斗柜",steps:45,say:{},loopEnd:"43",loops:{}}</script>
 <script src="../shim.js?v=2859ef9d"></script>
 <script>
 /* Drawer animation, steps 35-44. Proportions are estimates: the manual gives no panel sizes. */
@@ -1130,25 +1130,32 @@ QSR.prototype._emit=function(t,fin){const r=[{transcript:t}];r.isFinal=fin;this.
 QSR.prototype.abort=QSR.prototype.stop=function(){if(!this._on)return;this._on=false;try{this._ab.abort()}catch(e){}if(QM&&this._fn)QM.L.delete(this._fn);const me=this;setTimeout(()=>{me.onend&&me.onend()},0)};
 /* iFlytek streaming dictation (讯飞语音听写 流式版), optional: the page signs the WebSocket URL with the user's own APISecret,
    streams 16 kHz PCM while the user speaks, shows partial text live, and falls back to the phone's recognition on any failure. */
-const XK='xf-asr';let XCFG={on:false,appid:'',key:'',secret:'',host:'iat-api.xfyun.cn'};try{Object.assign(XCFG,JSON.parse(localStorage.getItem(XK)||'{}'))}catch(e){}
+const XK='xf-asr';let XCFG={on:false,appid:'',key:'',secret:'',host:'iat-api.xfyun.cn',model:'llm',llmHost:'iat.cn-huabei-1.xf-yun.com',resId:''};try{Object.assign(XCFG,JSON.parse(localStorage.getItem(XK)||'{}'))}catch(e){}
 let xfDown='';
 const useXf=()=>!!(XCFG.on&&XCFG.appid&&XCFG.key&&XCFG.secret&&!xfDown&&window.WebSocket&&window.crypto&&crypto.subtle&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
 function xSave(){try{localStorage.setItem(XK,JSON.stringify(XCFG))}catch(e){}}
-async function xfURL(){const host=XCFG.host||'iat-api.xfyun.cn',date=new Date().toUTCString(),te=new TextEncoder(),k=await crypto.subtle.importKey('raw',te.encode(XCFG.secret),{name:'HMAC',hash:'SHA-256'},false,['sign']),
-  sig=btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.sign('HMAC',k,te.encode('host: '+host+'\ndate: '+date+'\nGET /v2/iat HTTP/1.1'))))),
+const xfLLM=()=>XCFG.model!=='classic';
+async function xfURL(){const host=xfLLM()?(XCFG.llmHost||'iat.cn-huabei-1.xf-yun.com'):(XCFG.host||'iat-api.xfyun.cn'),path=xfLLM()?'/v1':'/v2/iat',date=new Date().toUTCString(),te=new TextEncoder(),k=await crypto.subtle.importKey('raw',te.encode(XCFG.secret),{name:'HMAC',hash:'SHA-256'},false,['sign']),
+  sig=btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.sign('HMAC',k,te.encode('host: '+host+'\ndate: '+date+'\nGET '+path+' HTTP/1.1'))))),
   auth=btoa('api_key="'+XCFG.key+'",algorithm="hmac-sha256",headers="host date request-line",signature="'+sig+'"');
-  return (/^(localhost|127\.)/.test(host)?'ws://':'wss://')+host+'/v2/iat?authorization='+encodeURIComponent(auth)+'&date='+encodeURIComponent(date)+'&host='+encodeURIComponent(host)}
+  return (/^(localhost|127\.)/.test(host)?'ws://':'wss://')+host+path+'?authorization='+encodeURIComponent(auth)+'&date='+encodeURIComponent(date)+'&host='+encodeURIComponent(host)}
 function pcm64(f32){const b=new ArrayBuffer(f32.length*2),v=new DataView(b);for(let i=0;i<f32.length;i++){const s=Math.max(-1,Math.min(1,f32[i]));v.setInt16(i*2,s<0?s*0x8000:s*0x7fff,true)}return b64(b)}
 /* one recognition session = one utterance */
-function xfSession(onText,onDone,onFail){let ws=null,open=false,q=[],ended=false,segs=[],got=false,np=0,pgs=false,tEnd=0;const t0=performance.now();
+function xfDhw(){const all=window.PARTNO&&PARTNO.all&&PARTNO.all(),L=new Set();try{(here().s.parts||[]).forEach(p=>{const c=cellBy(p[0]);if(c)L.add(c.name)})}catch(e){}if(all)Object.keys(all).forEach(k=>L.add(k));else if(typeof CELLS!=='undefined')CELLS.forEach(c=>L.add(c.name));return [...L].filter(w=>/^[一-龥]{2,7}$/.test(w)).slice(0,60).join('|')}
+function xfSession(onText,onDone,onFail){let ws=null,open=false,q=[],ended=false,segs=[],got=false,np=0,pgs=false,tEnd=0,seq=0;const t0=performance.now(),LLM=xfLLM();
   const text=()=>segs.filter(Boolean).join('');
-  xfURL().then(u=>{ws=new WebSocket(u);ws.onopen=()=>{open=true;const first=q.shift()||new Float32Array(0);ws.send(JSON.stringify({common:{app_id:XCFG.appid},business:{language:'zh_cn',domain:'iat',accent:'mandarin',dwa:'wpgs',vad_eos:3000,ptt:1,nunum:1},data:{status:0,format:'audio/L16;rate=16000',encoding:'raw',audio:pcm64(first)}}));q.forEach(c=>ws.send(JSON.stringify({data:{status:1,format:'audio/L16;rate=16000',encoding:'raw',audio:pcm64(c)}})));q=[];if(ended)fin()};
-    ws.onmessage=e=>{let j;try{j=JSON.parse(e.data)}catch(x){return}if(j.code!==0){const err=new Error('xf '+j.code+' '+(j.message||''));err.code=j.code;onFail(err);try{ws.close()}catch(x){}return}got=true;const r=j.data&&j.data.result;
+  const frame=(st,a)=>{seq++;if(!LLM)return st===0?{common:{app_id:XCFG.appid},business:{language:'zh_cn',domain:'iat',accent:'mandarin',dwa:'wpgs',vad_eos:3000,ptt:1,nunum:1},data:{status:0,format:'audio/L16;rate=16000',encoding:'raw',audio:a}}:{data:{status:st,format:'audio/L16;rate=16000',encoding:'raw',audio:a}};
+    const au={encoding:'raw',sample_rate:16000,channels:1,bit_depth:16,seq,status:st,audio:a};if(st!==0)return {header:{app_id:XCFG.appid,status:st},payload:{audio:au}};
+    const dhw=xfDhw(),h={app_id:XCFG.appid,status:0};if(XCFG.resId)h.res_id=XCFG.resId;const iat={domain:'slm',language:'zh_cn',accent:'mandarin',eos:3000,dwa:'wpgs',result:{encoding:'utf8',compress:'raw',format:'json'}};if(dhw)iat.dhw='utf-8;'+dhw;return {header:h,parameter:{iat},payload:{audio:au}}};
+  const dec=b=>{try{return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b),c=>c.charCodeAt(0))))}catch(e){return null}};
+  xfURL().then(u=>{ws=new WebSocket(u);ws.onopen=()=>{open=true;const first=q.shift()||new Float32Array(0);ws.send(JSON.stringify(frame(0,pcm64(first))));q.forEach(c=>ws.send(JSON.stringify(frame(1,pcm64(c)))));q=[];if(ended)fin()};
+    ws.onmessage=e=>{let j;try{j=JSON.parse(e.data)}catch(x){return}const code=LLM?(j.header&&j.header.code):j.code;if(code!==0){const err=new Error('xf '+code+' '+((LLM?j.header&&j.header.message:j.message)||''));err.code=code;onFail(err);try{ws.close()}catch(x){}return}got=true;
+      const r=LLM?(j.payload&&j.payload.result&&j.payload.result.text?dec(j.payload.result.text):null):(j.data&&j.data.result);
       if(r){np++;if(r.pgs)pgs=true;const w=(r.ws||[]).map(x=>x.cw&&x.cw[0]&&x.cw[0].w||'').join('');if(r.pgs==='rpl'&&r.rg)for(let i=r.rg[0];i<=r.rg[1];i++)segs[i]='';segs[r.sn]=w;onText(text())}
-      if(j.data&&j.data.status===2){onDone(text(),Math.round(performance.now()-t0),{np,pgs,after:tEnd?Math.round(performance.now()-tEnd):null});try{ws.close()}catch(x){}}};
+      const done=LLM?(j.header&&j.header.status===2):(j.data&&j.data.status===2);if(done){onDone(text(),Math.round(performance.now()-t0),{np,pgs,after:tEnd?Math.round(performance.now()-tEnd):null});try{ws.close()}catch(x){}}};
     ws.onerror=()=>{if(!got)onFail(new Error('xf network'))};ws.onclose=e=>{if(!got&&e.code!==1000)onFail(new Error('xf closed '+e.code))}}).catch(onFail);
-  const fin=()=>{if(open&&ws.readyState===1)ws.send(JSON.stringify({data:{status:2,format:'audio/L16;rate=16000',encoding:'raw',audio:''}}))};
-  return{end(){ended=true;tEnd=performance.now();fin()},push(c){if(open&&ws.readyState===1)ws.send(JSON.stringify({data:{status:1,format:'audio/L16;rate=16000',encoding:'raw',audio:pcm64(c)}}));else q.push(c)},close(){try{ws&&ws.close()}catch(x){}}}}
+  const fin=()=>{if(open&&ws.readyState===1)ws.send(JSON.stringify(frame(2,'')))};
+  return{end(){ended=true;tEnd=performance.now();fin()},push(c){if(open&&ws.readyState===1)ws.send(JSON.stringify(frame(1,pcm64(c))));else q.push(c)},close(){try{ws&&ws.close()}catch(x){}}}}
 function xfErr(err){const c=err&&err.code,why=c?('code'+c):'network';xfDown=why;SES.asrFallback='xf '+why+' '+String(err&&err.message||'').slice(0,100);touch();qRelease();
   const x=c?'讯飞识别出错（'+c+'），请检查 APPID 和密钥，先换回手机自带的识别。':'连不上讯飞，先换回手机自带的识别。';tr('讯飞：'+(err&&err.message));if(chat)bubble('ai note',x)}
 function XFSR(){this.continuous=true;this.interimResults=true;this.lang='zh-CN';this.maxAlternatives=1;this._on=false}
@@ -1165,15 +1172,16 @@ XFSR.prototype.start=function(){const me=this;me._on=true;
     me._close=()=>{if(S){S.close();S=null}};M.L.add(me._fn);me.onstart&&me.onstart()}).catch(err=>{me._on=false;xfErr({message:'mic '+(err&&err.name||err)});me.onerror&&me.onerror({error:'aborted'});me.onend&&me.onend()})};
 XFSR.prototype._emit=QSR.prototype._emit;
 XFSR.prototype.abort=XFSR.prototype.stop=function(){if(!this._on)return;this._on=false;if(this._close)this._close();if(QM&&this._fn)QM.L.delete(this._fn);const me=this;setTimeout(()=>{me.onend&&me.onend()},0)};
-function xfHotwords(){const all=window.PARTNO&&PARTNO.all&&PARTNO.all(),L=new Set();if(all)Object.entries(all).forEach(([k,v])=>{L.add(k);L.add(v+'号'+k);L.add(v+'号')});else if(typeof CELLS!=='undefined')CELLS.forEach(c=>{L.add(c.name);L.add(c.n+'号')});
-  ['下一步','上一步','再说一遍','放大','缩小','复位','返回原图','往左转','往右转','从上面看','长什么样','标出来','没有了','还有吗','别问了','少问点','横销','木销','铰链','合页'].forEach(w=>L.add(w));return [...L].join('\n')}
+function xfHotwords(){const CN='零一二三四五六七八九十',cn=n=>n<=10?CN[n]:n<20?'十'+(n%10?CN[n%10]:''):CN[Math.floor(n/10)]+'十'+(n%10?CN[n%10]:''),all=window.PARTNO&&PARTNO.all&&PARTNO.all(),L=new Set();
+  if(all)Object.entries(all).forEach(([k,v])=>{L.add(k);L.add(cn(v)+'号'+k);L.add(cn(v)+'号')});else if(typeof CELLS!=='undefined')CELLS.forEach(c=>{L.add(c.name);L.add(cn(+c.n)+'号'+c.name);L.add(cn(+c.n)+'号')});
+  ['下一步','上一步','再说一遍','放大','缩小','复位','返回原图','往左转','往右转','逆时针','顺时针','从上面看','长什么样','标出来','没有了','还有吗','别问了','少问点','检查','跳过'].forEach(w=>L.add(w));return [...L].filter(w=>/^[一-龥]{1,7}$/.test(w)).join('\n')}
 function xPanel(host){if(!host||$v('vXf'))return;const d=document.createElement('div');d.id='vXf';d.className='vlogbox';
-  d.innerHTML='<h3>讯飞识别</h3><label class="vconsent"><input type="checkbox" id="vXOn"> 用讯飞语音听写（流式，边说边出字）</label><p class="hint">开启后，你说话时的声音会实时发到科大讯飞（服务器在中国）转成文字，这里不保存录音。凭证只存在这台设备上。出错时自动换回手机自带的识别。</p><input id="vXApp" type="text" placeholder="APPID" style="width:100%;margin:4px 0;padding:8px;font:inherit"><input id="vXKey" type="password" placeholder="APIKey" style="width:100%;margin:4px 0;padding:8px;font:inherit"><input id="vXSec" type="password" placeholder="APISecret" style="width:100%;margin:4px 0;padding:8px;font:inherit"><div class="vlogbtn"><button class="btn" id="vXSave">保存</button><button class="btn" id="vXTest">测试连接</button><button class="btn" id="vXHot">复制热词表</button></div><p class="hint" id="vXStat"></p>';
-  host.append(d);const on=$v('vXOn'),a=$v('vXApp'),k=$v('vXKey'),s=$v('vXSec'),st=$v('vXStat'),dot=v=>v?'••••••••':'';on.checked=!!XCFG.on;a.value=XCFG.appid||'';k.value=dot(XCFG.key);s.value=dot(XCFG.secret);
-  const save=()=>{XCFG.on=on.checked;XCFG.appid=a.value.trim();if(k.value&&!/^•+$/.test(k.value))XCFG.key=k.value.trim();if(s.value&&!/^•+$/.test(s.value))XCFG.secret=s.value.trim();xSave();xfDown='';k.value=dot(XCFG.key);s.value=dot(XCFG.secret);
+  d.innerHTML='<h3>讯飞识别</h3><label class="vconsent"><input type="checkbox" id="vXOn"> 用讯飞语音听写（流式，边说边出字）</label><p class="hint">开启后，你说话时的声音会实时发到科大讯飞（服务器在中国）转成文字，这里不保存录音。凭证只存在这台设备上。出错时自动换回手机自带的识别。</p><label class="vconsent"><input type="checkbox" id="vXLLM" checked> 用语音听写大模型（中英）V2.0；不勾选用普通版流式听写</label><input id="vXApp" type="text" placeholder="APPID" style="width:100%;margin:4px 0;padding:8px;font:inherit"><input id="vXKey" type="password" placeholder="APIKey" style="width:100%;margin:4px 0;padding:8px;font:inherit"><input id="vXSec" type="password" placeholder="APISecret" style="width:100%;margin:4px 0;padding:8px;font:inherit"><input id="vXRes" type="text" placeholder="热词 res_id（可不填，大模型用）" style="width:100%;margin:4px 0;padding:8px;font:12px var(--mono,monospace)"><div class="vlogbtn"><button class="btn" id="vXSave">保存</button><button class="btn" id="vXTest">测试连接</button><button class="btn" id="vXHot">复制热词表</button></div><p class="hint" id="vXStat"></p>';
+  host.append(d);const on=$v('vXOn'),a=$v('vXApp'),k=$v('vXKey'),s=$v('vXSec'),st=$v('vXStat'),dot=v=>v?'••••••••':'';on.checked=!!XCFG.on;$v('vXLLM').checked=XCFG.model!=='classic';$v('vXRes').value=XCFG.resId||'';a.value=XCFG.appid||'';k.value=dot(XCFG.key);s.value=dot(XCFG.secret);
+  const save=()=>{XCFG.on=on.checked;XCFG.model=$v('vXLLM').checked?'llm':'classic';XCFG.resId=$v('vXRes').value.trim();XCFG.appid=a.value.trim();if(k.value&&!/^•+$/.test(k.value))XCFG.key=k.value.trim();if(s.value&&!/^•+$/.test(s.value))XCFG.secret=s.value.trim();xSave();xfDown='';k.value=dot(XCFG.key);s.value=dot(XCFG.secret);
     if(XCFG.on&&QCFG.on){QCFG.on=false;qSave();const qo=$v('vQOn');if(qo)qo.checked=false}st.textContent=XCFG.on?(XCFG.appid&&XCFG.key&&XCFG.secret?'已开启讯飞识别，下次进入语音对话时生效。':'请填齐 APPID、APIKey、APISecret。'):'已关闭讯飞识别。'};
-  on.onchange=save;$v('vXSave').onclick=save;
-  $v('vXHot').onclick=async()=>{const t=xfHotwords();try{await navigator.clipboard.writeText(t);st.textContent='热词表已复制（'+t.split('\n').length+' 个），到讯飞控制台“个性化热词”里粘贴上传。'}catch(e){st.textContent=t}};
+  on.onchange=save;$v('vXLLM').onchange=save;$v('vXSave').onclick=save;
+  $v('vXHot').onclick=async()=>{const t=xfHotwords();try{await navigator.clipboard.writeText(t);st.textContent='热词表已复制（'+t.split('\n').length+' 个，全中文、每个不超过 7 个字），到讯飞控制台“个性化热词”里粘贴，点保存并发布；大模型版再把页面上的 res_id 填到上面。'}catch(e){st.textContent=t}};
   $v('vXTest').onclick=()=>{save();if(!(XCFG.appid&&XCFG.key&&XCFG.secret)){st.textContent='请填齐 APPID、APIKey、APISecret。';return}st.textContent='测试中…';const t0=performance.now();let done=false;const S=xfSession(()=>{},()=>{done=true;st.textContent='连接成功（'+Math.round(performance.now()-t0)+' 毫秒）。'},e=>{if(done)return;done=true;st.textContent=e&&e.code?'出错：'+e.message+'（检查 APPID、APIKey、APISecret 是否对应，服务是否开通）':'连不上讯飞：'+(e&&e.message||'')});S.push(new Float32Array(8000));S.end();setTimeout(()=>{if(!done){done=true;S.close();st.textContent='超时，没有收到讯飞的回复。'}},8000)}}
 function qPanel(host){if(!host||$v('vQwen'))return;const d=document.createElement('div');d.id='vQwen';d.className='vlogbox';
   d.innerHTML='<h3>语音识别</h3><label class="vconsent"><input type="checkbox" id="vQOn"> 用千问识别（阿里云 Qwen3-ASR）</label><p class="hint">开启后，你说的每句话会以录音发到阿里云转成文字，这里不保存录音。密钥只存在这台设备上。出错时自动换回手机自带的识别。</p><input id="vQKey" type="password" placeholder="百炼 API Key（sk-…）" style="width:100%;margin:4px 0;padding:8px;font:inherit"><input id="vQUrl" type="text" style="width:100%;margin:4px 0;padding:8px;font:12px var(--mono,monospace)"><div class="vlogbtn"><button class="btn" id="vQSave">保存</button><button class="btn" id="vQTest">测试连接</button></div><p class="hint" id="vQStat"></p>';
