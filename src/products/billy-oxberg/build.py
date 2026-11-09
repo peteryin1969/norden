@@ -35,7 +35,7 @@ OAK=r'''function oakTex(){const W=2048,H=1024,c=document.createElement('canvas')
 Rs=[("const DUR={'21':1.5,'33':2.4,'45':2.6};","const DUR={B1:1.6,B2:1.7,B7:1.5,B8:2,B9:3.6,B10:3,B11:2,B12:1.5,D1:1.8,D2:2,D3:2.2,D4:1.8,D5:1.4,D6:1.4,D7:3};"),
 ("const IDS=['35','36','37','38','39','40','41','42','43','44'];","const IDS=[];"),("dowel=wc(dowel,'101345')","dowel=wc(dowel,'101351')"),
 ("const SCREW={'1':'146114','43':'146114','7':'151931','8':'151931','17':'105248','18':'105248','32':'109572','34':'109572'};","const SCREW={};"),
-("const PANEL={sideA:'外侧板',sideB:'外侧板',mid:'中隔板',botA:'底板',botB:'底板',pA:'脚线',pB:'脚线',back:'背板',top:'顶板'};","const PANEL={panL:'侧板',panR:'侧板',bot:'底板',mid:'中间固定板',top:'顶板',plinth:'脚线',back:'背板',s0:'活动搁板',s1:'活动搁板',s2:'活动搁板',s3:'活动搁板'};"),
+("const PANEL={sideA:'外侧板',sideB:'外侧板',mid:'中隔板',botA:'底板',botB:'底板',pA:'脚线',pB:'脚线',back:'背板',top:'顶板'};","const PANEL={panL:'侧板',panR:'侧板',bot:'柜底板',mid:'中间固定板',top:'顶板',plinth:'脚线',back:'背板',s0:'活动搁板',s1:'活动搁板',s2:'活动搁板',s3:'活动搁板'};"),
 ("const PAIR={sideA:'sideB',sideB:'sideA',botA:'botB',botB:'botA',pA:'pB',pB:'pA'};","const PAIR={panL:'panR',panR:'panL'};"),
 ("turn=['24','26','33','43','44','45']","turn=['B8','B10']"),("cur==='33'||cur==='45'){FIT=null;return}","false){FIT=null;return}"),
 ("function activeObjs(){if(cur==='21')return[FR.back.g,FR.fold];","function activeObjs(){"),("  if(cur==='45'){put(FR.lv,'联锁拨片',[.56,.9]);put(FR.drs[1].g,'抽屉',[0,.55])}if(cur==='44')put(root,'带警示标签的抽屉',[0,1])}","}"),
@@ -48,6 +48,7 @@ Rs=[("const DUR={'21':1.5,'33':2.4,'45':2.6};","const DUR={B1:1.6,B2:1.7,B7:1.5,
 ("o.castShadow=real&&!o.material.isMeshBasicMaterial","o.castShadow=real&&!o.material.isMeshBasicMaterial&&!o.material.transparent"),("if(c===WOOD){const box0","if(c===WOOD||c===GREY){const box0"),("ax=[0,1,2].filter(k=>k!==skip).sort((q,w)=>d[w]-d[q]),v=","ax=[0,1,2].filter(k=>k!==skip).sort((q,w)=>m.userData.vert?(q===1?-1:w===1?1:0):d[w]-d[q]),v=")]
 for x,y in Rs:
     assert x in s,x; s=s.replace(x,y)
+import sys;sys.path.insert(0,N);from kit import addkit;s=addkit(s,open('fk.js',encoding='utf8').read())
 open('anim.js','w',encoding='utf8').write(s)
 h=open(N+'page.html',encoding='utf8').read()
 for a,b in [('<title>STORKLINTA 组装助手</title>','<title>BILLY OXBERG 组装助手</title>'),('AA-2413736-7 · 32 页 · 45 步 · 6 个抽屉','AA-2289108-3 · AA-1003271-12 · 19 步 · 2 个书柜 + 4 扇门'),('<h1>STORKLINTA 组装助手</h1>','<h1>BILLY OXBERG 组装助手</h1>'),("const KEY='storklinta-v1';","const KEY='billyox-v1';"),('IKEA STORKLINTA 六斗柜','IKEA BILLY OXBERG 书柜'),('IKEA STORKLINTA','IKEA BILLY')]:h=h.replace(a,b)

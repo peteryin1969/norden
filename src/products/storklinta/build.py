@@ -39,6 +39,8 @@ for k, q in need.items():
 tpl = open(f'{R}/page.html', encoding='utf8').read()
 html = tpl.replace('/*STEPS*/[]', json.dumps(steps, ensure_ascii=False, separators=(',', ':')))
 html = html.replace('/*CELLS*/[]', open(f'{R}/cells.json', encoding='utf8').read())
-html = html.replace('/*ANIM*/', open(f'{R}/anim.js', encoding='utf8').read())
+import sys; sys.path.insert(0, f'{R}/../nord'); from kit import addkit
+anim = addkit(open(f'{R}/anim.js', encoding='utf8').read(), open(f'{R}/fk.js', encoding='utf8').read())
+html = html.replace('/*ANIM*/', anim)
 open(f'{R}/storklinta.html', 'w', encoding='utf8').write(html)
 print(len(steps), 'steps;', sum(os.path.getsize(f'{out}/{f}') for f in os.listdir(out))//1024, 'KB images')

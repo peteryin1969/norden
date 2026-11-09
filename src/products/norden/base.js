@@ -68,8 +68,8 @@ const SCREW={'1':'146114','43':'146114','7':'151931','8':'151931','17':'105248',
 const PANEL={sideA:'外侧板',sideB:'外侧板',mid:'中隔板',botA:'底板',botB:'底板',pA:'脚线',pB:'脚线',back:'背板',top:'顶板'};
 let LBL=[],showLbl=true;try{showLbl=localStorage.getItem('stork-labels')!=='off'}catch(e){}
 function codeOf(o){let c=null;o.traverse(q=>{if(!c&&q.userData.code)c=q.userData.code});return c}
-function labelText(code){const id=cur,cell=typeof CELLS!=='undefined'&&CELLS.find(x=>x.code===code);if(!cell)return code;const n=need(id).find(x=>x[0]===code);return cell.n+'号 '+cell.name+(n?' × '+n[1]:'')}
-const pno=n=>{const k=window.PARTNO&&PARTNO.of(n);return k?k+'号 ':''},wvis=o=>{for(let q=o;q;q=q.parent)if(!q.visible)return false;return true};
+function labelText(code){const id=cur,cell=typeof CELLS!=='undefined'&&CELLS.find(x=>x.code===code);if(!cell)return (window.PARTNO&&PARTNO.of(code)?PARTNO.of(code)+'号 ':'')+code;const n=need(id).find(x=>x[0]===code);return cell.n+'号 '+cell.name+(n?' × '+n[1]:'')}
+const pno=n=>{const k=window.PARTNO&&PARTNO.of(String(n).replace(/（.*$/,''));return k?k+'号 ':''},wvis=o=>{for(let q=o;q;q=q.parent)if(!q.visible)return false;return true};
 const PAIR={sideA:'sideB',sideB:'sideA',botA:'botB',botB:'botA',pA:'pB',pB:'pA'};let CENTER=null;
 function buildLabels(){const box0=document.getElementById('animLabels');box0.replaceChildren();LBL=[];const seen=new Set(),grpL={};
   const put=(obj,text,win,o={})=>{const key=o.key||text;if(!text||seen.has(key))return;seen.add(key);const d=document.createElement('div');d.className='alabel';d.textContent=text;box0.append(d);const line=document.createElementNS('http://www.w3.org/2000/svg','line');document.getElementById('animLines').append(line);LBL.push({obj,win,d,line,text,dir:o.dir||false,pair:o.pair||null,sep:o.sep||'',anchor:o.anchor||null})};

@@ -5,3 +5,7 @@
 - `tts/` at the site root: Piper voice `zh_CN-huayan-medium` (MIT-licensed Piper, voice from rhasspy/piper-voices via sherpa-onnx releases), ONNX Runtime Web and piper_phonemize.
 
 Manual page renders are not kept here; build.py expects them under `hi/p-NN.png`.
+- `shared/focuskit.js` + `shared/kit.py`: the part kit for products on the cabinet engine (STORKLINTA, BILLY corner, BILLY OXBERG): spoken part name to on-screen highlight, one number per part, tap-to-pick, part-card 3D models. Each product supplies `fk.js` (aliases, extra targets). NORDEN keeps its own version in `products/norden/cab.js`.
+- `shared/mkfaq.py` + `shared/faqs.py`: build each product's `faq.json` from `steps.json`, `cells.json` and the part descriptions, plus hand-written general questions from the safety section.
+- `est_min` in each `steps.json` is an estimate of minutes per unit, used only for the timed check-ins.
+

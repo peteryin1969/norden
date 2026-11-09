@@ -29,6 +29,7 @@ by=open('../billy/billy.html',encoding='utf8').read()
 page(by,'billy-corner','IKEA BILLY 转角书柜',31,open('../billy/say.js',encoding='utf8').read(),'../billy/img',True,'',{'B14':'一共做三个书柜，两个八十宽，一个四十宽，都做好了再说下一步。','E9':'一共做三个加高单元，都做到这里再说下一步。','E12':'这三步每个书柜都做一次。'})
 ox=open('../billy-oxberg/billy-oxberg.html',encoding='utf8').read()
 page(ox,'billy-oxberg','IKEA BILLY OXBERG 书柜',19,open('../billy-oxberg/say.js',encoding='utf8').read(),'../billy-oxberg/img',True,'',{'B12':'一共做两个书柜，都做好了再说下一步。','D7':'一共四扇门，都装好调好才算完成。'})
+for _d,_s in (('../stork','storklinta'),('../billy','billy-corner'),('../billy-oxberg','billy-oxberg')):shutil.copy(_d+'/faq.json','site/%s/faq.json'%_s)
 shutil.copy('voices.html','site/voices.html');shutil.copytree('../tts/cmpmp3','site/voices')
 P=[('norden','NORDEN','折叠桌 · 11 步 · 6 个抽屉','AA-2580705-1'),('storklinta','STORKLINTA','六斗柜 · 45 步 · 6 个抽屉','AA-2413736-7'),('billy-corner','BILLY 转角','转角书柜 · 31 步 · 3 柜 + 3 加高','AA-1823127-9'),('billy-oxberg','BILLY OXBERG','带门书柜 · 19 步 · 2 柜 + 4 门','AA-2289108-3')]
 cards=''.join(f'<a class="c" href="{s}/"><b>{n}</b><span>{d}</span><small>{a}</small></a>' for s,n,d,a in P)

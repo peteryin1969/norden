@@ -50,6 +50,7 @@ Rs=[("const DUR={'21':1.5,'33':2.4,'45':2.6};","const DUR={B1:1.6,B2:1.7,B7:1.5,
 ("if(c===WOOD){const box0","if(c===WOOD||c===GREY){const box0"),("ax=[0,1,2].filter(k=>k!==skip).sort((q,w)=>d[w]-d[q]),v=","ax=[0,1,2].filter(k=>k!==skip).sort((q,w)=>m.userData.vert?(q===1?-1:w===1?1:0):d[w]-d[q]),v=")]
 for x,y in Rs:
     assert x in s,x; s=s.replace(x,y)
+import sys;sys.path.insert(0,N);from kit import addkit;s=addkit(s,open('fk.js',encoding='utf8').read())
 open('anim.js','w',encoding='utf8').write(s)
 h=open(N+'page.html',encoding='utf8').read()
 for a,b in [('<title>STORKLINTA 组装助手</title>','<title>BILLY 转角书柜组装助手</title>'),('AA-2413736-7 · 32 页 · 45 步 · 6 个抽屉','AA-1823127-9 · AA-982217-8 · AA-197501-5 · 31 步 · 3 个书柜 + 3 个加高单元'),('<h1>STORKLINTA 组装助手</h1>','<h1>BILLY 转角书柜组装助手</h1>'),("const KEY='storklinta-v1';","const KEY='billy-v1';"),('IKEA STORKLINTA 六斗柜','IKEA BILLY 转角书柜'),('IKEA STORKLINTA','IKEA BILLY')]:h=h.replace(a,b)
