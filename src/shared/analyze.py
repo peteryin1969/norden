@@ -77,6 +77,10 @@ def report(S):
         qm=sorted(m for s in P for r in s.get('steps',{}).values() for m in r.get('cap',{}).get('qms',[]))
         xm=sorted(m for s in P for r in s.get('steps',{}).values() for m in r.get('cap',{}).get('xms',[]))
         eng=Counter(s.get('asr','chrome') for s in P);fb=[s.get('asrFallback') for s in P if s.get('asrFallback')]
+        xd=[d for s in P for r in s.get('steps',{}).values() for d in r.get('cap',{}).get('xd',[])]
+        if xd:
+            pg=sum(1 for d in xd if d[1]);af=sorted(d[2] for d in xd if d[2] is not None)
+            print(f'\n讯飞细节：{len(xd)} 句，每句中间结果中位 {sorted(d[0] for d in xd)[len(xd)//2]} 次，动态修正生效 {pg} 句'+(f'，说完到出最终结果中位 {af[len(af)//2]} 毫秒' if af else ''))
         print(f'\n语音识别：{dict(eng)}'+(f'；千问每句耗时中位 {qm[len(qm)//2]} 毫秒（{len(qm)} 句）' if qm else '')+(f'；讯飞每句（开口到出结果）中位 {xm[len(xm)//2]} 毫秒（{len(xm)} 句）' if xm else '')+(f'；换回手机识别 {len(fb)} 次：{fb[:3]}' if fb else ''))
         pk=Counter((k,x.get('name'),a) for s in P for k,r in s.get('steps',{}).items() for x in r.get('picks',[]) for a in (x.get('acts') or ['-']))
         print('\n点选零件（点了哪个、接着做了什么）：')

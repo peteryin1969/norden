@@ -219,7 +219,7 @@ tr:last-child td{border-bottom:none}
   </section>
 </div>
 
-<script>window.PRODUCT={ver:"7e5b4e69",name:"IKEA NORDEN 折叠桌",steps:11,say:{"1":"先拿两块连接木块，每块两头各插两根木销。然后把木块放到腿柱下面那段中间，再把两片框架往里合，让木销对上腿柱内侧的孔。","2":"把两根钢条搭到框架顶上，有喇叭口的那面朝上，别放反了。每根钢条两头各拧一颗短螺丝。","3":"先把桌面翻过来，朝下放在软垫上。两块活动桌板上各放一个小垫块，每个拧两颗木螺丝就行。","4":"合页要跨在拼缝上，圆轴朝上。每条缝装两个，一共四个。每个合页要拧八颗短螺丝，孔对准桌板上的小孔再拧。","5":"把框架倒过来，两片支撑腿收进框架两侧。先把四个横销放进连接木块，用一字螺丝刀转一下，调好方向。然后用内六角扳手，把长螺栓穿过腿柱，拧进横销里。","6":"把倒着的框架放到桌面中间。每根钢条先拧中间那个孔，再拧两边的椭圆孔，一共六颗。","7":"拿锤子，把四个脚垫敲进腿端。先放正，再轻轻敲到位，别太用力。","8":"用锤子把两个止动垫敲进支撑腿底端。然后把两边桌板折起来，这时候叫上另一个人，一起把桌子翻回来。","9":"这一步做抽屉。长板的凸条朝外，靠上；里面的槽朝里，靠下。把没缺口的端板放到两块长板中间，然后用锤子从两边敲螺栓，上下各一颗，一共四颗。","10":"把底板顺着槽滑进去。再转入有缺口的那块端板，缺口朝上。最后在这一头敲进四颗螺栓，上下各一颗。","11":"快完成了。先把抽屉从两头推进去，每头三个。然后抬起桌板，把支撑腿转出来，再慢慢放下桌板，让定位销进到下面的孔里。放下前先看一眼支撑腿到位了没有。"}
+<script>window.PRODUCT={ver:"b982a47c",name:"IKEA NORDEN 折叠桌",steps:11,say:{"1":"先拿两块连接木块，每块两头各插两根木销。然后把木块放到腿柱下面那段中间，再把两片框架往里合，让木销对上腿柱内侧的孔。","2":"把两根钢条搭到框架顶上，有喇叭口的那面朝上，别放反了。每根钢条两头各拧一颗短螺丝。","3":"先把桌面翻过来，朝下放在软垫上。两块活动桌板上各放一个小垫块，每个拧两颗木螺丝就行。","4":"合页要跨在拼缝上，圆轴朝上。每条缝装两个，一共四个。每个合页要拧八颗短螺丝，孔对准桌板上的小孔再拧。","5":"把框架倒过来，两片支撑腿收进框架两侧。先把四个横销放进连接木块，用一字螺丝刀转一下，调好方向。然后用内六角扳手，把长螺栓穿过腿柱，拧进横销里。","6":"把倒着的框架放到桌面中间。每根钢条先拧中间那个孔，再拧两边的椭圆孔，一共六颗。","7":"拿锤子，把四个脚垫敲进腿端。先放正，再轻轻敲到位，别太用力。","8":"用锤子把两个止动垫敲进支撑腿底端。然后把两边桌板折起来，这时候叫上另一个人，一起把桌子翻回来。","9":"这一步做抽屉。长板的凸条朝外，靠上；里面的槽朝里，靠下。把没缺口的端板放到两块长板中间，然后用锤子从两边敲螺栓，上下各一颗，一共四颗。","10":"把底板顺着槽滑进去。再转入有缺口的那块端板，缺口朝上。最后在这一头敲进四颗螺栓，上下各一颗。","11":"快完成了。先把抽屉从两头推进去，每头三个。然后抬起桌板，把支撑腿转出来，再慢慢放下桌板，让定位销进到下面的孔里。放下前先看一眼支撑腿到位了没有。"}
 ,loopEnd:"10",loops:{}}</script>
 <script src="../shim.js?v=2859ef9d"></script>
 <script>
@@ -1141,15 +1141,15 @@ async function xfURL(){const host=XCFG.host||'iat-api.xfyun.cn',date=new Date().
   return (/^(localhost|127\.)/.test(host)?'ws://':'wss://')+host+'/v2/iat?authorization='+encodeURIComponent(auth)+'&date='+encodeURIComponent(date)+'&host='+encodeURIComponent(host)}
 function pcm64(f32){const b=new ArrayBuffer(f32.length*2),v=new DataView(b);for(let i=0;i<f32.length;i++){const s=Math.max(-1,Math.min(1,f32[i]));v.setInt16(i*2,s<0?s*0x8000:s*0x7fff,true)}return b64(b)}
 /* one recognition session = one utterance */
-function xfSession(onText,onDone,onFail){let ws=null,open=false,q=[],ended=false,segs=[],got=false;const t0=performance.now();
+function xfSession(onText,onDone,onFail){let ws=null,open=false,q=[],ended=false,segs=[],got=false,np=0,pgs=false,tEnd=0;const t0=performance.now();
   const text=()=>segs.filter(Boolean).join('');
   xfURL().then(u=>{ws=new WebSocket(u);ws.onopen=()=>{open=true;const first=q.shift()||new Float32Array(0);ws.send(JSON.stringify({common:{app_id:XCFG.appid},business:{language:'zh_cn',domain:'iat',accent:'mandarin',dwa:'wpgs',vad_eos:3000,ptt:1,nunum:1},data:{status:0,format:'audio/L16;rate=16000',encoding:'raw',audio:pcm64(first)}}));q.forEach(c=>ws.send(JSON.stringify({data:{status:1,format:'audio/L16;rate=16000',encoding:'raw',audio:pcm64(c)}})));q=[];if(ended)fin()};
     ws.onmessage=e=>{let j;try{j=JSON.parse(e.data)}catch(x){return}if(j.code!==0){const err=new Error('xf '+j.code+' '+(j.message||''));err.code=j.code;onFail(err);try{ws.close()}catch(x){}return}got=true;const r=j.data&&j.data.result;
-      if(r){const w=(r.ws||[]).map(x=>x.cw&&x.cw[0]&&x.cw[0].w||'').join('');if(r.pgs==='rpl'&&r.rg)for(let i=r.rg[0];i<=r.rg[1];i++)segs[i]='';segs[r.sn]=w;onText(text())}
-      if(j.data&&j.data.status===2){onDone(text(),Math.round(performance.now()-t0));try{ws.close()}catch(x){}}};
+      if(r){np++;if(r.pgs)pgs=true;const w=(r.ws||[]).map(x=>x.cw&&x.cw[0]&&x.cw[0].w||'').join('');if(r.pgs==='rpl'&&r.rg)for(let i=r.rg[0];i<=r.rg[1];i++)segs[i]='';segs[r.sn]=w;onText(text())}
+      if(j.data&&j.data.status===2){onDone(text(),Math.round(performance.now()-t0),{np,pgs,after:tEnd?Math.round(performance.now()-tEnd):null});try{ws.close()}catch(x){}}};
     ws.onerror=()=>{if(!got)onFail(new Error('xf network'))};ws.onclose=e=>{if(!got&&e.code!==1000)onFail(new Error('xf closed '+e.code))}}).catch(onFail);
   const fin=()=>{if(open&&ws.readyState===1)ws.send(JSON.stringify({data:{status:2,format:'audio/L16;rate=16000',encoding:'raw',audio:''}}))};
-  return{push(c){if(open&&ws.readyState===1)ws.send(JSON.stringify({data:{status:1,format:'audio/L16;rate=16000',encoding:'raw',audio:pcm64(c)}}));else q.push(c)},end(){ended=true;fin()},close(){try{ws&&ws.close()}catch(x){}}}}
+  return{end(){ended=true;tEnd=performance.now();fin()},push(c){if(open&&ws.readyState===1)ws.send(JSON.stringify({data:{status:1,format:'audio/L16;rate=16000',encoding:'raw',audio:pcm64(c)}}));else q.push(c)},close(){try{ws&&ws.close()}catch(x){}}}}
 function xfErr(err){const c=err&&err.code,why=c?('code'+c):'network';xfDown=why;SES.asrFallback='xf '+why+' '+String(err&&err.message||'').slice(0,100);touch();qRelease();
   const x=c?'讯飞识别出错（'+c+'），请检查 APPID 和密钥，先换回手机自带的识别。':'连不上讯飞，先换回手机自带的识别。';tr('讯飞：'+(err&&err.message));if(chat)bubble('ai note',x)}
 function XFSR(){this.continuous=true;this.interimResults=true;this.lang='zh-CN';this.maxAlternatives=1;this._on=false}
@@ -1158,7 +1158,7 @@ XFSR.prototype.start=function(){const me=this;me._on=true;
     const flush=()=>{if(!S||!chunk.length)return;const a=new Float32Array(chunk.length*FR);chunk.forEach((f,i)=>a.set(f,i*FR));chunk=[];S.push(a)};
     const end=()=>{speech=false;loud=0;flush();const s=S;S=null;if(!s)return;if(n<15){s.close();me._emit('',true);return}s.end()};
     const begin=()=>{speech=true;quiet=0;n=pre.length;chunk=pre.slice();pre=[];me._emit('…',false);
-      S=xfSession(t=>{if(me._on&&t)me._emit(t,false)},(t,ms)=>{const c=LR(sid()).cap;(c.xms||(c.xms=[])).push(ms);if(c.xms.length>40)c.xms.shift();touch();if(me._on)me._emit(String(t||'').trim(),true)},err=>{if(!me._on)return;xfErr(err);me.abort()});flush()};
+      S=xfSession(t=>{if(me._on&&t)me._emit(t,false)},(t,ms,d)=>{const c=LR(sid()).cap;(c.xms||(c.xms=[])).push(ms);if(c.xms.length>40)c.xms.shift();if(d){(c.xd||(c.xd=[])).push([d.np,d.pgs?1:0,d.after]);if(c.xd.length>40)c.xd.shift()}touch();if(me._on)me._emit(String(t||'').trim(),true)},err=>{if(!me._on)return;xfErr(err);me.abort()});flush()};
     const onFrame=f=>{let e=0;for(let i=0;i<f.length;i++)e+=f[i]*f[i];const rms=Math.sqrt(e/f.length);
       if(!speech){nf=rms<nf?nf*.9+rms*.1:nf*.995+rms*.005;pre.push(f);if(pre.length>15)pre.shift();if(rms>Math.max(nf*3,.012)){if(++loud>=3)begin()}else loud=0}
       else{chunk.push(f);n++;if(chunk.length>=2)flush();if(rms<Math.max(nf*2.2,.009)){if(++quiet>=35)end()}else quiet=0;if(n>=2500)end()}};
