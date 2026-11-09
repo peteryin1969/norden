@@ -293,8 +293,8 @@ const SCREW={'2':'110733','3':'117494','4':'110733','6':'110733','9':'116546','1
 const PANEL={frameL:'框架',frameR:'框架',gateL:'支撑腿',gateR:'支撑腿',leafL:'桌板',leafR:'桌板',topC:'中段桌板'};
 let LBL=[],showLbl=true;try{showLbl=localStorage.getItem('stork-labels')!=='off'}catch(e){}
 function codeOf(o){let c=null;o.traverse(q=>{if(!c&&q.userData.code)c=q.userData.code});return c}
-function labelText(code){const id=cur,cell=typeof CELLS!=='undefined'&&CELLS.find(x=>x.code===code);if(!cell)return code;const n=need(id).find(x=>x[0]===code);return cell.n+'号 '+cell.name+(n?' × '+n[1]:'')}
-const pno=n=>{const k=window.PARTNO&&PARTNO.of(n);return k?k+'号 ':''},wvis=o=>{for(let q=o;q;q=q.parent)if(!q.visible)return false;return true};
+function labelText(code){const id=cur,cell=typeof CELLS!=='undefined'&&CELLS.find(x=>x.code===code);if(!cell)return (window.PARTNO&&PARTNO.of(code)?PARTNO.of(code)+'号 ':'')+code;const n=need(id).find(x=>x[0]===code);return cell.n+'号 '+cell.name+(n?' × '+n[1]:'')}
+const pno=n=>{const k=window.PARTNO&&PARTNO.of(String(n).replace(/（.*$/,''));return k?k+'号 ':''},wvis=o=>{for(let q=o;q;q=q.parent)if(!q.visible)return false;return true};
 const PAIR={frameL:'frameR',frameR:'frameL',leafL:'leafR',leafR:'leafL',gateL:'gateR',gateR:'gateL'};let CENTER=null;
 function buildLabels(){const box0=document.getElementById('animLabels');box0.replaceChildren();LBL=[];const seen=new Set(),grpL={};
   const put=(obj,text,win,o={})=>{const key=o.key||text;if(!text||seen.has(key))return;seen.add(key);const d=document.createElement('div');d.className='alabel';d.textContent=text;box0.append(d);const line=document.createElementNS('http://www.w3.org/2000/svg','line');document.getElementById('animLines').append(line);LBL.push({obj,win,d,line,text,dir:o.dir||false,pair:o.pair||null,sep:o.sep||'',anchor:o.anchor||null})};
