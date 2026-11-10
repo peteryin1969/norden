@@ -57,7 +57,7 @@ for s in steps:
     pages.append(f'<div class="pg"><h2>第 {s["id"]} 步　{html.escape(s["title"])}{rep}</h2><img src="{img64(S + "/nord/img/s" + s["id"] + ".png")}"><ol>' + ''.join(f'<li>{html.escape(x)}</li>' for x in s['do']) + '</ol><p>零件：' + '，'.join(f'{c} × {q}' for c, q in s['parts']) + '</p>' + ''.join(f'<p>注意：{html.escape(x)}</p>' for x in s.get('warn', [])) + '</div>')
 open(D + '/_src/manual.html', 'w', encoding='utf8').write(f'<!doctype html><html><head><meta charset="utf-8"><style>{css}</style></head><body>{"".join(pages)}</body></html>')
 # steps with the client's confirmations folded in: no inferred notes left
-pkg = {'slug': 'norden-sim', 'site': 'norden', 'package_zip': 'package.zip', 'name': 'NORDEN 折叠桌（模拟资料包）', 'entry': 'A',
+pkg = {'slug': 'norden-sim', 'site': 'norden', 'package_zip': 'package.zip', 'stage4': {'replay_threshold': .95}, 'stage5': {'photo_steps': ['2', '7', '10']}, 'name': 'NORDEN 折叠桌（模拟资料包）', 'entry': 'A',
        'manuals': [{'doc': 'AA-2580705-1', 'title': 'NORDEN 装配说明书（模拟重排版）', 'pdf': 'manual/NORDEN_manual_sim.pdf', 'pages_dir': None, 'pages': len(pages)}],
        'overall_mm': {'w': 800, 'd': 1520, 'h': 740, 'confirmed': True, 'src': '模拟：桌板全部展开 152 厘米，宽 80 厘米，高 74 厘米'},
        'units': [{'list': '五金袋', 'steps': '*', 'repeat': {'9': 6, '10': 6}}], 'alternatives': [],
@@ -67,5 +67,23 @@ pkg = {'slug': 'norden-sim', 'site': 'norden', 'package_zip': 'package.zip', 'na
        'authorization': {'file': 'authorization_sim.pdf', 'scope': '说明书、图片、零件图', 'valid_to': '2027-11-09', 'simulated': True},
        'note': '模拟资料包：用 NORDEN 的数据补齐了全部资料，尺寸和规格是按动画模型估算的，授权书是虚构的。只用于演示平台流程。'}
 json.dump(pkg, open(D + '/package.json', 'w', encoding='utf8'), ensure_ascii=False, indent=1)
+# stage 4: what the engine generated for the assistant (here: the NORDEN assistant's own narration, Q&A and part list), and the client's banned phrases
+os.makedirs(D + '/generated')
+shutil.copy(S + '/nord/say.js', D + '/generated/narration.json')  # after the stage 4 fixes: step 6 names the screws; shutil.copy(S + '/nord/faq.json', D + '/generated/qa.json'); shutil.copy(S + '/nord/cells.json', D + '/generated/cells.json')
+json.dump([{'pattern': r'承重.{0,6}\d+|最多.{0,4}\d+\s*(公斤|千克|kg)', 'rule': '不得说具体承重数值'}, {'pattern': r'不需要两个人|一个人就能(翻|搬)', 'rule': '不得说翻桌不需要两人'},
+           {'pattern': r'保证|绝对(安全|不会)', 'rule': '不得做绝对化承诺'}, {'pattern': r'宜家客服', 'rule': '不得替厂家承诺客服服务'}],
+          open(D + '/banned.json', 'w', encoding='utf8'), ensure_ascii=False, indent=1)
+# stage 5: simulated tester records and release decision
+json.dump({'simulated': True, 'steps': len(steps), 'testers': [
+    {'name': '测试员 A（模拟）', 'role': '专职测试员', 'completed_alone': True, 'photo_checks': len(steps), 'signed': True},
+    {'name': '试装者 1（模拟）', 'role': '试装者', 'completed_alone': True, 'photo_checks': len(steps), 'minutes': 68},
+    {'name': '试装者 2（模拟）', 'role': '试装者', 'completed_alone': True, 'photo_checks': len(steps), 'minutes': 81},
+    {'name': '试装者 3（模拟）', 'role': '试装者', 'completed_alone': True, 'photo_checks': len(steps), 'minutes': 74}],
+  'issues': [{'severity': '一般', 'step': '5', 'text': '“横销”两次被听成“红销”，已加进俗称表', 'closed': True},
+             {'severity': '轻微', 'step': '9', 'text': '抽屉长板的标签挡住了一点凸条', 'closed': False, 'recorded': True}]},
+  open(D + '/testers.json', 'w', encoding='utf8'), ensure_ascii=False, indent=1)
+json.dump({'simulated': True, 'version': 1, 'url': 'https://peteryin1969.github.io/norden/norden/', 'qr_location': '说明书封面右下角', 'approved_by': '示例家具公司 产品经理（模拟）', 'approved_at': '2026-11-10'},
+          open(D + '/release.json', 'w', encoding='utf8'), ensure_ascii=False, indent=1)
+
 json.dump(steps, open(D + '/steps.draft.json', 'w', encoding='utf8'), ensure_ascii=False, indent=1)
 print('package', D)

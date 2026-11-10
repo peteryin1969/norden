@@ -3,7 +3,8 @@ Each stage returns a report: a list of checks and a gate result.
 A check has: id, level (必需/建议/可选), status (pass/fail/warn/todo/na), title, detail, and when not passing: why it is needed and how to fix it.
 Gate: 通过 when every 必需 check passes; 退回补充 when one fails; 待客户确认 when only client answers or sign-offs are missing.
 Stages 2 and 3 can run as 预审 before stage 1 has passed: they report, but do not count toward the gate."""
-import json, csv, os, re, subprocess, datetime
+import json, csv, os, re, subprocess, datetime, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from collections import defaultdict
 
 def load(pkg_dir):
@@ -245,7 +246,7 @@ def stage2(P, steps, answers, preview):
     return r
 
 # ---------------- stage 3: model and animation ----------------
-def stage3(P, auto, signoff, preview):
+def stage3(P, auto, signoff, preview, ai=None):
     """auto comes from stage3.js: per step storyboard frames and runtime checks on the animation"""
     K = []
     steps = auto['steps']
@@ -261,7 +262,8 @@ def stage3(P, auto, signoff, preview):
     agg('visible', '画面里能看到这一步的零件', '镜头没对准，用户会说“什么都看不到”。', '调整这一步的镜头。')
     alt = [x for a in (P.get('alternatives') or []) for x in a['steps'][1:]]
     if alt: K.append(C('3.alt', '可选', 'na', '分支步骤说明', '第 ' + '、'.join(alt) + ' 步是二选一里不走的那条路，动画演示完会把零件收回，所以落点和孔位检查对它们只作参考。'))
-    K.append(C('3.ai', '必需', 'todo', '独立 AI 对照说明书逐步审核', '这一版还没接入独立审核（需要调用 AI 服务看说明书图和分镜图）。', '自动检查只看得到几何问题，看不出方向、顺序是否和图示一致。', '接入后自动运行。'))
+    sev = [f'第 {k} 步：{x["text"]}' for k, v in (ai or {}).get('steps', {}).items() for x in v.get('issues', []) if x.get('severity') == '严重']
+    K.append(C('3.ai', '必需', 'todo' if not ai else ('fail' if sev else 'pass'), '独立 AI 对照说明书逐步审核', '还没运行。在门户的阶段 3 点“运行独立 AI 审核”，用你自己的 Claude key 调用。' if not ai else (('严重问题：' + '；'.join(sev[:6]) + '。') if sev else f'{ai.get("model","AI")} 逐步对照说明书图和分镜图，{len(ai.get("steps", {}))} 步没有严重问题。'), '自动检查只看得到几何问题，看不出方向、顺序是否和图示一致。', '在门户里运行；有严重问题修正动画后重跑。'))
     so = signoff or {}
     left = [s['id'] for s in steps if (so.get(s['id']) or {}).get('status') != 'ok']
     probs = [s['id'] for s in steps if (so.get(s['id']) or {}).get('status') == 'issue']
@@ -279,10 +281,21 @@ def run(pkg_dir, out_dir, auto=None):
     r1 = stage1(P, steps)
     pre = r1['gate'] != '通过'
     r2 = stage2(P, steps, rj('answers.json'), pre)
-    r3 = stage3(P, auto, rj('signoff.json'), pre or r2['gate'] != '通过') if auto else None
+    r3 = stage3(P, auto, rj('signoff.json'), pre or r2['gate'] != '通过', rj('ai_review.json')) if auto else None
+    r4 = r5 = None
+    gd = os.path.join(pkg_dir, 'generated')
+    if r3 and os.path.isdir(gd):
+        from stage45 import stage4, stage5
+        tests = json.load(open(os.path.join(out_dir, 'tests.json'), encoding='utf8')) if os.path.exists(os.path.join(out_dir, 'tests.json')) else None
+        gen = {'narration': json.load(open(os.path.join(gd, 'narration.json'), encoding='utf8')), 'faq': json.load(open(os.path.join(gd, 'qa.json'), encoding='utf8')), 'cells': json.load(open(os.path.join(gd, 'cells.json'), encoding='utf8')),
+               'terms': [{'official': r['official'], 'common': [x for x in r['common_names'].split('、') if x]} for r in csv.DictReader(open(os.path.join(pkg_dir, 'terms.csv'), encoding='utf8'))] if os.path.exists(os.path.join(pkg_dir, 'terms.csv')) else [],
+               'banned': rj('banned.json') or []}
+        pre4 = pre or r2['gate'] != '通过' or not all(c['status'] in ('pass', 'warn', 'na') or c['id'] == '3.ai' for c in r3['checks'])
+        r4 = stage4(P, steps, gen, tests, auto, pre4)
+        r5 = stage5(P, [r1, r2, r3, r4], tests, auto, pkg_dir, out_dir, pre4 or r4['gate'] != '通过')
     os.makedirs(out_dir, exist_ok=True)
     rep = {'product': P['name'], 'slug': P['slug'], 'site': P.get('site', P['slug']), 'answers': rj('answers.json') or {}, 'signoff': rj('signoff.json') or {}, 'package_zip': P.get('package_zip'), 'entry': P['entry'], 'manuals': [{k: m[k] for k in ('doc', 'title', 'pages')} for m in P['manuals']], 'note': P.get('note'),
-           'stages': [r1, r2] + ([r3] if r3 else []), 'steps': [{'id': s['id'], 'label': s.get('label'), 'title': s['title'], 'do': s['do'], 'parts': s['parts'], 'page': s.get('page')} for s in steps]}
+           'stages': [r1, r2] + ([r3] if r3 else []) + ([r4, r5] if r4 else []), 'steps': [{'id': s['id'], 'label': s.get('label'), 'title': s['title'], 'do': s['do'], 'parts': s['parts'], 'page': s.get('page')} for s in steps]}
     json.dump(rep, open(os.path.join(out_dir, 'report.json'), 'w', encoding='utf8'), ensure_ascii=False, indent=1)
     return rep
 
