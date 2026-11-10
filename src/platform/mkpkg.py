@@ -77,4 +77,10 @@ for slug, p in P.items():
            'note': 'IKEA 产品仅用于平台内部测试，未取得授权。'}
     json.dump(pkg, open(d + '/package.json', 'w', encoding='utf8'), ensure_ascii=False, indent=1)
     json.dump(steps, open(d + '/steps.draft.json', 'w', encoding='utf8'), ensure_ascii=False, indent=1)
+    # what the engine generated for the assistant so far: step narration, Q&A, part list (stage 4 reviews these)
+    os.makedirs(d + '/generated')
+    sayf = f"{S}/{p['src']}/say.js"
+    nar = json.load(open(sayf, encoding='utf8')) if os.path.exists(sayf) else {s_['id']: ''.join(s_['do']) for s_ in steps}
+    json.dump(nar, open(d + '/generated/narration.json', 'w', encoding='utf8'), ensure_ascii=False)
+    shutil.copy(f"{S}/{p['src']}/faq.json", d + '/generated/qa.json'); shutil.copy(f"{S}/{p['src']}/cells.json", d + '/generated/cells.json')
     print(slug, len(mans), 'manuals', sum(m['pages'] for m in mans), 'pages', len(cells), 'hardware', len(steps), 'steps')

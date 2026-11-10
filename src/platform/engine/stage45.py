@@ -27,14 +27,15 @@ def numbers_from(auto):
     for s in (auto or {}).get('steps', []):
         for l in (s.get('checks', {}).get('labels', {}) or {}).get('list', []):
             m = re.match(r'(?:[左右上下前后] · )?(\d+)号 ([^×]+?)(?: × \d+)?$', l.strip())
-            if m: M.setdefault(m.group(2).strip().replace('（', '(').split('(')[0], set()).add(int(m.group(1)))
+            if m: M.setdefault(re.sub(r'\s+C[LR]$', '', m.group(2).strip().replace('（', '(').split('(')[0]), set()).add(int(m.group(1)))
     return M
 
 def stage4(P, steps, gen, tests, auto, preview):
     K = []; cells = {c['code']: c for c in gen['cells']}
     nar, faq = gen['narration'], gen['faq']
+    RAW = {'unnamed': []}
     miss = [s['id'] for s in steps if not nar.get(s['id'])]
-    codes = [s['id'] for s in steps if re.search(r'\d{5,}', nar.get(s['id'], ''))]
+    codes = [s['id'] for s in steps if re.search(r'\d{5,}', nar.get(s['id'], ''))]; RAW['codes'] = codes; RAW['miss'] = miss
     K.append(C('4.1', '必需', 'fail' if miss or codes else 'pass', '每步都有讲解，且不读零件编号', (f'没有讲解：第 {"、".join(miss)} 步。' if miss else f'{len(steps)} 步都有讲解。') + (f'讲解里读了零件编号：第 {"、".join(codes)} 步。' if codes else ''),
                '用户看不懂编号，讲解只能说零件名称。', '补上缺的讲解，把编号换成零件名称。'))
     unnamed = []
@@ -43,7 +44,7 @@ def stage4(P, steps, gen, tests, auto, preview):
         for c, q in s['parts']:
             n = cells.get(c, {}).get('name', '')
             stems = [n] + [x for x in ['木销', '螺丝', '螺栓', '横销', '钢条', '铰链', '脚垫', '止动垫'] if x in n] + [v for k, vs in faq.get('syn', {}).items() if k in n for v in vs]
-            if n and not any(x in t for x in stems): unnamed.append(f'第 {s["id"]} 步的{n}')
+            if n and not any(x in t for x in stems): unnamed.append(f'第 {s["id"]} 步的{n}'); RAW['unnamed'].append((s['id'], n))
     K.append(C('4.2', '建议', 'warn' if unnamed else 'pass', '讲解提到这一步用的每种五金', '没提到：' + '、'.join(unnamed) + '。' if unnamed else '每步讲解都提到了用到的五金。', '用户听讲解就知道拿哪个零件。', '在讲解里加一句零件名称。'))
     ans = [(k, e['a']) for k, v in faq.items() if k != 'syn' for e in v]
     qa = {}
@@ -54,13 +55,17 @@ def stage4(P, steps, gen, tests, auto, preview):
         t = t.replace('两个人', '两人').replace('一个人', '一人')
         return {w for w in vocab if w in t}
     def covered(w, texts):
+        from fixes import names_for
+        w = names_for(w, gen['cells'])  # the assistant says part names, so compare by name
+        if any(w.rstrip('。') in t for t in texts): return True
         k = kw(w)
         if not k: return any(bigr(w, t) >= .3 for t in texts)
         return any(len(k & kw(t)) >= max(1, round(.6 * len(k))) for t in texts)
     nwarn = [(s['id'], w) for s in steps for w in s.get('warn', [])]
-    unc = [f'第 {i} 步：{w}' for i, w in nwarn if not covered(w, [qa.get(i, ''), qa.get('*', ''), nar.get(i, '')])]
+    RAW['unc'] = [(i, w) for i, w in nwarn if not covered(w, [qa.get(i, ''), qa.get('*', ''), nar.get(i, '')])]
+    unc = [f'第 {i} 步：{w}' for i, w in RAW['unc']]
     saf = (P.get('_safety') or {}).get('items', [])
-    uns = [x for x in saf if not covered(x, list(qa.values()) + list(nar.values()))]
+    uns = [x for x in saf if not covered(x, list(qa.values()) + list(nar.values()))]; RAW['uns'] = uns
     K.append(C('4.3', '必需', 'fail' if unc or uns else 'pass', '每条注意事项和安全要求都有问答或讲解覆盖',
                (f'{len(nwarn)} 条注意事项、{len(saf)} 条安全要求都有覆盖。' if not unc and not uns else '') + ('没覆盖的注意事项：' + '；'.join(x.rstrip('。') for x in unc) + '。' if unc else '') + ('没覆盖的安全要求：' + '；'.join(x.rstrip('。') for x in uns) + '。' if uns else ''),
                '用户问到安全问题时，助手必须能用厂家的原话回答。', '为这些条目各加一条问答。'))
@@ -111,6 +116,7 @@ def stage4(P, steps, gen, tests, auto, preview):
         K.append(C('4.9', '必需', 'pass' if rate >= thr else 'fail', '录音或使用记录回放', f'回放{rp["source"]}，{rp["total"]} 项检查通过 {rp["pass"]} 项（{rate:.0%}），约定标准 {thr:.0%}。',
                    '用真实说法测试本地指令识别，避免现场听不懂。', '把识别错的说法加进俗称表或热词，再回放。'))
     r = gate(K, 4, preview)
+    r['_raw'] = RAW
     r['generated'] = {'narration': len(nar), 'faq': len(ans), 'numbers': len(nums), 'hotwords': len(hot), 'hotword_sample': hot[:24], 'photo': {k: v for k, v in list(ph.items())[:3]}}
     return r
 

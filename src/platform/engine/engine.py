@@ -278,11 +278,14 @@ def run(pkg_dir, out_dir, auto=None):
     P = load(pkg_dir)
     steps = json.load(open(os.path.join(pkg_dir, 'steps.draft.json'), encoding='utf8'))
     rj = lambda f: json.load(open(os.path.join(pkg_dir, f), encoding='utf8')) if os.path.exists(os.path.join(pkg_dir, f)) else None
+    import fixes as FX
+    FIX = rj('fixes.json') or {}
+    applied = FX.apply(P, steps, None, {k: v for k, v in FIX.items() if v.get('kind') == 'safety2'})
     r1 = stage1(P, steps)
     pre = r1['gate'] != '通过'
     r2 = stage2(P, steps, rj('answers.json'), pre)
     r3 = stage3(P, auto, rj('signoff.json'), pre or r2['gate'] != '通过', rj('ai_review.json')) if auto else None
-    r4 = r5 = None
+    r4 = r5 = None; gen = None
     gd = os.path.join(pkg_dir, 'generated')
     if r3 and os.path.isdir(gd):
         from stage45 import stage4, stage5
@@ -290,11 +293,13 @@ def run(pkg_dir, out_dir, auto=None):
         gen = {'narration': json.load(open(os.path.join(gd, 'narration.json'), encoding='utf8')), 'faq': json.load(open(os.path.join(gd, 'qa.json'), encoding='utf8')), 'cells': json.load(open(os.path.join(gd, 'cells.json'), encoding='utf8')),
                'terms': [{'official': r['official'], 'common': [x for x in r['common_names'].split('、') if x]} for r in csv.DictReader(open(os.path.join(pkg_dir, 'terms.csv'), encoding='utf8'))] if os.path.exists(os.path.join(pkg_dir, 'terms.csv')) else [],
                'banned': rj('banned.json') or []}
+        applied += FX.apply(P, steps, gen, {k: v for k, v in FIX.items() if v.get('kind') != 'safety2'})
         pre4 = pre or r2['gate'] != '通过' or not all(c['status'] in ('pass', 'warn', 'na') or c['id'] == '3.ai' for c in r3['checks'])
         r4 = stage4(P, steps, gen, tests, auto, pre4)
         r5 = stage5(P, [r1, r2, r3, r4], tests, auto, pkg_dir, out_dir, pre4 or r4['gate'] != '通过')
     os.makedirs(out_dir, exist_ok=True)
-    rep = {'product': P['name'], 'slug': P['slug'], 'site': P.get('site', P['slug']), 'answers': rj('answers.json') or {}, 'signoff': rj('signoff.json') or {}, 'package_zip': P.get('package_zip'), 'entry': P['entry'], 'manuals': [{k: m[k] for k in ('doc', 'title', 'pages')} for m in P['manuals']], 'note': P.get('note'),
+    FX.propose(P, steps, gen if r4 else None, [x for x in (r1, r2, r3, r4, r5) if x])
+    rep = {'fixes_applied': applied, 'fixes': FIX, 'product': P['name'], 'slug': P['slug'], 'site': P.get('site', P['slug']), 'answers': rj('answers.json') or {}, 'signoff': rj('signoff.json') or {}, 'package_zip': P.get('package_zip'), 'entry': P['entry'], 'manuals': [{k: m[k] for k in ('doc', 'title', 'pages')} for m in P['manuals']], 'note': P.get('note'),
            'stages': [r1, r2] + ([r3] if r3 else []) + ([r4, r5] if r4 else []), 'steps': [{'id': s['id'], 'label': s.get('label'), 'title': s['title'], 'do': s['do'], 'parts': s['parts'], 'page': s.get('page')} for s in steps]}
     json.dump(rep, open(os.path.join(out_dir, 'report.json'), 'w', encoding='utf8'), ensure_ascii=False, indent=1)
     return rep
