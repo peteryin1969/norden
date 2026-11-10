@@ -298,12 +298,12 @@ const PAIR={panL:'panR',panR:'panL'};let CENTER=null;
 function buildLabels(){const box0=document.getElementById('animLabels');box0.replaceChildren();LBL=[];const seen=new Set(),grpL={};
   const put=(obj,text,win,o={})=>{const key=o.key||text;if(!text||seen.has(key))return;seen.add(key);const d=document.createElement('div');d.className='alabel';d.textContent=text;box0.append(d);const line=document.createElementNS('http://www.w3.org/2000/svg','line');document.getElementById('animLines').append(line);LBL.push({obj,win,d,line,text,dir:o.dir||false,pair:o.pair||null,sep:o.sep||'',anchor:o.anchor||null})};
   document.getElementById('animLines').replaceChildren();const dr=IDS.includes(cur);
-  (dr?parts:CP).forEach(p=>{const k=p.keys[cur];if(!k||p.quiet)return;let code=p.code||codeOf(p.m);if(!code&&p.m.userData.hr)code=SCREW[cur];if(!code&&p.m===(FR.chains||[])[0])code='10102070';let txt=code?labelText(code):p.lbl?pno(p.lbl.replace(/（.*$/,''))+p.lbl:null;if(!txt||!(code||k[0].join()!==k[1].join()))return;const W0=p.win||[0,1];p.win=undefined;const pw=[W0[0],2];
+  (dr?parts:CP).forEach(p=>{const k=p.keys[cur];if(!k||p.quiet)return;let code=p.code||codeOf(p.m);if(!code&&p.m.userData.hr)code=SCREW[cur];if(!code&&p.m===(FR.chains||[])[0])code='10102070';let txt=code?labelText(code):p.lbl?pno(p.lbl.replace(/（.*$/,''))+p.lbl:null;if(!txt||!(code||k[0].join()!==k[1].join()))return;const W0=p.win||[0,1];p.win=undefined;const pw=[W0[0],p.lblTo||2];
     p.win=W0;if(p.tag)put(p.m,txt.replace(/ × \d+$/,'')+' '+p.tag+' × 3',pw,{key:txt+p.tag});
     else if(p.pairM)put(p.m,code?txt.replace(/ × \d+$/,' × 1'):txt,pw,{key:code?txt+p.side:p.lbl.replace(/（.*$/,''),dir:true,pair:p.pairM,sep:' · '});
     else put(p.m,txt,pw,{anchor:p.anchor,key:code?txt:p.lbl.replace(/（.*$/,'')});
     if(code&&!p.pairM&&!p.tag)(grpL[txt]=grpL[txt]||[]).push(p)});
-  LBL.forEach(l=>{const g=grpL[l.text];if(g&&g.length>1){l.follow=g;const w=g.map(p=>p.tap||p.win||[0,1]);l.win=[Math.min(...w.map(x=>x[0])),2]}});
+  LBL.forEach(l=>{const g=grpL[l.text];if(g&&g.length>1){l.follow=g;const w=g.map(p=>p.tap||p.win||[0,1]);l.win=[Math.min(...w.map(x=>x[0])),g[0].lblTo||2]}});
   if(!dr)GS.forEach(G=>{const q=G.seq[cur];if(q&&q[1]!==0&&q[0]!==q[1]&&PANEL[G.name]){const m=FR[PAIR[G.name]];put(G.g,pno(PANEL[G.name])+PANEL[G.name],[(G.startAt&&G.startAt[cur])||0,2],{key:PANEL[G.name],dir:!!m,pair:m?m.g:null,anchor:G.anchor,sep:' · '})}});
   /* every other large part in view, once per kind */
   if(!dr){const cand=[];GS.forEach(G=>{const nm=PANEL[G.name];if(nm)cand.push({o:G.g,nm,anchor:G.anchor})});CP.forEach(p=>{if(!p.lbl||p.code||codeOf(p.m)||p.m.userData.hr)return;if(p.keys[cur])cand.push({o:p.m,nm:p.lbl.replace(/（.*$/,''),anchor:p.anchor})});cand.sort((x,y)=>wvis(y.o)-wvis(x.o)).forEach(c=>put(c.o,pno(c.nm)+c.nm,[0,2],{key:c.nm,anchor:c.anchor}))}
@@ -570,7 +570,7 @@ function audit(s){if(!ready||!cur||cur!==s)return null;const C=typeof CELLS!=='u
   const holes=MARKS.filter(h=>h.steps.includes(s)).map(h=>h.d.getWorldPosition(new T3.Vector3()));
   const onWall=o=>{const b=new T3.Box3().setFromObject(o).expandByScalar(.5);return walls.some(w=>w.intersectsBox(b))};
   const fast=mv.filter(p=>{const c=codeP(p);return c&&inList(c)&&FAST.test(nm(c))&&!/钉/.test(nm(c))&&!p.quiet&&!onWall(p.m)});
-  const noHole=[];if(fast.length){fast.forEach(p=>{const b=new T3.Box3().setFromObject(p.m).expandByScalar(.9);if(!holes.some(h=>b.containsPoint(h)))noHole.push(nm(codeP(p)))})}
+  const noHole=[];if(fast.length){fast.forEach(p=>{const b=new T3.Box3().setFromObject(p.m).expandByScalar(1.5);if(!holes.some(h=>b.containsPoint(h)))noHole.push(nm(codeP(p)))})}
   const nh=[...new Set(noHole)];R.holes={ok:!nh.length,note:nh.length?'落点附近没有孔：'+nh.map(n=>n+' '+noHole.filter(x=>x===n).length+' 个').join('、'):'',n:fast.length};
   const tools=[FR.ham&&FR.ham.root,FR.ham2,hammer,FR.key,FR.drill,FR.pencil].filter(Boolean),inT=o=>{for(let q=o;q;q=q.parent)if(tools.includes(q))return true;return false};
   const meshes=[];sc.traverseVisible(o=>{if(o.isMesh&&!o.material.isMeshBasicMaterial&&!inT(o))meshes.push(o)});const MB=new Map(meshes.map(o=>[o,new T3.Box3().setFromObject(o)]));
@@ -586,6 +586,8 @@ function audit(s){if(!ready||!cur||cur!==s)return null;const C=typeof CELLS!=='u
   R.visible={ok:!objs.length||inV>0,note:objs.length&&!inV?'镜头里看不到这一步的零件（'+objs.length+' 个都在画面外）':'',n:objs.length,inView:inV};
   poseAt(Math.min(t,1));return R}
 window.__audit=s=>audit(s);
+/* for the platform's model export: the assembled scene and how its parts are named */
+window.__model=()=>({scene:sc2,CP,GS,PANEL,codeOf,T3});
 
 function load(){return loading||(loading=new Promise((ok,no)=>{if(window.THREE)return ok();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';s.onload=ok;s.onerror=no;document.head.append(s)}))}
 function mat(c){return new T3.MeshLambertMaterial({color:c})}

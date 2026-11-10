@@ -74,12 +74,12 @@ const PAIR={sideA:'sideB',sideB:'sideA',botA:'botB',botB:'botA',pA:'pB',pB:'pA'}
 function buildLabels(){const box0=document.getElementById('animLabels');box0.replaceChildren();LBL=[];const seen=new Set(),grpL={};
   const put=(obj,text,win,o={})=>{const key=o.key||text;if(!text||seen.has(key))return;seen.add(key);const d=document.createElement('div');d.className='alabel';d.textContent=text;box0.append(d);const line=document.createElementNS('http://www.w3.org/2000/svg','line');document.getElementById('animLines').append(line);LBL.push({obj,win,d,line,text,dir:o.dir||false,pair:o.pair||null,sep:o.sep||'',anchor:o.anchor||null})};
   document.getElementById('animLines').replaceChildren();const dr=IDS.includes(cur);
-  (dr?parts:CP).forEach(p=>{const k=p.keys[cur];if(!k)return;let code=p.code||codeOf(p.m);if(!code&&p.m.userData.hr)code=SCREW[cur];if(!code&&p.m===(FR.chains||[])[0])code='10102070';let txt=code?labelText(code):p.lbl?pno(p.lbl.replace(/（.*$/,''))+p.lbl:null;if(!txt||!(code||k[0].join()!==k[1].join()))return;const W0=p.win||[0,1];p.win=undefined;const pw=[W0[0],2];
+  (dr?parts:CP).forEach(p=>{const k=p.keys[cur];if(!k)return;let code=p.code||codeOf(p.m);if(!code&&p.m.userData.hr)code=SCREW[cur];if(!code&&p.m===(FR.chains||[])[0])code='10102070';let txt=code?labelText(code):p.lbl?pno(p.lbl.replace(/（.*$/,''))+p.lbl:null;if(!txt||!(code||k[0].join()!==k[1].join()))return;const W0=p.win||[0,1];p.win=undefined;const pw=[W0[0],p.lblTo||2];
     p.win=W0;if(p.tag)put(p.m,txt.replace(/ × \d+$/,'')+' '+p.tag+' × 3',pw,{key:txt+p.tag});
     else if(p.pairM)put(p.m,code?txt.replace(/ × \d+$/,' × 1'):txt,pw,{key:code?txt+p.side:p.lbl.replace(/（.*$/,''),dir:true,pair:p.pairM,sep:' · '});
     else put(p.m,txt,pw,{anchor:p.anchor,key:code?txt:p.lbl.replace(/（.*$/,'')});
     if(code&&!p.pairM&&!p.tag)(grpL[txt]=grpL[txt]||[]).push(p)});
-  LBL.forEach(l=>{const g=grpL[l.text];if(g&&g.length>1){l.follow=g;const w=g.map(p=>p.tap||p.win||[0,1]);l.win=[Math.min(...w.map(x=>x[0])),2]}});
+  LBL.forEach(l=>{const g=grpL[l.text];if(g&&g.length>1){l.follow=g;const w=g.map(p=>p.tap||p.win||[0,1]);l.win=[Math.min(...w.map(x=>x[0])),g[0].lblTo||2]}});
   if(!dr)GS.forEach(G=>{const q=G.seq[cur];if(q&&q[1]!==0&&q[0]!==q[1]&&PANEL[G.name]){const m=FR[PAIR[G.name]];put(G.g,pno(PANEL[G.name])+PANEL[G.name],[(G.startAt&&G.startAt[cur])||0,2],{key:PANEL[G.name],dir:!!m,pair:m?m.g:null,anchor:G.anchor,sep:' · '})}});
   /* every other large part in view, once per kind */
   if(!dr){const cand=[];GS.forEach(G=>{const nm=PANEL[G.name];if(nm)cand.push({o:G.g,nm,anchor:G.anchor})});CP.forEach(p=>{if(!p.lbl||p.code||codeOf(p.m)||p.m.userData.hr)return;if(p.keys[cur])cand.push({o:p.m,nm:p.lbl.replace(/（.*$/,''),anchor:p.anchor})});cand.sort((x,y)=>wvis(y.o)-wvis(x.o)).forEach(c=>put(c.o,pno(c.nm)+c.nm,[0,2],{key:c.nm,anchor:c.anchor}))}
