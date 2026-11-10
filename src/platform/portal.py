@@ -3,6 +3,8 @@ Answers and sign-offs are saved on the device and exported as answers.json / sig
 import json, os, shutil, sys
 H = os.path.dirname(os.path.abspath(__file__))
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(H, 'site', 'platform')
+import datetime
+BUILD = datetime.datetime.now(datetime.timezone.utc).strftime('%m-%d %H:%M') + ' UTC'
 SL = ['norden-sim', 'norden', 'storklinta', 'billy-corner', 'billy-oxberg']
 CSS = """:root{--bg:#f4f5f2;--ink:#17201c;--mut:#5d6a63;--c:#fff;--ln:#dfe3dd;--ac:#25624b;--ok:#2f7d4f;--okb:#e5f4e4;--bad:#b3261e;--badb:#fbebeb;--wn:#8a5a00;--wnb:#f9eeda;--td:#2b5f9e;--tdb:#e7f1fb}
 @media (prefers-color-scheme:dark){:root{--bg:#141815;--ink:#e9ede9;--mut:#a3aea7;--c:#1e2420;--ln:#2e3631;--ac:#7fcfae;--ok:#7fd49c;--okb:#1e3326;--bad:#ff8a80;--badb:#3a2020;--wn:#f0c36a;--wnb:#3a3020;--td:#8cbcf2;--tdb:#1d2b3d}}
@@ -79,8 +81,9 @@ async function runPH(btn,log){const s5=S.find(s=>s.stage===5),s3=S.find(s=>s.sta
     try{const t='你在帮用户检查装配。第一张是说明书第 '+c.step+' 步原图，第二张是用户拍的照片（这里用渲染图代替）。这一步要做：'+st.do.join('')+'\n判断照片里这一步是否已经装好、装对。只输出 JSON：{"verdict":"pass|fail|unsure","say":"一句话"}';
       const j=pj(await claude([await b64(img(c.step)),await b64(fr),{type:'text',text:t}],300))||{};cases.push({step:c.step,kind,expect,got:j.verdict||'unsure',say:j.say||''})}catch(e){log.textContent='出错：'+e.message;btn.disabled=false;return}}}
   LS.set('aiph',{model:'claude-sonnet-5-5',time:new Date().toISOString(),cases});log.textContent='完成。';location.reload()}
-(()=>{const s3=document.getElementById('s3');if(s3){const st=S.find(s=>s.stage===3);const log=$('span',{class:'mut'}),b=$('button',{onclick:e=>runAI3(e.target,log)},AI3&&AI3.steps?'重新运行独立 AI 审核':'运行独立 AI 审核');const k=keyBox();s3.querySelector('h3')&&s3.insertBefore($('div',{class:'card'},$('b',{},'独立 AI 审核'),$('div',{class:'mut'},'用你的 Claude key，让一个没参与制作的 AI 逐步对照说明书原图和分镜图找错。'+st.frames.length+' 步，每步一次调用。'),k||$('div',{class:'ans'},b,log,AI3&&AI3.steps?$('button',{onclick:()=>dl('ai_review.json',AI3)},'导出结果'):'')),s3.querySelector('h3'));
+(()=>{const s3=document.getElementById('s3');if(s3){const st=S.find(s=>s.stage===3);const log=$('span',{class:'mut'}),b=$('button',{onclick:e=>runAI3(e.target,log)},AI3&&AI3.steps?'重新运行独立 AI 审核':'运行独立 AI 审核');/*v2*/const k=keyBox();s3.querySelector('h3')&&s3.insertBefore($('div',{class:'card'},$('b',{},'独立 AI 审核'),$('div',{class:'mut'},'用你的 Claude key，让一个没参与制作的 AI 逐步对照说明书原图和分镜图找错。'+st.frames.length+' 步，每步一次调用。'),k||$('div',{class:'ans'},b,log,AI3&&AI3.steps?$('button',{onclick:()=>dl('ai_review.json',AI3)},'导出结果'):'')),s3.querySelector('h3'));
     if(AI3&&AI3.steps)s3.querySelectorAll('.card').forEach(cd=>{const t=cd.firstChild&&cd.firstChild.textContent||'';const m=t.match(/^第 (\S+) 步/);if(m&&AI3.steps[m[1]]){const is=AI3.steps[m[1]].issues||[];cd.insertBefore($('div',{style:'font-size:13px;margin:4px 0'},is.length?is.map(x=>'AI（'+x.severity+'）：'+x.text).join('；'):'AI：没有发现问题'),cd.children[2]||null)}})}})();
+main.append($('p',{class:'mut',style:'font-size:12px'},'页面版本 '+BUILD));
 const pg=$('span',{class:'mut'});const bar=$('div',{class:'bar'},$('button',{onclick:()=>dl('answers.json',LS.get('ans'))},'导出答案'),$('button',{onclick:()=>dl('signoff.json',LS.get('sign'))},'导出分镜确认'),pg);main.append(bar);
 function prog(){const s2=S.find(s=>s.stage===2),s3=S.find(s=>s.stage===3),a=LS.get('ans'),g=LS.get('sign');pg.textContent='问题已答 '+(s2?s2.questions.filter(q=>a[q.id]&&a[q.id].status).length+'/'+s2.questions.length:'-')+'，分镜已确认 '+(s3?s3.frames.filter(f=>g[f.id]&&g[f.id].status).length+'/'+s3.frames.length:'-')}prog();
 """
@@ -94,7 +97,7 @@ for sl in SL:
     if os.path.isdir(os.path.join(H, 'out', sl, 'frames')): shutil.copytree(os.path.join(H, 'out', sl, 'frames'), os.path.join(d, 'frames'))
     if os.path.exists(os.path.join(H, 'out', sl, 'qr.png')): shutil.copy(os.path.join(H, 'out', sl, 'qr.png'), os.path.join(d, 'qr.png'))
     if rep.get('package_zip') and os.path.exists(os.path.join(H, 'out', sl, rep['package_zip'])): shutil.copy(os.path.join(H, 'out', sl, rep['package_zip']), os.path.join(d, rep['package_zip']))
-    open(os.path.join(d, 'index.html'), 'w', encoding='utf8').write(page(rep['product'] + ' · 审核', '<script>const REPORT=' + json.dumps(rep, ensure_ascii=False) + ';' + JS + '</script>'))
+    open(os.path.join(d, 'index.html'), 'w', encoding='utf8').write(page(rep['product'] + ' · 审核', '<script>const BUILD="' + BUILD + '";const REPORT=' + json.dumps(rep, ensure_ascii=False) + ';' + JS + '</script>'))
     rows.append((sl, rep))
 cards = ''.join(f'<a class="card" style="display:block;text-decoration:none;color:inherit" href="{sl}/"><b style="font-size:17px">{r["product"]}</b><div class="pipe" style="margin:8px 0 0">' +
                 ''.join(f'<div><b>阶段 {s["stage"]}</b><span class="g {s["gate"]}">{s["gate"]}</span>{"<span class=pre>预审</span>" if s["preview"] else ""}</div>' for s in r['stages']) + '</div></a>' for sl, r in rows)
