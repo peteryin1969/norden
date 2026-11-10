@@ -1,0 +1,50 @@
+/* From the STORKLINTA log: part codes are never spoken, 零件袋, 收起图片, 不想拍 = skip, No = no suggestion, 开口打断 with any non-echo speech. */
+const {chromium}=require('playwright');const fs=require('fs');const d=process.cwd()+'/site/';
+(async()=>{const srv=require('http').createServer((q,s)=>{const u=(q.url.split('?')[0].endsWith('/')?q.url.split('?')[0].slice(1)+'index.html':q.url.split('?')[0].slice(1));fs.readFile(d+u,(e,c)=>{if(e){s.writeHead(404);s.end()}else{s.writeHead(200,{'content-type':u.endsWith('.png')?'image/png':u.endsWith('.wasm')?'application/wasm':u.endsWith('.js')?'text/javascript':u.endsWith('.json')?'application/json':'text/html;charset=utf8'});s.end(c)}})}).listen(8881);
+const b=await chromium.launch({args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});const ctx=await b.newContext({viewport:{width:390,height:800}});const p=await ctx.newPage();const er=[];p.on('pageerror',e=>er.push(e.message));
+await p.addInitScript(()=>{Element.prototype.requestFullscreen=()=>Promise.reject(new Error('no'));localStorage.setItem('norden-key','k');window.__vskew=0;window.__vlog=[];window.__slow=0;window.SpeechSynthesisUtterance=function(t){this.text=t};let sp=false;Object.defineProperty(window,'speechSynthesis',{value:{getVoices:()=>[],resume(){},get speaking(){return sp},get pending(){return false},cancel(){sp=false;if(window.__cur){const u=window.__cur;window.__cur=null;clearTimeout(window.__ct);u.onend&&u.onend()}},speak(u){sp=true;window.__cur=u;setTimeout(()=>u.onstart&&u.onstart(),5);window.__ct=setTimeout(()=>{sp=false;window.__cur=null;u.onend&&u.onend()},window.__slow||5)}}});
+  window.SpeechRecognition=window.webkitSpeechRecognition=function(){window.__rec=this;this.start=()=>{setTimeout(()=>this.onstart&&this.onstart(),5)};this.abort=()=>{this.onend&&this.onend()};this.stop=this.abort}});
+await p.route('**/three.min.js',r=>r.fulfill({body:fs.readFileSync('tv/node_modules/three/build/three.min.js'),contentType:'text/javascript'}));await p.route('**fonts.g**',r=>r.abort());
+const ev=x=>'data: '+JSON.stringify(x)+'\n\n';const calls=[];await p.route('https://api.anthropic.com/**',r=>{calls.push(1);r.fulfill({status:200,headers:{'content-type':'text/event-stream','access-control-allow-origin':'*'},body:ev({type:'content_block_start',index:0,content_block:{type:'text',text:''}})+ev({type:'content_block_delta',index:0,delta:{type:'text_delta',text:'好的。'}})+ev({type:'message_delta',delta:{stop_reason:'end_turn'}})})});
+const st=()=>p.evaluate(()=>Voice._s().state),idle=async()=>{for(let i=0;i<120;i++){if(await st()==='listen')return;await p.waitForTimeout(150)}};
+const lastAi=()=>p.evaluate(()=>{const m=[...document.querySelectorAll('.msg.ai')].pop();return m?m.textContent:''}),allAi=()=>p.evaluate(()=>[...document.querySelectorAll('.msg.ai')].map(m=>m.textContent));
+const say=async t=>{await idle();await p.fill('#vTxt',t);await p.click('#vSend');await p.waitForTimeout(350);await idle();return await lastAi()};
+const go=async s=>{await idle();await p.evaluate(s=>{jump(s);Voice._dropQ&&Voice._dropQ()},s);await p.waitForTimeout(300);await idle()};
+const R=[];const ck=(n,ok,i='')=>{R.push(ok);console.log((ok?'ok  ':'FAIL')+' '+n+(i?' | '+i:''))};
+await p.goto('http://localhost:8881/storklinta/');await p.waitForTimeout(1500);await p.click('#vStart');for(let i=0;i<25;i++){await p.waitForTimeout(1000);if(/就绪|结束/.test(await p.textContent('#vTrace'))&&i>5)break}await p.click('#vKb');await idle();
+await go('6');let a=await say('再说一遍');ck('step line names the part, no code',/凸轮锁/.test(a)&&!/\d{5}/.test(a),a);
+await go('7');a=await say('A号零件袋是啥呀？');ck('A号零件袋 answered by FAQ',/A 号袋/.test(a)&&/长螺丝/.test(a),a);
+a=await say('有什么零件');ck('零件 question still lists parts with 号格',/长螺丝/.test(a)&&/号格/.test(a)&&!/\d{5}/.test(a),a);
+a=await say('滑轨长什么样');await p.waitForTimeout(500);ck('card opens',!!(await p.evaluate(()=>Voice._card())),a);
+a=await say('好的，可以把那个图片收起来了。');ck('收起 in a sentence closes the card',!(await p.evaluate(()=>Voice._card()))&&/收起来/.test(a),a);
+a=await say('把图片收起来吧');ck('收起 with no card open does not open one',!(await p.evaluate(()=>Voice._card()))&&/收起来/.test(a),a);
+a=await say('钢轨长什么样');await p.waitForTimeout(500);let c=await p.evaluate(()=>Voice._card());ck('钢轨 → 滑轨 card',c&&c.code==='10102042',JSON.stringify(c));await say('好了');
+await p.evaluate(()=>{localStorage.setItem('vcheck:'+'IKEA STORKLINTA 六斗柜','1')});
+await go('8');a=await say('下一步');const askedCheck=/拍/.test(a);a=await say('不想拍');ck('不想拍 skips the photo check',askedCheck?/改进/.test(a):true,a);
+a=await say('No');ck('No ends the improvement question',!/还有吗/.test(a),a);
+await go('9');a=await say('下一步');if(/拍/.test(a))a=await say('不需要拍');ck('不需要拍 skips',/改进/.test(a),a);a=await say('没有很清楚');ck('没有很清楚 is not a suggestion',!/还有吗/.test(a),a);
+/* barge-in */
+const bon=await p.evaluate(()=>document.getElementById('vBarge').textContent);if(/关/.test(bon))await p.click('#vBarge');
+await p.evaluate(()=>{window.__slow=4000});await go('10');
+const fire=(t,fin=true)=>p.evaluate(([t,fin])=>{const r=window.__rec;const res=[[{transcript:t}]];res[0].isFinal=fin;r.onresult({resultIndex:0,results:res})},[t,fin]);
+await go('11');await p.fill('#vTxt','再说一遍');await p.click('#vSend');for(let i=0;i<30&&await st()!=='speak';i++)await p.waitForTimeout(100);ck('assistant is speaking',await st()==='speak');
+const spk=await p.evaluate(()=>Voice._s().spoken||'');await fire('第 11 步。放入',true);await p.waitForTimeout(300);ck('own voice coming back does not interrupt',await st()==='speak',await st());
+await fire('那个凸轮锁怎么拧',true);await p.waitForTimeout(400);ck('any other speech interrupts',await st()!=='speak',await st());
+await p.evaluate(()=>{window.__slow=5});await p.waitForTimeout(2500);await idle();const aa=await allAi();ck('the interrupting question is answered',calls.length>0||aa.some(x=>/凸轮锁/.test(x)),aa.slice(-2).join(' / '));
+const cap=await p.evaluate(()=>Voice.session().steps['11'].cap);ck('barge counted',cap.barge>=1,JSON.stringify(cap));
+/* the recogniser hears the assistant and the user in one stretch: the assistant's words are taken out and the rest is the user's */
+const pos=()=>p.evaluate(()=>document.getElementById('animStep')?document.getElementById('animStep').textContent:'');
+const speakAt=async n=>{await p.evaluate(()=>{window.__slow=5});await idle();await go(n);await p.evaluate(()=>{window.__slow=4000});await p.fill('#vTxt','再说一遍');await p.click('#vSend');for(let i=0;i<30&&await st()!=='speak';i++)await p.waitForTimeout(100);return (await p.evaluate(()=>Voice._s().spoken||'')).replace(/[，。！？、\s]/g,'')};
+let sp2=await speakAt('14');const mid=sp2.slice(8,20);
+await fire(mid.slice(0,5)+'啊'+mid.slice(6),true);await p.waitForTimeout(300);ck('echo with one misheard character does not interrupt',await st()==='speak',mid);
+await fire(mid+'下一',false);await p.waitForTimeout(200);ck('echo + two unclear characters (interim) does not interrupt',await st()==='speak');
+const n0=await p.evaluate(()=>Voice._s().pos);await fire(mid+'下一步',false);await p.waitForTimeout(300);ck('echo + 下一步 interrupts',await st()!=='speak',await st());
+await fire(mid+'下一步',true);await p.evaluate(()=>{window.__slow=5});await p.waitForTimeout(1500);await idle();const n1=await p.evaluate(()=>Voice._s().pos);const la2=await lastAi(),nme=await p.evaluate(()=>[...document.querySelectorAll('.msg.me')].slice(-2).map(m=>m.textContent.trim()));ck('下一步 is acted on once',(n1===n0+1||/拍|改进/.test(la2))&&nme.filter(x=>/下一步/.test(x)).length===1,n0+'→'+n1+' '+la2+' '+JSON.stringify(nme));
+const mb=await p.evaluate(()=>[...document.querySelectorAll('.msg.me')].slice(-1)[0].textContent);ck('only the user words are kept',/^下一步/.test(mb.trim())&&mb.trim().length<=4,mb);
+sp2=await speakAt('16');await fire(sp2.slice(4,16)+'，这个螺丝是哪一个',true);await p.waitForTimeout(400);ck('echo + a question interrupts',await st()!=='speak',await st());
+await p.evaluate(()=>{window.__slow=5});await p.waitForTimeout(2500);await idle();const mb2=await p.evaluate(()=>[...document.querySelectorAll('.msg.me')].slice(-1)[0].textContent);ck('the question is kept whole',mb2.trim()==='这个螺丝是哪一个',mb2);
+sp2=await speakAt('17');await fire(sp2.slice(4,14)+'等一下',true);await p.waitForTimeout(400);ck('echo + 等一下 stops',await st()!=='speak',await st());
+sp2=await speakAt('18');await fire(sp2.slice(2,30),true);await p.waitForTimeout(300);ck('pure echo still ignored',await st()==='speak');const w18=await p.evaluate(()=>Voice.session().steps[Voice._s().sid].cap.why||{});ck('ignored echo is logged',w18.spk_echo>=1,JSON.stringify(w18));
+await p.evaluate(()=>{window.__slow=5});await idle();await go('12');await p.fill('#vTxt','下一步');await p.click('#vSend');await p.waitForTimeout(500);await idle();let la=await lastAi();if(/拍/.test(la)){await p.fill('#vTxt','跳过');await p.click('#vSend');await p.waitForTimeout(500);await idle();la=await lastAi()}
+ck('improvement question asked',/改进/.test(la),la);await fire('哦，这一步有要改进的地方吗？没有。',true);await p.waitForTimeout(2200);await idle();la=await lastAi();ck('answer glued to the echo is kept',/第 13 步/.test(la),la);
+console.log('PASS',R.filter(Boolean).length+'/'+R.length,'err',er);await b.close();srv.close()})();
