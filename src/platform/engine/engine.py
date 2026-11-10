@@ -340,7 +340,7 @@ def run(pkg_dir, out_dir, auto=None):
                'banned': rj('banned.json') or []}
         applied += FX.apply(P, steps, gen, {k: v for k, v in FIX.items() if v.get('kind') != 'safety2'})
         pre4 = pre or r2['gate'] != '通过' or not all(c['status'] in ('pass', 'warn', 'na') or c['id'] == '3.ai' for c in r3['checks'])
-        r4 = stage4(P, steps, gen, tests, auto, pre4, pkg_dir)
+        r4 = stage4(P, steps, gen, tests, auto, pre4)
         r5 = stage5(P, [r1, r2, r3, r4], tests, auto, pkg_dir, out_dir, pre4 or r4['gate'] != '通过')
     os.makedirs(out_dir, exist_ok=True)
     FX.propose(P, steps, gen if r4 else None, [x for x in (r1, r2, r3, r4, r5) if x])

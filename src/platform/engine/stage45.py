@@ -30,7 +30,7 @@ def numbers_from(auto):
             if m: M.setdefault(re.sub(r'\s+C[LR]$', '', m.group(2).strip().replace('（', '(').split('(')[0]), set()).add(int(m.group(1)))
     return M
 
-def stage4(P, steps, gen, tests, auto, preview, pkg_dir=None):
+def stage4(P, steps, gen, tests, auto, preview):
     K = []; cells = {c['code']: c for c in gen['cells']}
     nar, faq = gen['narration'], gen['faq']
     RAW = {'unnamed': []}
@@ -115,18 +115,7 @@ def stage4(P, steps, gen, tests, auto, preview, pkg_dir=None):
         rate = rp['pass'] / rp['total']
         K.append(C('4.9', '必需', 'pass' if rate >= thr else 'fail', '录音或使用记录回放', f'回放{rp["source"]}，{rp["total"]} 项检查通过 {rp["pass"]} 项（{rate:.0%}），约定标准 {thr:.0%}。',
                    '用真实说法测试本地指令识别，避免现场听不懂。', '把识别错的说法加进俗称表或热词，再回放。'))
-    # photo check with a real AI: it only needs each step's end-state frame, so it runs here with the rest of the generated content, not at the very end
-    _f = os.path.join(pkg_dir or '', 'ai_photo.json'); aph = json.load(open(_f, encoding='utf8')) if pkg_dir and os.path.exists(_f) else None
-    _T = (tests or {}).get('suites', {}); mock = 'ts25' in _T and _T['ts25']['pass'] == _T['ts25']['total']
-    if aph is None: st, det = 'todo', ('拍照流程的脚本测试已通过（ts25，用模拟回复）。' if mock else '') + '用真实 AI 判断“装对”和“故意装错”的图片还没运行：在门户的阶段 4 点“运行拍照检查测试”。'
-    else:
-        _d = aph.get('dispositions') or {}
-        wrong = [x for i, x in enumerate(aph.get('cases', [])) if x['got'] != 'unsure' and x['expect'] != x['got'] and not ((_d.get(f'p:{i}') or {}).get('status') == 'false' and len(((_d.get(f'p:{i}') or {}).get('text') or '').strip()) >= 4)]
-        st = 'pass' if not wrong and aph.get('cases') else 'fail'
-        det = ('（模拟结果，没有调用真实 AI）' if aph.get('simulated') else '') + f'{len(aph.get("cases", []))} 张图，判对 {len(aph.get("cases", [])) - len(wrong)} 张。' + ('判错：' + '；'.join(f'第 {x["step"]} 步 {x["kind"]}' for x in wrong) + '。' if wrong else '装错的都识别出来了，装对的没有误判。')
-    K.append(C('4.10', '必需', st, '拍照检查测试（真实 AI 判图）', det, '拍照检查要能认出装错，又不能把装对的判成错。', '在门户里运行；判错的步骤调整拍摄角度提示或审核规则。'))
     r = gate(K, 4, preview)
-    r['photo_cases'] = [{'step': s_['id'], 'title': s_['title']} for s_ in (auto or {}).get('steps', []) if s_['id'] in ((P.get('stage4') or {}).get('photo_steps') or (P.get('stage5') or {}).get('photo_steps') or [])]
     r['_raw'] = RAW
     r['generated'] = {'narration': len(nar), 'faq': len(ans), 'numbers': len(nums), 'hotwords': len(hot), 'hotword_sample': hot[:24], 'photo': {k: v for k, v in list(ph.items())[:3]}}
     return r
@@ -150,6 +139,15 @@ def stage5(P, prior, tests, auto, pkg_dir, out_dir, preview):
     got = ok(user); have = [n for n in user if n in T]
     K.append(C('5.A4', '必需', 'pass' if have and len(got) == len(have) else ('todo' if not have else 'fail'), 'AI 测试 · 模拟用户测试',
                f'脚本化用户走完全程：提问、打断、说错零件名、拒绝拍照、提改进建议等，{len(have)} 组测试 ' + '、'.join(f'{n} {T[n]["pass"]}/{T[n]["total"]}' for n in have) + '。' if have else '还没运行。'))
+    ph = rj('ai_photo.json')
+    mock = ok(['ts25'])
+    if ph is None: st, det = 'todo', ('拍照流程的脚本测试已通过（ts25，用模拟回复）。' if mock else '') + '用真实 AI 判断“装对”和“故意装错”的图片还没运行：点右边的“进入拍照检查测试”。'
+    else:
+        _d = ph.get('dispositions') or {}
+        wrong = [x for i, x in enumerate(ph.get('cases', [])) if x['got'] != 'unsure' and x['expect'] != x['got'] and not ((_d.get(f'p:{i}') or {}).get('status') == 'false' and len(((_d.get(f'p:{i}') or {}).get('text') or '').strip()) >= 4)]
+        st = 'pass' if not wrong and ph.get('cases') else 'fail'
+        det = ('（模拟结果，没有调用真实 AI）' if ph.get('simulated') else '') + f'{len(ph.get("cases", []))} 张图，判对 {len(ph.get("cases", [])) - len(wrong)} 张。' + ('判错：' + '；'.join(f'第 {x["step"]} 步 {x["kind"]}' for x in wrong) + '。' if wrong else '装错的都识别出来了，装对的没有误判。')
+    K.append(C('5.A5', '必需', st, 'AI 测试 · 拍照检查测试', det, '拍照检查要能认出装错，又不能把装对的判成错。', '在门户里运行；判错的步骤调整拍摄角度提示或审核规则。'))
     allt = [n for n in T]; bad = [n for n in allt if T[n]['pass'] != T[n]['total']]
     K.append(C('5.A6', '必需', 'pass' if allt and not bad else ('todo' if not allt else 'fail'), 'AI 测试 · 回归测试', (f'{len(allt)} 组已有测试全部重跑通过，共 {sum(T[n]["total"] for n in allt)} 项。' if not bad else '没通过：' + '、'.join(bad) + '。') if allt else '还没运行。'))
     # B. testers
@@ -187,4 +185,5 @@ def stage5(P, prior, tests, auto, pkg_dir, out_dir, preview):
     r = gate(K, 5, preview)
     r['qr'] = 'qr.png' if url else None; r['url'] = url
     r['approval'] = {'by': ap, 'at': rel.get('approved_at'), 'simulated': rel.get('simulated')} if ap else None; r['qr_location'] = rel.get('qr_location')
+    r['photo_cases'] = [{'step': s_['id'], 'title': s_['title']} for s_ in (auto or {}).get('steps', []) if s_['id'] in ((P.get('stage5') or {}).get('photo_steps') or [])]
     return r
