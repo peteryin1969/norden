@@ -246,14 +246,31 @@ def stage2(P, steps, answers, preview):
     return r
 
 # ---------------- stage 3: model and animation ----------------
-def stage3(P, auto, signoff, preview, ai=None):
-    """auto comes from stage3.js: per step storyboard frames and runtime checks on the animation"""
+def stage3(P, auto, signoff, preview, ai=None, out_dir=None):
+    """auto comes from stage3.js: per step storyboard frames and runtime checks on the animation.
+    Three sub-steps in a fixed order, each a loop that must come out clean before the next one opens:
+    A machine self-check -> B independent AI review -> C client storyboard sign-off.
+    Every step carries a version (hash of its frames); an AI finding or a sign-off made on an older version no longer counts."""
+    import hashlib
     K = []
     steps = auto['steps']
+    def ver(s):
+        h = hashlib.sha1()
+        for f in s['frames']:
+            fp = os.path.join(out_dir or '', f)
+            h.update(open(fp, 'rb').read() if out_dir and os.path.exists(fp) else f.encode())
+        return h.hexdigest()[:10]
+    V = {s['id']: ver(s) for s in steps}
+    ROUTE = {'visible': ('ai', '镜头问题由 AI 自动调整后重跑自检，不用客户处理（这一版先由平台代为执行）'), 'labels': ('ai', '标签问题由 AI 自动去重、补编号后重跑自检，不用客户处理（这一版先由平台代为执行）'),
+             'parts': ('human', '需要建模人员补零件，改完回到机器自检'), 'holes': ('human', '需要建模人员补孔或改落点，改完回到机器自检'),
+             'float': ('human', '需要建模人员改落点或尺寸，改完回到机器自检'), 'order': ('human', '需要建模人员调整动作顺序，改完回到机器自检')}
     def agg(key, title, why, fix, level='必需'):
         bad = [s for s in steps if s['checks'].get(key, {}).get('ok') is False]
         det = '；'.join(f'第 {s["id"]} 步：{s["checks"][key].get("note","")}' for s in bad[:12])
-        K.append(C('3.' + key, level, ('fail' if level == '必需' else 'warn') if bad else 'pass', title, (f'{len(bad)} 步有问题。' + det) if bad else f'{len(steps)} 步全部通过。', why, fix))
+        c = C('3.' + key, level, ('fail' if level == '必需' else 'warn') if bad else 'pass', title, (f'{len(bad)} 步有问题。' + det) if bad else f'{len(steps)} 步全部通过。', why, fix)
+        c['sub'] = 'A'
+        if bad: c['route'] = ROUTE[key][0]; c['route_text'] = ROUTE[key][1]; c['bad_steps'] = [s['id'] for s in bad]
+        K.append(c)
     agg('parts', '说明书里每步的零件都在动画里出现', '动画少了零件，用户会以为这一步不用它。', '在动画里补上这个零件和它的动作。')
     agg('holes', '每个紧固件落点处都有孔', '紧固件必须装进孔里，孔在正确的面上。', '在落点所在的板件上补孔，或修正落点坐标。')
     agg('float', '零件装好后贴着板件，不悬空', '悬空说明落点或模型尺寸有错。', '修正落点坐标或板件尺寸。')
@@ -261,17 +278,45 @@ def stage3(P, auto, signoff, preview, ai=None):
     agg('labels', '每种零件标一次且带编号', '标签太多会乱，没编号用户说不出是哪个。', '去掉重复标签，补编号。')
     agg('visible', '画面里能看到这一步的零件', '镜头没对准，用户会说“什么都看不到”。', '调整这一步的镜头。')
     alt = [x for a in (P.get('alternatives') or []) for x in a['steps'][1:]]
-    if alt: K.append(C('3.alt', '可选', 'na', '分支步骤说明', '第 ' + '、'.join(alt) + ' 步是二选一里不走的那条路，动画演示完会把零件收回，所以落点和孔位检查对它们只作参考。'))
-    sev = [f'第 {k} 步：{x["text"]}' for k, v in (ai or {}).get('steps', {}).items() for x in v.get('issues', []) if x.get('severity') == '严重']
-    K.append(C('3.ai', '必需', 'todo' if not ai else ('fail' if sev else 'pass'), '独立 AI 对照说明书逐步审核', '还没运行。在门户的阶段 3 点“运行独立 AI 审核”，用你自己的 Claude key 调用。' if not ai else (('严重问题：' + '；'.join(sev[:6]) + '。') if sev else f'{ai.get("model","AI")} 逐步对照说明书图和分镜图，{len(ai.get("steps", {}))} 步没有严重问题。'), '自动检查只看得到几何问题，看不出方向、顺序是否和图示一致。', '在门户里运行；有严重问题修正动画后重跑。'))
+    if alt:
+        c = C('3.alt', '可选', 'na', '分支步骤说明', '第 ' + '、'.join(alt) + ' 步是二选一里不走的那条路，动画演示完会把零件收回，所以落点和孔位检查对它们只作参考。'); c['sub'] = 'A'; K.append(c)
+    a_ok = not any(c['status'] == 'fail' for c in K)
+    # B: independent AI review, only on an animation that passed the self-check; a finding on an older version of a step is stale
+    ais = (ai or {}).get('steps', {})
+    stale = [k for k in V if k in ais and ais[k].get('ver') and ais[k]['ver'] != V[k]]
+    missing = [k for k in V if k not in ais] if ai else []
+    disp = (ai or {}).get('dispositions') or {}
+    def real(k, i): d = disp.get(f'r:{k}:{i}') or {}; return not (d.get('status') == 'false' and len((d.get('text') or '').strip()) >= 4)
+    sev = [f'第 {k} 步：{x["text"]}' for k, v in ais.items() if k in V and k not in stale for i, x in enumerate(v.get('issues', [])) if x.get('severity') == '严重' and real(k, i)]
+    if not a_ok: st, det = 'todo', '机器自检还没有全部通过。自检通过后才运行独立 AI 审核，免得 AI 审的是还要改的动画。'
+    elif not ai: st, det = 'todo', '还没运行。在门户的阶段 3 点“运行独立 AI 审核”，用你自己的 Claude key 调用。'
+    elif stale or missing: st, det = 'todo', '动画在上次 AI 审核后改过：第 ' + '、'.join(stale + missing) + ' 步要重新审核（其他步骤的结果保留）。'
+    elif sev: st, det = 'fail', '严重问题：' + '；'.join(sev[:6]) + '。修改动画后回到机器自检，再重新审核改过的步骤。'
+    else: st, det = 'pass', f'{ai.get("model", "独立 AI")} 逐步对照说明书图和分镜图，{len(ais)} 步没有严重问题。'
+    c = C('3.ai', '必需', st, '独立 AI 对照说明书逐步审核', det, '动画方向、顺序是否和说明书一致，几何检查看不出来，要另一个没参与制作的 AI 来看。', '在门户里运行；严重问题由平台核实：误报写明原因，确实有问题就修改动画，然后回到机器自检。')
+    c['sub'] = 'B'; c['locked'] = not a_ok; c['stale'] = stale + missing; K.append(c)
+    b_ok = st == 'pass'
+    # C: client sign-off, only on what both checks passed; a sign-off on an older version of a step has to be given again
     so = signoff or {}
-    left = [s['id'] for s in steps if (so.get(s['id']) or {}).get('status') != 'ok']
-    probs = [s['id'] for s in steps if (so.get(s['id']) or {}).get('status') == 'issue']
-    K.append(C('3.sign', '必需', 'fail' if probs else ('todo' if left else 'pass'), '客户逐步确认分镜图',
-               (f'客户标了问题：第 {"、".join(probs)} 步。' if probs else '') + (f'还有 {len(left)} 步没确认。' if left else '全部确认。'),
-               '动画是否忠实于说明书，最终要由厂家确认。', '在门户的“分镜确认”里逐步看动画的几张分镜图，确认或写下问题。'))
+    cur = lambda k: (so.get(k) or {}) if not (so.get(k) or {}).get('ver') or so[k]['ver'] == V[k] else {}
+    again = [s['id'] for s in steps if (so.get(s['id']) or {}).get('ver') and so[s['id']]['ver'] != V[s['id']]]
+    left = [s['id'] for s in steps if cur(s['id']).get('status') != 'ok']
+    probs = [s['id'] for s in steps if cur(s['id']).get('status') == 'issue']
+    if not b_ok: st, det = 'todo', '机器自检和独立 AI 审核都通过后，才请客户确认。'
+    else: st, det = ('fail' if probs else ('todo' if left else 'pass')), (f'客户标了问题：第 {"、".join(probs)} 步。修改动画后回到机器自检。' if probs else '') + (f'第 {"、".join(again)} 步的动画在确认后改过，要重新确认。' if again else '') + (f'还有 {len(left)} 步没确认。' if left else '全部确认。')
+    c = C('3.sign', '必需', st, '客户逐步确认分镜图', det, '动画是否忠实于说明书，最终要由厂家确认。', '在门户的“分镜确认”里逐步看动画的几张分镜图，确认或写下问题。')
+    c['sub'] = 'C'; c['locked'] = not b_ok; K.append(c)
     r = gate(K, 3, preview)
-    r['frames'] = [{'id': s['id'], 'title': s['title'], 'frames': s['frames']} for s in steps]
+    r['frames'] = [{'id': s['id'], 'title': s['title'], 'frames': s['frames'], 'ver': V[s['id']]} for s in steps]
+    # the loop on record: one line each time the self-check result changes
+    if out_dir:
+        hp = os.path.join(out_dir, 'stage3_rounds.json'); H = json.load(open(hp, encoding='utf8')) if os.path.exists(hp) else []
+        sig = hashlib.sha1(json.dumps([V, [(c['id'], c['status']) for c in K]], sort_keys=True).encode()).hexdigest()[:10]
+        if not H or H[-1]['sig'] != sig:
+            H.append({'sig': sig, 'time': datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M'), 'self_fail': [c['id'] for c in K if c.get('sub') == 'A' and c['status'] == 'fail'], 'ai': K[-2]['status'], 'sign': K[-1]['status'],
+                      'changed': [k for k in V if H and H[-1].get('ver', {}).get(k) not in (None, V[k])], 'ver': V})
+            os.makedirs(out_dir, exist_ok=True); json.dump(H, open(hp, 'w', encoding='utf8'), ensure_ascii=False)
+        r['rounds'] = [{k: v for k, v in h.items() if k != 'ver'} for h in H]
     return r
 
 def run(pkg_dir, out_dir, auto=None):
@@ -284,7 +329,7 @@ def run(pkg_dir, out_dir, auto=None):
     r1 = stage1(P, steps)
     pre = r1['gate'] != '通过'
     r2 = stage2(P, steps, rj('answers.json'), pre)
-    r3 = stage3(P, auto, rj('signoff.json'), pre or r2['gate'] != '通过', rj('ai_review.json')) if auto else None
+    r3 = stage3(P, auto, rj('signoff.json'), pre or r2['gate'] != '通过', rj('ai_review.json'), out_dir) if auto else None
     r4 = r5 = None; gen = None
     gd = os.path.join(pkg_dir, 'generated')
     if r3 and os.path.isdir(gd):
@@ -295,7 +340,7 @@ def run(pkg_dir, out_dir, auto=None):
                'banned': rj('banned.json') or []}
         applied += FX.apply(P, steps, gen, {k: v for k, v in FIX.items() if v.get('kind') != 'safety2'})
         pre4 = pre or r2['gate'] != '通过' or not all(c['status'] in ('pass', 'warn', 'na') or c['id'] == '3.ai' for c in r3['checks'])
-        r4 = stage4(P, steps, gen, tests, auto, pre4)
+        r4 = stage4(P, steps, gen, tests, auto, pre4, pkg_dir)
         r5 = stage5(P, [r1, r2, r3, r4], tests, auto, pkg_dir, out_dir, pre4 or r4['gate'] != '通过')
     os.makedirs(out_dir, exist_ok=True)
     FX.propose(P, steps, gen if r4 else None, [x for x in (r1, r2, r3, r4, r5) if x])
