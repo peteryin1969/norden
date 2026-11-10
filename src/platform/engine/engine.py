@@ -269,7 +269,7 @@ def stage3(P, auto, signoff, preview, ai=None):
     probs = [s['id'] for s in steps if (so.get(s['id']) or {}).get('status') == 'issue']
     K.append(C('3.sign', '必需', 'fail' if probs else ('todo' if left else 'pass'), '客户逐步确认分镜图',
                (f'客户标了问题：第 {"、".join(probs)} 步。' if probs else '') + (f'还有 {len(left)} 步没确认。' if left else '全部确认。'),
-               '动画是否忠实于说明书，最终要由厂家确认。', '在门户的“分镜确认”里逐步看开始、中间、结束三张图，确认或写下问题。'))
+               '动画是否忠实于说明书，最终要由厂家确认。', '在门户的“分镜确认”里逐步看动画的几张分镜图，确认或写下问题。'))
     r = gate(K, 3, preview)
     r['frames'] = [{'id': s['id'], 'title': s['title'], 'frames': s['frames']} for s in steps]
     return r
