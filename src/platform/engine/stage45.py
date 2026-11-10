@@ -141,7 +141,7 @@ def stage5(P, prior, tests, auto, pkg_dir, out_dir, preview):
                f'脚本化用户走完全程：提问、打断、说错零件名、拒绝拍照、提改进建议等，{len(have)} 组测试 ' + '、'.join(f'{n} {T[n]["pass"]}/{T[n]["total"]}' for n in have) + '。' if have else '还没运行。'))
     ph = rj('ai_photo.json')
     mock = ok(['ts25'])
-    if ph is None: st, det = 'todo', ('拍照流程的脚本测试已通过（ts25，用模拟回复）。' if mock else '') + '用真实 AI 判断“装对”和“故意装错”的图片还没运行：点右边的“进入拍照检查测试”。'
+    if ph is None: st, det = 'todo', ('拍照流程的脚本测试已通过（ts25，用模拟回复）。' if mock else '') + '用真实 AI 判断“装对”和“故意装错”的图片还没运行：点这一项的“进入拍照检查测试”按钮。'
     else:
         _d = ph.get('dispositions') or {}
         wrong = [x for i, x in enumerate(ph.get('cases', [])) if x['got'] != 'unsure' and x['expect'] != x['got'] and not ((_d.get(f'p:{i}') or {}).get('status') == 'false' and len(((_d.get(f'p:{i}') or {}).get('text') or '').strip()) >= 4)]
