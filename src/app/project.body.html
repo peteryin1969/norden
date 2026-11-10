@@ -72,6 +72,12 @@
   document.getElementById('boot').remove();
   await loadScript('portal.js?'+(window.APPBUILD||''));
   /* after the page is drawn: what is still missing from the platform */
-  if(rep.waiting_delivery){const s1=document.getElementById('s1'),ok=rep.stages[0].gate==='通过';s1&&s1.after($('section',{id:'wait'},$('h2',{},'阶段 2–5：等平台交付'),$('div',{class:'card',style:'border-left:4px solid var(--td)'},ok?'阶段 1 已通过。平台现在按这份资料提取步骤、建模、做动画，做好后交回一个“平台交付包”。拿到后点上面的“导入平台交付包”，阶段 2 到 5 会接着审核。':'先把阶段 1 里“不通过”的项补齐（在上面“文件”里补交或替换）。阶段 1 通过后，平台才开始提取步骤、建模和做动画。')))}
+  if(rep.waiting_delivery){const s1=document.getElementById('s1'),ok=rep.stages[0].gate==='通过',isN=/NORDEN/.test(pr.name||rep.product||''),m=$('div',{class:'mut',style:'font-size:13px;margin-top:6px'});
+    const imp=async(btn,blob)=>busy(btn,async()=>{m.textContent='正在导入并审核…';await importDelivery(pid,blob);APP.rerun()});
+    s1&&s1.after($('section',{id:'wait'},$('h2',{},'阶段 2–5：等平台交付'),$('div',{class:'card',style:'border-left:4px solid var(--td)'},
+      $('div',{},ok?'阶段 1 已通过。下一步需要“平台交付包”：平台按这份资料提取步骤、建模、做动画后打成的一个 zip。它不会自动出现在这里，要在下面导入。':'阶段 1 还有“不通过”的项。先在上面“文件”里补交或替换；阶段 1 通过后，平台才开始提取步骤、建模和做动画。'),
+      isN?$('div',{style:'margin-top:8px'},$('b',{},'这是 NORDEN 模拟资料：'),'平台交付包已经做好了，点下面的按钮直接导入。'):$('div',{style:'margin-top:8px'},$('b',{},'怎么拿到交付包：'),'点页面上方的“导出项目 zip”，把导出的文件发给平台。平台做好后会发回一个交付包 zip，再回到这里导入。'),
+      $('div',{class:'ans'},isN?$('button',{class:'on',id:'wSample',onclick:e=>imp(e.target,null)},'导入 NORDEN 模拟平台交付包'):'',$('button',{id:'wPick',class:isN?'':'on',onclick:e=>pick('.zip',f=>imp(e.target,f))},'选择交付包 zip 文件导入')),m)));
+    const ws=document.getElementById('wSample');if(ws)ws.onclick=e=>busy(e.target,async()=>{m.textContent='正在导入并审核…';const r=await fetch('samples/norden-delivery.zip');if(!r.ok)throw new Error('读不到样例包');await importDelivery(pid,await r.blob());APP.rerun()})}
 })().catch(e=>{console.error(e);document.getElementById('bootM')&&(document.getElementById('bootM').textContent='出错：'+(e.message||e))});
 </script>

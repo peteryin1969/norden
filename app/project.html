@@ -18,7 +18,7 @@ input[type=file]{font:inherit;max-width:100%}input[type=text],textarea,select{fo
 .tools{max-width:880px;margin:0 auto;padding:14px 16px 0}.tools .card{margin:8px 0}.boot{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}.boot .card{max-width:420px;width:100%}
 label{display:block;margin:8px 0;font-size:14px}label>span{display:block;margin-bottom:2px}label.chk{display:flex;gap:6px;align-items:center}label.chk input{width:auto}input[type=date]{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--ln);background:var(--bg);color:inherit}
 .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0;align-items:center}.row5{display:grid;grid-template-columns:1.4fr 1fr 1.2fr auto auto auto;gap:6px;margin:6px 0;align-items:center}.tabs{display:flex;gap:6px;margin:8px 0}
-a.btn{display:inline-block;padding:6px 12px;border-radius:8px;border:1px solid var(--ac);text-decoration:none}button:disabled{opacity:.5;cursor:default}@media (max-width:560px){.row3{grid-template-columns:1fr}.row5{grid-template-columns:1fr 1fr}}</style><script>window.APPBUILD="11-10 21:17 UTC"</script></head><body><div id="boot" class="boot"><div class="card"><b id="bootT">正在打开项目…</b><div id="bootM" class="mut"></div></div></div>
+a.btn{display:inline-block;padding:6px 12px;border-radius:8px;border:1px solid var(--ac);text-decoration:none}button:disabled{opacity:.5;cursor:default}@media (max-width:560px){.row3{grid-template-columns:1fr}.row5{grid-template-columns:1fr 1fr}}</style><script>window.APPBUILD="11-10 21:29 UTC"</script></head><body><div id="boot" class="boot"><div class="card"><b id="bootT">正在打开项目…</b><div id="bootM" class="mut"></div></div></div>
 <div id="tools" class="tools"></div>
 <main></main>
 <script src="app.js"></script>
@@ -92,7 +92,13 @@ a.btn{display:inline-block;padding:6px 12px;border-radius:8px;border:1px solid v
   document.getElementById('boot').remove();
   await loadScript('portal.js?'+(window.APPBUILD||''));
   /* after the page is drawn: what is still missing from the platform */
-  if(rep.waiting_delivery){const s1=document.getElementById('s1'),ok=rep.stages[0].gate==='通过';s1&&s1.after($('section',{id:'wait'},$('h2',{},'阶段 2–5：等平台交付'),$('div',{class:'card',style:'border-left:4px solid var(--td)'},ok?'阶段 1 已通过。平台现在按这份资料提取步骤、建模、做动画，做好后交回一个“平台交付包”。拿到后点上面的“导入平台交付包”，阶段 2 到 5 会接着审核。':'先把阶段 1 里“不通过”的项补齐（在上面“文件”里补交或替换）。阶段 1 通过后，平台才开始提取步骤、建模和做动画。')))}
+  if(rep.waiting_delivery){const s1=document.getElementById('s1'),ok=rep.stages[0].gate==='通过',isN=/NORDEN/.test(pr.name||rep.product||''),m=$('div',{class:'mut',style:'font-size:13px;margin-top:6px'});
+    const imp=async(btn,blob)=>busy(btn,async()=>{m.textContent='正在导入并审核…';await importDelivery(pid,blob);APP.rerun()});
+    s1&&s1.after($('section',{id:'wait'},$('h2',{},'阶段 2–5：等平台交付'),$('div',{class:'card',style:'border-left:4px solid var(--td)'},
+      $('div',{},ok?'阶段 1 已通过。下一步需要“平台交付包”：平台按这份资料提取步骤、建模、做动画后打成的一个 zip。它不会自动出现在这里，要在下面导入。':'阶段 1 还有“不通过”的项。先在上面“文件”里补交或替换；阶段 1 通过后，平台才开始提取步骤、建模和做动画。'),
+      isN?$('div',{style:'margin-top:8px'},$('b',{},'这是 NORDEN 模拟资料：'),'平台交付包已经做好了，点下面的按钮直接导入。'):$('div',{style:'margin-top:8px'},$('b',{},'怎么拿到交付包：'),'点页面上方的“导出项目 zip”，把导出的文件发给平台。平台做好后会发回一个交付包 zip，再回到这里导入。'),
+      $('div',{class:'ans'},isN?$('button',{class:'on',id:'wSample',onclick:e=>imp(e.target,null)},'导入 NORDEN 模拟平台交付包'):'',$('button',{id:'wPick',class:isN?'':'on',onclick:e=>pick('.zip',f=>imp(e.target,f))},'选择交付包 zip 文件导入')),m)));
+    const ws=document.getElementById('wSample');if(ws)ws.onclick=e=>busy(e.target,async()=>{m.textContent='正在导入并审核…';const r=await fetch('samples/norden-delivery.zip');if(!r.ok)throw new Error('读不到样例包');await importDelivery(pid,await r.blob());APP.rerun()})}
 })().catch(e=>{console.error(e);document.getElementById('bootM')&&(document.getElementById('bootM').textContent='出错：'+(e.message||e))});
 </script>
 </body></html>
