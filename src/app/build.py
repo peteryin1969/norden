@@ -33,6 +33,17 @@ with zipfile.ZipFile(OUT + '/samples/norden-client.zip', 'w', zipfile.ZIP_DEFLAT
             if rel in PLATFORM or rel.startswith('generated') or rel == 'package.json' or rel in ('answers.json', 'signoff.json', 'fixes.json', 'ai_review.json', 'ai_photo.json'): continue
             z.write(os.path.join(root, f), rel)
     z.writestr('package.json', json.dumps(pk, ensure_ascii=False, indent=1))
+# test 2: the same client package with one planted problem, and the corrected file to hand in afterwards
+import io
+src_parts = open(A + '/parts.csv', encoding='utf8').read(); bad = src_parts.replace('110733,短螺丝,42,', '110733,短螺丝,40,'); assert bad != src_parts
+zin = zipfile.ZipFile(OUT + '/samples/norden-client.zip')
+with zipfile.ZipFile(OUT + '/samples/norden-client-test2.zip', 'w', zipfile.ZIP_DEFLATED) as z:
+    for n in zin.namelist():
+        d = zin.read(n)
+        if n == 'parts.csv': d = bad.encode()
+        if n == 'package.json': j = json.loads(d); j['name'] = 'NORDEN 折叠桌（模拟资料 · 测试 2）'; d = json.dumps(j, ensure_ascii=False, indent=1).encode()
+        z.writestr(n, d)
+os.makedirs(OUT + '/samples/test2-fix'); open(OUT + '/samples/test2-fix/parts.csv', 'w', encoding='utf8').write(src_parts)
 rel_ = json.load(open(A + '/release.json', encoding='utf8')); rel_.pop('approved_by', None); rel_.pop('approved_at', None); rel_.pop('qr_location', None)
 with zipfile.ZipFile(OUT + '/samples/norden-delivery.zip', 'w', zipfile.ZIP_DEFLATED) as z:
     z.writestr('delivery.json', json.dumps({'product': 'NORDEN 折叠桌', 'delivery': 1, 'date': BUILD, 'by': '平台（代管）', 'assistant_url': rel_.get('url'), 'simulated': True, 'note': '步骤、讲解、问答、分镜图和测试结果由平台制作；试装记录是模拟的。'}, ensure_ascii=False, indent=1))

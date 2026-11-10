@@ -18,7 +18,7 @@ input[type=file]{font:inherit;max-width:100%}input[type=text],textarea,select{fo
 .tools{max-width:880px;margin:0 auto;padding:14px 16px 0}.tools .card{margin:8px 0}.boot{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}.boot .card{max-width:420px;width:100%}
 label{display:block;margin:8px 0;font-size:14px}label>span{display:block;margin-bottom:2px}label.chk{display:flex;gap:6px;align-items:center}label.chk input{width:auto}input[type=date]{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--ln);background:var(--bg);color:inherit}
 .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0;align-items:center}.row5{display:grid;grid-template-columns:1.4fr 1fr 1.2fr auto auto auto;gap:6px;margin:6px 0;align-items:center}.tabs{display:flex;gap:6px;margin:8px 0}
-a.btn{display:inline-block;padding:6px 12px;border-radius:8px;border:1px solid var(--ac);text-decoration:none}button:disabled{opacity:.5;cursor:default}@media (max-width:560px){.row3{grid-template-columns:1fr}.row5{grid-template-columns:1fr 1fr}}</style><script>window.APPBUILD="11-10 21:48 UTC"</script></head><body><main>
+a.btn{display:inline-block;padding:6px 12px;border-radius:8px;border:1px solid var(--ac);text-decoration:none}button:disabled{opacity:.5;cursor:default}@media (max-width:560px){.row3{grid-template-columns:1fr}.row5{grid-template-columns:1fr 1fr}}</style><script>window.APPBUILD="11-10 22:09 UTC"</script></head><body><main>
 <h1>装配助手平台 · 工作台</h1>
 <div class="mut">上传产品资料，按五个阶段审核，到可以发布。不用注册：项目和文件只保存在这台设备的这个浏览器里。</div>
 <div class="card" id="notice" style="border-left:4px solid var(--wn)">
@@ -33,6 +33,12 @@ a.btn{display:inline-block;padding:6px 12px;border-radius:8px;border:1px solid v
 <div class="mut" style="font-size:13px;margin:4px 0">两个包：客户提交的资料，和平台做好交回的步骤、分镜图、测试结果。尺寸、规格、授权书和试装记录都是模拟的，仅用于内部测试。</div>
 <div class="ans"><button id="goS" class="on">直接用客户资料包创建项目</button><a class="btn" href="samples/norden-client.zip" download>下载客户资料包</a><a class="btn" href="samples/norden-delivery.zip" download>下载平台交付包</a></div>
 <div id="msgS" class="mut" style="font-size:13px;margin-top:6px">创建后先看阶段 1；然后在项目页点“导入平台交付包”，选下载好的平台交付包，阶段 2–5 接着审核。</div>
+</div>
+<div class="card" id="sample2" style="border:2px solid var(--wn)">
+<b style="font-size:17px">测试 2：有一处问题的资料包</b>
+<div class="mut" style="font-size:13px;margin:4px 0">和上面是同一套 NORDEN 模拟资料，但客户资料里故意放了一处错误。看阶段 1 能不能查出来；查出来后，在那一项下面点“上传改好的…”，交上改好的文件，再看它是否通过。</div>
+<div class="ans"><button id="goS2" class="on">用这个资料包创建项目</button><a class="btn" href="samples/norden-client-test2.zip" download>下载这个资料包</a><a class="btn" href="samples/test2-fix/parts.csv" download>下载改好的文件（整改时用）</a></div>
+<div id="msgS2" class="mut" style="font-size:13px;margin-top:6px"></div>
 </div>
 <h2>我的项目</h2><div id="list"></div>
 <h2 id="newh">新建项目</h2>
@@ -56,6 +62,7 @@ list();
 const tA=document.getElementById('tA'),tB=document.getElementById('tB'),fA=document.getElementById('formA'),fB=document.getElementById('formB');
 tA.onclick=()=>{tA.classList.add('on');tB.classList.remove('on');fA.hidden=false;fB.hidden=true};tB.onclick=()=>{tB.classList.add('on');tA.classList.remove('on');fB.hidden=false;fA.hidden=true};
 document.getElementById('goS').onclick=async e=>{const m=document.getElementById('msgS');e.target.disabled=true;let pr;try{m.textContent='正在读取模拟资料…';const r=await fetch('samples/norden-client.zip');if(!r.ok)throw new Error('读不到样例包（'+r.status+'）');pr=await newProject('');await importClientZip(pr.id,await r.blob(),(i,n,p)=>m.textContent='读取 '+i+'/'+n+'：'+p);location.href='project.html?id='+pr.id}catch(x){if(pr)await DB.delProject(pr.id);m.textContent='出错：'+x.message;e.target.disabled=false}};
+document.getElementById('goS2').onclick=async e=>{const m=document.getElementById('msgS2');e.target.disabled=true;let pr;try{m.textContent='正在读取模拟资料…';const r=await fetch('samples/norden-client-test2.zip');if(!r.ok)throw new Error('读不到样例包（'+r.status+'）');pr=await newProject('');await importClientZip(pr.id,await r.blob(),(i,n,p)=>m.textContent='读取 '+i+'/'+n+'：'+p);location.href='project.html?id='+pr.id}catch(x){if(pr)await DB.delProject(pr.id);m.textContent='出错：'+x.message;e.target.disabled=false}};
 document.getElementById('goB').onclick=async e=>{const f=document.getElementById('zip').files[0],m=document.getElementById('msgB');if(!f){m.textContent='请先选择 zip 文件。';return}e.target.disabled=true;
   let pr;try{pr=await newProject('');await importClientZip(pr.id,f,(i,n,p)=>m.textContent='读取 '+i+'/'+n+'：'+p);location.href='project.html?id='+pr.id}catch(x){if(pr)await DB.delProject(pr.id);m.textContent='出错：'+x.message;e.target.disabled=false}};
 
