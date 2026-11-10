@@ -52,6 +52,7 @@ function buildCab(){
   [-1,1].forEach((z,i)=>{const bk=box(BW,5,3,WOOD);pt(ties,bk,[0,YB,z*(LZ/2)],{1:[[0,0,z*14],[0,0,0]]},{i,of:2,win:[.2,.45],lbl:'连接木块'});
     [-1,1].forEach(a=>{drill(bk,new T3.Vector3(a*BW/2,0,0),new T3.Vector3(a,0,0),.42,['5']);[-1.5,1.5].forEach(y=>pt(ties,dowel('x',a,.4,3),[a*(BW/2-.1),YB+y,z*(LZ/2)],{1:[[0,0,z*14],[0,0,0]]},{i,of:2,win:[.2,.45],ins:a*5}));
       const fg=(a<0?fL:fR).g.children[0],post=fg.userData.posts[z<0?0:1];[-1.5,1.5].forEach(y=>drill(post,new T3.Vector3(-a*PS/2,YB+y,0),new T3.Vector3(-a,0,0),.45,['1']));drill(post,new T3.Vector3(a*PS/2,YB,0),new T3.Vector3(a,0,0),.5,['5']);
+      drill(bk,new T3.Vector3(a*(BW/2-3.2),2.5,0),new T3.Vector3(0,1,0),.58,['5']);
       pt(ties,barrel('y',-1),[a*(BW/2-3.2),YB,z*(LZ/2)],{5:[[0,-9,0],[0,0,0]]},{i:(z+1)+(a+1)/2,of:4,win:[.2,.5],spin:'y',on:bk,code:'121121'});
       const blt=pt(ties,longBolt('x',a),[a*(BW/2+PS-5.35),YB,z*(LZ/2)],{5:[[a*12,0,0],[0,0,0]]},{i:(z+1)+(a+1)/2,of:4,win:[.5,1],spin:'x',nohole:1,seq:1,code:'105330'});FR.bolts.push(blt)})});
   const ky=keyL();ky.position.set(0,0,0);sc2.add(ky);FR.key=ky;

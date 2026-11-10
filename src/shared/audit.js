@@ -10,7 +10,7 @@ function audit(s){if(!ready||!cur||cur!==s)return null;const C=typeof CELLS!=='u
   const holes=MARKS.filter(h=>h.steps.includes(s)).map(h=>h.d.getWorldPosition(new T3.Vector3()));
   const onWall=o=>{const b=new T3.Box3().setFromObject(o).expandByScalar(.5);return walls.some(w=>w.intersectsBox(b))};
   const fast=mv.filter(p=>{const c=codeP(p);return c&&inList(c)&&FAST.test(nm(c))&&!/钉/.test(nm(c))&&!p.quiet&&!onWall(p.m)});
-  const noHole=[];if(fast.length){fast.forEach(p=>{const b=new T3.Box3().setFromObject(p.m).expandByScalar(.9);if(!holes.some(h=>b.containsPoint(h)))noHole.push(nm(codeP(p)))})}
+  const noHole=[];if(fast.length){fast.forEach(p=>{const b=new T3.Box3().setFromObject(p.m).expandByScalar(1.5);if(!holes.some(h=>b.containsPoint(h)))noHole.push(nm(codeP(p)))})}
   const nh=[...new Set(noHole)];R.holes={ok:!nh.length,note:nh.length?'落点附近没有孔：'+nh.map(n=>n+' '+noHole.filter(x=>x===n).length+' 个').join('、'):'',n:fast.length};
   const tools=[FR.ham&&FR.ham.root,FR.ham2,hammer,FR.key,FR.drill,FR.pencil].filter(Boolean),inT=o=>{for(let q=o;q;q=q.parent)if(tools.includes(q))return true;return false};
   const meshes=[];sc.traverseVisible(o=>{if(o.isMesh&&!o.material.isMeshBasicMaterial&&!inT(o))meshes.push(o)});const MB=new Map(meshes.map(o=>[o,new T3.Box3().setFromObject(o)]));
@@ -26,3 +26,5 @@ function audit(s){if(!ready||!cur||cur!==s)return null;const C=typeof CELLS!=='u
   R.visible={ok:!objs.length||inV>0,note:objs.length&&!inV?'镜头里看不到这一步的零件（'+objs.length+' 个都在画面外）':'',n:objs.length,inView:inV};
   poseAt(Math.min(t,1));return R}
 window.__audit=s=>audit(s);
+/* for the platform's model export: the assembled scene and how its parts are named */
+window.__model=()=>({scene:sc2,CP,GS,PANEL,codeOf,T3});

@@ -3,7 +3,7 @@ Answers and sign-offs are saved on the device and exported as answers.json / sig
 import json, os, shutil, sys
 H = os.path.dirname(os.path.abspath(__file__))
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(H, 'site', 'platform')
-SL = ['norden', 'storklinta', 'billy-corner', 'billy-oxberg']
+SL = ['norden-sim', 'norden', 'storklinta', 'billy-corner', 'billy-oxberg']
 CSS = """:root{--bg:#f4f5f2;--ink:#17201c;--mut:#5d6a63;--c:#fff;--ln:#dfe3dd;--ac:#25624b;--ok:#2f7d4f;--okb:#e5f4e4;--bad:#b3261e;--badb:#fbebeb;--wn:#8a5a00;--wnb:#f9eeda;--td:#2b5f9e;--tdb:#e7f1fb}
 @media (prefers-color-scheme:dark){:root{--bg:#141815;--ink:#e9ede9;--mut:#a3aea7;--c:#1e2420;--ln:#2e3631;--ac:#7fcfae;--ok:#7fd49c;--okb:#1e3326;--bad:#ff8a80;--badb:#3a2020;--wn:#f0c36a;--wnb:#3a3020;--td:#8cbcf2;--tdb:#1d2b3d}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}main{max-width:880px;margin:0 auto;padding:20px 16px 60px}
@@ -25,10 +25,11 @@ JS = r"""
 const R=REPORT,S=R.stages,KEY='plat:'+R.slug,LS={get(k){try{return JSON.parse(localStorage.getItem(KEY+k)||'{}')}catch(e){return {}}},set(k,v){try{localStorage.setItem(KEY+k,JSON.stringify(v))}catch(e){}}};
 const $=(t,a={},...c)=>{const e=document.createElement(t);for(const k in a){if(k==='class')e.className=a[k];else if(k.startsWith('on'))e[k]=a[k];else e.setAttribute(k,a[k])}c.flat().forEach(x=>e.append(x&&x.nodeType?x:document.createTextNode(x==null?'':x)));return e};
 const SN={pass:'通过',fail:'不通过',warn:'提醒',todo:'待确认',na:'说明'};const STG=['','资料审核','步骤与零件确认','三维模型与动画'];
-const main=document.querySelector('main');const img=id=>'../../'+R.slug+'/img/s'+id+'.png';
+const main=document.querySelector('main');const img=id=>'../../'+(R.site||R.slug)+'/img/s'+id+'.png';
+(()=>{const a=LS.get('ans'),g=LS.get('sign');if(!Object.keys(a).length&&R.answers&&Object.keys(R.answers).length)LS.set('ans',R.answers);if(!Object.keys(g).length&&R.signoff&&Object.keys(R.signoff).length)LS.set('sign',R.signoff)})();
 function zoom(src){const z=$('div',{class:'zoom',onclick:()=>z.remove()},$('img',{src}));document.body.append(z)}
 function dl(name,obj){const b=new Blob([JSON.stringify(obj,null,1)],{type:'application/json'}),a=$('a',{href:URL.createObjectURL(b),download:name});document.body.append(a);a.click();a.remove()}
-main.append($('p',{},$('a',{href:'../'},'‹ 所有产品')),$('h1',{},R.product),$('div',{class:'mut'},'入口 A：客户已有装配方案 · 说明书 '+R.manuals.map(m=>m.doc+'（'+m.pages+' 页）').join('、')),R.note?$('div',{class:'card',style:'margin-top:10px'},'⚠ '+R.note):'');
+main.append($('p',{},$('a',{href:'../'},'‹ 所有产品')),$('h1',{},R.product),$('div',{class:'mut'},'入口 A：客户已有装配方案 · 说明书 '+R.manuals.map(m=>m.doc+'（'+m.pages+' 页）').join('、')),R.note?$('div',{class:'card',style:'margin-top:10px'},'⚠ '+R.note):'',R.package_zip?$('p',{},$('a',{href:R.package_zip,download:''},'下载这个资料包（zip）')):'');
 const pipe=$('div',{class:'pipe'});S.forEach(s=>pipe.append($('a',{href:'#s'+s.stage},$('b',{},'阶段 '+s.stage+' · '+STG[s.stage]),$('span',{class:'g '+s.gate},s.gate),s.preview?$('span',{class:'pre'},'预审'):'')));main.append(pipe);
 main.append($('p',{class:'mut'},'阶段 1 没通过时，阶段 2、3 以“预审”方式照常运行，让你提前看到后面会问什么、会查什么，结果不计入关卡。'));
 function checks(s){const box=$('div');const order={fail:0,todo:1,warn:2,na:3,pass:4};[...s.checks].sort((a,b)=>order[a.status]-order[b.status]).forEach(c=>{const d=$('div',{class:'ck '+c.status},$('div',{},$('span',{class:'st '+c.status},SN[c.status]),$('span',{class:'t'},c.title),' ',$('span',{class:'lv'},c.level)),c.detail?$('div',{},c.detail):'');
@@ -61,11 +62,12 @@ for sl in SL:
     rep = json.load(open(os.path.join(H, 'out', sl, 'report.json'), encoding='utf8'))
     d = os.path.join(OUT, sl); os.makedirs(d)
     if os.path.isdir(os.path.join(H, 'out', sl, 'frames')): shutil.copytree(os.path.join(H, 'out', sl, 'frames'), os.path.join(d, 'frames'))
+    if rep.get('package_zip') and os.path.exists(os.path.join(H, 'out', sl, rep['package_zip'])): shutil.copy(os.path.join(H, 'out', sl, rep['package_zip']), os.path.join(d, rep['package_zip']))
     open(os.path.join(d, 'index.html'), 'w', encoding='utf8').write(page(rep['product'] + ' · 审核', '<script>const REPORT=' + json.dumps(rep, ensure_ascii=False) + ';' + JS + '</script>'))
     rows.append((sl, rep))
 cards = ''.join(f'<a class="card" style="display:block;text-decoration:none;color:inherit" href="{sl}/"><b style="font-size:17px">{r["product"]}</b><div class="pipe" style="margin:8px 0 0">' +
                 ''.join(f'<div><b>阶段 {s["stage"]}</b><span class="g {s["gate"]}">{s["gate"]}</span>{"<span class=pre>预审</span>" if s["preview"] else ""}</div>' for s in r['stages']) + '</div></a>' for sl, r in rows)
-idx = f"""<script>document.querySelector('main').innerHTML=`<p><a href="../">‹ 组装助手</a></p><h1>装配助手制作平台 · 审核</h1><p class="mut">入口 A（客户已有装配方案），阶段 1–3。四个 IKEA 产品只用于内部测试。</p>{cards}
+idx = f"""<script>document.querySelector('main').innerHTML=`<p><a href="../">‹ 组装助手</a></p><h1>装配助手制作平台 · 审核</h1><p class="mut">入口 A（客户已有装配方案），阶段 1–3。第一个是用 NORDEN 数据补齐的模拟资料包，用来演示全部通过的流程；其余四个是按我们手上真实资料审核的结果。IKEA 产品只用于内部测试。</p>{cards}
 <div class="card"><b>怎么用</b><ol style="margin:6px 0 0;padding-left:20px"><li>每个产品页列出各阶段的检查结果；不通过的项写明缺什么、为什么需要、怎么补。</li><li>阶段 2 的待确认问题和阶段 3 的分镜，在页面上逐条确认或更正，再导出 answers.json、signoff.json 交回平台。</li><li>平台重新审核后，这里的结果会更新。</li></ol></div>`</script>"""
 open(os.path.join(OUT, 'index.html'), 'w', encoding='utf8').write(page('装配平台审核', idx, CSS + '.pipe div{background:var(--bg);border-radius:8px;padding:6px 8px}'))
 print('portal', OUT)

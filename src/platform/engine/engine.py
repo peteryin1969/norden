@@ -42,7 +42,7 @@ def pdf_kind(path):
 def stage1(P, steps):
     K = []
     a = P.get('authorization')
-    K.append(C('1.0', '必需', 'pass' if a else 'fail', '使用授权（阶段 0）', '已登记授权书。' if a else '没有登记授权书。' + P.get('note', ''),
+    K.append(C('1.0', '必需', 'pass' if a and os.path.exists(os.path.join(P['_dir'], a.get('file', ''))) else 'fail', '使用授权（阶段 0）', (f'已登记授权书，范围：{a.get("scope")}，有效期至 {a.get("valid_to")}。' + ('（模拟授权书，无法律效力）' if a.get('simulated') else '')) if a else '没有登记授权书。' + P.get('note', ''),
                '平台只能使用客户有权使用的说明书、图片和商标。', '上传签字盖章的授权书 PDF，写明可使用的资料范围和期限。'))
     # manuals
     for i, m in enumerate(P['manuals'], 1):
@@ -70,8 +70,24 @@ def stage1(P, steps):
         drawn = {c for s in steps for c, q in s['parts']}
         listed = {r['code'] for r in parts}
         miss_in_list = sorted(drawn - listed); miss_in_steps = sorted(listed - drawn)
+        txt = ''
+        for m in P['manuals']:
+            if m.get('pdf') and pdf_kind(os.path.join(P['_dir'], m['pdf'])).get('kind') == 'vector':
+                txt += subprocess.run(['pdftotext', '-layout', os.path.join(P['_dir'], m['pdf']), '-'], capture_output=True, text=True).stdout
+        in_pdf = set(re.findall(r'(?<![\d-])\d{5,8}(?![\d-])', txt)) if txt else None
+        if in_pdf is not None:
+            q_pdf = {}
+            for r in parts:
+                mm = re.search(re.escape(r['code']) + r'\s+\S+\s+(\d+)', txt)
+                if mm: q_pdf[r['code']] = int(mm.group(1))
+            qbad = [f'{c}：清单 {next(int(r["qty"]) for r in parts if r["code"]==c)}，说明书 {q}' for c, q in q_pdf.items() if q != next(int(r['qty']) for r in parts if r['code'] == c)]
+            not_found = sorted(listed - in_pdf); extra = sorted(in_pdf - listed - drawn)
+            st = 'fail' if (not_found or qbad) else 'pass'
+            K.append(C('1.4', '必需', st, '零件清单与说明书零件页一致', ('清单里有、说明书文字里找不到：' + '、'.join(not_found) + '。' if not_found else '') + ('数量不一致：' + '；'.join(qbad) + '。' if qbad else '') + (f'清单 {len(listed)} 个编号都能在说明书里找到，读到数量的 {len(q_pdf)} 个全部一致。' if st == 'pass' else '') + ('说明书里另有编号 ' + '、'.join(extra) + '（不在清单，请确认是否为工具或另售件）。' if extra else ''),
+                       '清单和说明书对不上，零件格和用量提示就会错。', '核对零件页，补上缺的编号，或改正数量。'))
+            miss_in_list = None
         st = 'fail' if miss_in_list else 'pass'
-        K.append(C('1.4', '必需', st, '零件清单与说明书一致',
+        if miss_in_list is not None: K.append(C('1.4', '必需', st, '零件清单与说明书一致',
                    ('说明书步骤里出现、清单里没有：' + '、'.join(miss_in_list) + '。' if miss_in_list else '说明书步骤里的编号都在清单里。') +
                    ('清单里有、步骤里没用到：' + '、'.join(miss_in_steps) + '（在阶段 2 确认是否备用）。' if miss_in_steps else '') +
                    ' 说明书为图片版，零件页无法自动读取，这一项改为与步骤图中的编号核对。',
@@ -111,7 +127,26 @@ def stage1(P, steps):
     K.append(C('1.8', '必需', 'fail' if undiff else 'pass', '相近的五金能用数据区分', ('这些相近的零件，规格数据完全一样或都没填，无法区分：' + '；'.join(undiff) + '。') if undiff else '相近的零件都有能区分的规格。',
                '用户最常拿错的就是长短、粗细相近的螺丝和木销，提示要说出具体差别。', '补上长度、直径或头型，让每一对至少有一项不同。'))
     # 3D model, safety and optional items
-    K.append(C('1.9', '建议', 'pass' if P['optional'].get('model3d') else 'warn', '三维模型', '已提供。' if P['optional'].get('model3d') else '没有提供。动画会按说明书线稿和尺寸估算建模，周期更长，比例在界面上注明为估算。',
+    mods = P['optional'].get('model3d'); mods = [mods] if isinstance(mods, str) else (mods or [])
+    mnote, mst = '没有提供。动画会按说明书线稿和尺寸估算建模，周期更长，比例在界面上注明为估算。', 'warn'
+    if mods:
+        names, mx = set(), 0
+        for f in mods:
+            fp = os.path.join(P['_dir'], f)
+            if not os.path.exists(fp): continue
+            xs = [[], [], []]
+            for line in open(fp, encoding='utf8'):
+                if line.startswith('o '): names.add(re.sub(r'_[0-9A-Za-z]+$', '', line[2:].strip()))
+                elif line.startswith('v '):
+                    v = line.split()[1:4]; [xs[i].append(float(v[i])) for i in range(3)]
+            if xs[0]: mx = max(mx, max(max(a_) - min(a_) for a_ in xs))
+        codes = {r['code'] for r in (P['_parts'] or [])}; panels = {r['part'] for r in (P['_dims'] or [])}
+        mc = sorted(codes - names); mp = sorted(panels - names)
+        om = max([v for v in (P.get('overall_mm') or {}).values() if isinstance(v, (int, float))] or [0])
+        unit_ok = not om or .4 * om <= mx <= 1.6 * om
+        mst = 'pass' if not mc and not mp and unit_ok else 'fail'
+        mnote = f'{len(mods)} 个文件，{len(names)} 种零件。' + ('缺少零件：' + '、'.join(mc + mp) + '。' if mc or mp else '清单里的每个编号和每块板件都能在模型里找到。') + (f'模型最大尺寸 {mx:.0f}，与外形尺寸 {om} 毫米不在同一量级，单位可能不是毫米。' if not unit_ok else f'最大尺寸 {mx:.0f} 毫米，单位正确。')
+    K.append(C('1.9', '建议', mst, '三维模型', mnote,
                '有三维模型可以大幅提高动画准确度。', '提供 STEP、glTF 或 OBJ，每个零件独立并以零件编号命名，单位毫米，含孔位。'))
     sf = P['_safety']
     two = sorted({s['id'] for s in steps if re.search(r'两人|两个人|二人', s['title'] + ''.join(s['do']) + ''.join(s.get('warn', [])))})
@@ -123,7 +158,7 @@ def stage1(P, steps):
         if two and not (sf.get('two_person_steps') or re.search(r'两人|两个人', txt)): gaps.append('说明书第 ' + '、'.join(two) + ' 步需要两人，安全要求里没写')
         if tip and not (sf.get('anti_tip') or re.search(r'倾倒|墙', txt)): gaps.append('说明书有防倾倒或墙面固定，安全要求里没写')
         if two and not sf.get('two_person_steps'): gaps.append('没有逐步列出需要两人的步骤（说明书图示涉及第 ' + '、'.join(two) + ' 步）')
-    K.append(C('1.10', '必需', 'fail' if gaps else 'pass', '安全要求', '；'.join(gaps) + '。' if gaps else f'{len(sf["items"])} 条，覆盖两人操作和防倾倒。',
+    K.append(C('1.10', '必需', 'fail' if gaps else 'pass', '安全要求', '；'.join(gaps) + '。' if gaps else f'{len(sf["items"])} 条。两人操作：' + ('第 ' + '、'.join(sf.get('two_person_steps') or []) + ' 步' if sf.get('two_person_steps') else '见条目') + '；防倾倒：' + ('要求墙面固定' if sf.get('anti_tip') else '不需要（' + (sf.get('anti_tip_note') or '无') + '）') + ('；承重：' + '、'.join(sf['load_limits']) if sf.get('load_limits') else '') + '。',
                '安全提醒必须来自厂家，平台不能自己推断。', '写明需要两人的步骤、防倾倒固定方法、承重限制。'))
     for k, t, lvl in [('photos', '实物照片', '建议'), ('faq', '客服常见问题', '建议'), ('terms', '术语与俗称', '建议'), ('est_min', '每步预计用时', '可选')]:
         K.append(C('1.11.' + k, lvl, 'pass' if P['optional'].get(k) else 'warn', t, '已提供。' if P['optional'].get(k) else '没有提供。'))
@@ -246,7 +281,7 @@ def run(pkg_dir, out_dir, auto=None):
     r2 = stage2(P, steps, rj('answers.json'), pre)
     r3 = stage3(P, auto, rj('signoff.json'), pre or r2['gate'] != '通过') if auto else None
     os.makedirs(out_dir, exist_ok=True)
-    rep = {'product': P['name'], 'slug': P['slug'], 'entry': P['entry'], 'manuals': [{k: m[k] for k in ('doc', 'title', 'pages')} for m in P['manuals']], 'note': P.get('note'),
+    rep = {'product': P['name'], 'slug': P['slug'], 'site': P.get('site', P['slug']), 'answers': rj('answers.json') or {}, 'signoff': rj('signoff.json') or {}, 'package_zip': P.get('package_zip'), 'entry': P['entry'], 'manuals': [{k: m[k] for k in ('doc', 'title', 'pages')} for m in P['manuals']], 'note': P.get('note'),
            'stages': [r1, r2] + ([r3] if r3 else []), 'steps': [{'id': s['id'], 'label': s.get('label'), 'title': s['title'], 'do': s['do'], 'parts': s['parts'], 'page': s.get('page')} for s in steps]}
     json.dump(rep, open(os.path.join(out_dir, 'report.json'), 'w', encoding='utf8'), ensure_ascii=False, indent=1)
     return rep
