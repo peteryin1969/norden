@@ -32,7 +32,7 @@
   rep.package_zip=null;
   const pkgFiles=files.filter(f=>f.path.startsWith('pkg/')&&!isHidden(f.path)).map(f=>f.path.slice(4));
   window.APP={pid,home:'./',img:id=>url('asset/img/s'+id+'.png'),fileList:()=>pkgFiles.filter(p=>!/^(answers|signoff|fixes|ai_review|ai_photo|release|package)\.json$|^records\/|^generated\/|^steps\.draft/.test(p)),
-    async replaceFile(path,f){await addPkgFile(pid,path,f,f.name)},rerun(){location.href='project.html?id='+pid+'&run=1'+location.hash}};
+    async replaceFile(path,f){await addPkgFile(pid,path,f,f.name)},async setRelease(o){const r=Object.assign({version:1},await readJSON(pid,'pkg/release.json')||{},o);await DB.put(pid,'pkg/release.json',JSON.stringify(r,null,1));location.href='project.html?id='+pid+'&run=1#s5'},rerun(){location.href='project.html?id='+pid+'&run=1'+location.hash}};
   window.REPORT=rep;window.BUILD=(window.APPBUILD||'')+' · 引擎审核于 '+(pr.engineAt||'');
 
   /* ---- project tools: files, delivery, release details, trial records ---- */
