@@ -255,7 +255,7 @@ def stage3(P, auto, signoff, preview, ai=None, out_dir=None):
     K = []
     steps = auto['steps']
     def ver(s):
-        h = hashlib.sha1()
+        h = hashlib.sha1(str(s.get('rev', '')).encode())
         for f in s['frames']:
             fp = os.path.join(out_dir or '', f)
             h.update(open(fp, 'rb').read() if out_dir and os.path.exists(fp) else f.encode())
