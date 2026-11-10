@@ -9,7 +9,7 @@ from collections import defaultdict
 
 def load(pkg_dir):
     P = json.load(open(os.path.join(pkg_dir, 'package.json'), encoding='utf8'))
-    rd = lambda f: list(csv.DictReader(open(os.path.join(pkg_dir, f), encoding='utf8'))) if f and os.path.exists(os.path.join(pkg_dir, f)) else None
+    rd = lambda f: [{(k or '').strip(): (v or '').strip() if isinstance(v, str) else v for k, v in r.items()} for r in csv.DictReader(open(os.path.join(pkg_dir, f), encoding='utf-8-sig'))] if f and os.path.exists(os.path.join(pkg_dir, f)) else None   # Excel's CSV UTF-8 starts with a BOM
     P['_parts'] = rd(P['files'].get('parts')); P['_hw'] = rd(P['files'].get('hardware')); P['_dims'] = rd(P['files'].get('dimensions'))
     sf = os.path.join(pkg_dir, P['files'].get('safety') or '')
     P['_safety'] = json.load(open(sf, encoding='utf8')) if os.path.isfile(sf) else None
@@ -28,8 +28,20 @@ def gate(checks, stage, preview=False, waiting=None):
     return {'stage': stage, 'gate': g, 'preview': preview, 'counts': {s: sum(c['status'] == s for c in checks) for s in ['pass', 'fail', 'warn', 'todo', 'na']}, 'checks': checks,
             'time': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}
 
+def pdf_text(path):
+    side = path + '.info.json'
+    if os.path.exists(side): return json.load(open(side, encoding='utf8')).get('text', '')
+    return subprocess.run(['pdftotext', '-layout', path, '-'], capture_output=True, text=True).stdout
+
 def pdf_kind(path):
     """vector: text and drawing operators; raster: whole pages are images (scans or print-to-PDF)"""
+    side = path + '.info.json'   # written by the browser app (pdf.js), where the poppler tools do not exist
+    if os.path.exists(side):
+        try:
+            j = json.load(open(side, encoding='utf8')); pages, fonts, big = j.get('pages', 0), j.get('fonts', 0), j.get('page_images', 0)
+            return {'pages': pages, 'fonts': fonts, 'page_images': big, 'kind': 'raster' if not fonts and big >= pages * .8 else 'outline' if not fonts else 'vector'}
+        except Exception as e:
+            return {'error': str(e)}
     try:
         fonts = subprocess.run(['pdffonts', path], capture_output=True, text=True, timeout=60).stdout.strip().splitlines()[2:]
         imgs = subprocess.run(['pdfimages', '-list', path], capture_output=True, text=True, timeout=60).stdout.strip().splitlines()[2:]
@@ -63,7 +75,7 @@ def stage1(P, steps):
     # parts list
     parts = P['_parts']
     if not parts:
-        K.append(C('1.3', '必需', 'fail', '零件清单', '没有收到零件清单。', '零件核对、零件格和编号都以它为准。', '上传 Excel 或 CSV：零件编号、名称、数量、所属包装袋。'))
+        K.append(C('1.3', '必需', 'fail', '零件清单', '没有收到零件清单。', '零件核对、零件格和编号都以它为准。', '上传 CSV（Excel 可以另存为 CSV）：零件编号、名称、数量、所属包装袋。'))
     else:
         bad = [r for r in parts if not r['code'] or not r['name'] or not re.fullmatch(r'\d+', str(r['qty']).strip() or 'x')]
         K.append(C('1.3', '必需', 'fail' if bad else 'pass', '零件清单格式', f'{len(parts)} 行，' + (f'{len(bad)} 行缺编号、名称或数量：' + '、'.join(r['code'] or '?' for r in bad[:8]) if bad else '每行都有编号、名称和数量。'),
@@ -74,7 +86,7 @@ def stage1(P, steps):
         txt = ''
         for m in P['manuals']:
             if m.get('pdf') and pdf_kind(os.path.join(P['_dir'], m['pdf'])).get('kind') == 'vector':
-                txt += subprocess.run(['pdftotext', '-layout', os.path.join(P['_dir'], m['pdf']), '-'], capture_output=True, text=True).stdout
+                txt += pdf_text(os.path.join(P['_dir'], m['pdf']))
         in_pdf = set(re.findall(r'(?<![\d-])\d{5,8}(?![\d-])', txt)) if txt else None
         if in_pdf is not None:
             q_pdf = {}
@@ -321,13 +333,21 @@ def stage3(P, auto, signoff, preview, ai=None, out_dir=None):
 
 def run(pkg_dir, out_dir, auto=None):
     P = load(pkg_dir)
-    steps = json.load(open(os.path.join(pkg_dir, 'steps.draft.json'), encoding='utf8'))
+    _sp = os.path.join(pkg_dir, 'steps.draft.json'); has_steps = os.path.exists(_sp)
+    steps = json.load(open(_sp, encoding='utf8')) if has_steps else []
     rj = lambda f: json.load(open(os.path.join(pkg_dir, f), encoding='utf8')) if os.path.exists(os.path.join(pkg_dir, f)) else None
     import fixes as FX
     FIX = rj('fixes.json') or {}
     applied = FX.apply(P, steps, None, {k: v for k, v in FIX.items() if v.get('kind') == 'safety2'})
     r1 = stage1(P, steps)
     pre = r1['gate'] != '通过'
+    if not has_steps:
+        # the client's data alone: stage 1 is reviewed now, everything that needs the steps waits for the platform's delivery
+        r1['checks'].append(C('1.12', '可选', 'na', '和步骤有关的核对', '平台还没有交付步骤数据。零件清单与步骤图的核对、需要两人的步骤、防倾倒，会在平台交付步骤后重新核对。'))
+        rep = {'fixes_applied': applied, 'fixes': FIX, 'product': P['name'], 'slug': P['slug'], 'site': P.get('site', P['slug']), 'answers': {}, 'signoff': {}, 'package_zip': P.get('package_zip'), 'entry': P.get('entry', 'A'), 'manuals': [{k: m[k] for k in ('doc', 'title', 'pages')} for m in P['manuals']], 'note': P.get('note'), 'stages': [r1], 'steps': [], 'waiting_delivery': True}
+        os.makedirs(out_dir, exist_ok=True); FX.propose(P, steps, None, [r1])
+        json.dump(rep, open(os.path.join(out_dir, 'report.json'), 'w', encoding='utf8'), ensure_ascii=False, indent=1)
+        return rep
     r2 = stage2(P, steps, rj('answers.json'), pre)
     r3 = stage3(P, auto, rj('signoff.json'), pre or r2['gate'] != '通过', rj('ai_review.json'), out_dir) if auto else None
     r4 = r5 = None; gen = None

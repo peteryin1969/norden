@@ -37,3 +37,5 @@ open('site/index.html','w',encoding='utf8').write(f'''<!doctype html><html lang=
 
 if os.path.exists('../plat/portal.py'):
     import subprocess;subprocess.run(['python3','../plat/portal.py','site/platform'],check=True)
+if os.path.exists('../app/build.py'):
+    import subprocess;subprocess.run(['python3','../app/build.py','site'],check=True)

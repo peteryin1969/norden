@@ -1,0 +1,35 @@
+/* the working app: create a project from the client zip, compare the in-browser engine with the command-line engine, import the delivery, walk to release */
+const {chromium}=require('playwright');const fs=require('fs');const d=process.cwd()+'/site/';const C=process.cwd()+'/../app/cli/';
+const MIME={'.html':'text/html;charset=utf8','.js':'text/javascript','.mjs':'text/javascript','.wasm':'application/wasm','.json':'application/json','.zip':'application/zip','.py':'text/plain;charset=utf8','.png':'image/png','.jpg':'image/jpeg'};
+(async()=>{const srv=require('http').createServer((q,s)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u.endsWith('/'))u+='index.html';fs.readFile(d+u.slice(1),(e,c)=>{if(e){s.writeHead(404);s.end()}else{s.writeHead(200,{'content-type':MIME[u.slice(u.lastIndexOf('.'))]||'application/octet-stream'});s.end(c)}})}).listen(8874);
+const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:1100,height:900},acceptDownloads:true});const p=await ctx.newPage();const er=[];p.on('pageerror',e=>er.push(e.message));p.on('dialog',d=>d.accept());p.on('crash',()=>console.log('PAGE CRASHED'));p.on('close',()=>console.log('PAGE CLOSED'));p.on('console',m=>{if(m.type()==='error'&&!/favicon/.test(m.text()))er.push('console: '+m.text().slice(0,200))});
+await p.addInitScript(()=>localStorage.setItem('norden-key','k'));let calls=0;const STARTS=['2','7','10'];
+await p.route('https://api.anthropic.com/**',r=>{calls++;const c=JSON.parse(r.request().postData()).messages[0].content,t=c.find(x=>x.type==='text').text;let out='{"issues":[]}';if(!/独立审核员/.test(t)){out=/没装好/.test(JSON.stringify(globalThis.__kind||''))?'':'';out=globalThis.__ph.shift()}r.fulfill({status:200,headers:{'content-type':'application/json','access-control-allow-origin':'*'},body:JSON.stringify({content:[{type:'text',text:out}]})})});
+globalThis.__ph=[];for(let i=0;i<3;i++)globalThis.__ph.push('{"verdict":"pass","say":"ok"}','{"verdict":"fail","say":"no"}');
+const R=[],ck=(n,ok,x)=>{R.push(!!ok);console.log(ok?'ok  ':'FAIL',n,x==null?'':String(x).slice(0,300))};
+const ready=async()=>{await p.waitForSelector('#boot',{state:'detached',timeout:120000});await p.waitForSelector('main h1',{timeout:20000});await p.waitForTimeout(400)};
+const gates=()=>p.evaluate(()=>[...document.querySelectorAll('.pipe a .g')].map(x=>x.textContent).join(' '));
+const cmp=async(ref,label)=>{const rep=await p.evaluate(async()=>{const f=await DB.file(APP.pid,'out/report.json');return JSON.parse(new TextDecoder().decode(f.data)).stages.map(s=>({stage:s.stage,checks:s.checks.map(c=>[c.id,c.status,c.detail||''])}))});const diff=[];ref.stages.forEach((s,i)=>{const m=rep[i];if(!m){diff.push('missing stage '+s.stage);return}const mine=Object.fromEntries(m.checks.map(c=>[c[0],c]));s.checks.forEach(c=>{const x=mine[c.id];if(!x)diff.push(c.id+' missing');else if(x[1]!==c.status)diff.push(c.id+' '+c.status+'→'+x[1]+' | '+x[2].slice(0,120));else if(x[2]!==(c.detail||'')&&!/1\.resub/.test(c.id))diff.push(c.id+' detail: '+(c.detail||'').slice(0,90)+' ≠ '+x[2].slice(0,90))})});ck(label,diff.length===0,diff.join(' ;; ')||ref.stages.map(s=>s.checks.length).join('+')+' checks identical')};
+const t0=Date.now();await p.goto('http://localhost:8874/app/');await p.click('#tB');await p.setInputFiles('#zip',d+'app/samples/norden-client.zip');await p.click('#goB');await p.waitForURL(/project\.html/);await ready();console.log('first open',Date.now()-t0,'ms');
+ck('client package alone: only stage 1, waiting for the platform',await gates()==='通过'&&!!(await p.$('#wait')),await gates());
+/* the browser reports this run's own time, the reference its own: compare everything else */
+await cmp(JSON.parse(fs.readFileSync(C+'ref1.json')),'stage 1 in the browser = command line');
+const t1=Date.now();await p.reload();await ready();ck('second open uses the stored report (no engine run)',Date.now()-t1<4000,Date.now()-t1+' ms');
+/* delivery */
+const [ch]=await Promise.all([p.waitForEvent('filechooser'),p.click('#tDeliver')]);await ch.setFiles(d+'app/samples/norden-delivery.zip');await p.waitForURL(/run=1/);await ready();console.log('after delivery',await gates());
+/* the storyboard was just made, so its round record has one line, like the reference */
+await cmp(JSON.parse(fs.readFileSync(C+'ref2.json')),'all five stages in the browser = command line');
+await p.evaluate(()=>document.querySelector('#s3 .sb').scrollIntoView());await p.waitForTimeout(1200);ck('step pictures and frames show',await p.evaluate(()=>{const im=[...document.querySelectorAll('#s3 .sb img')].slice(0,5);return im.length===5&&im.every(i=>i.complete&&i.naturalWidth>50)}));
+/* walk */
+await p.evaluate(()=>[...document.querySelectorAll('#s2 button')].filter(b=>/^确认：/.test(b.textContent)).forEach(b=>b.click()));await p.click('.bar button:has-text("保存并重新计算")');await ready();console.log('answered',await gates());
+await p.click('button:has-text("运行独立 AI 审核")');await ready();await p.waitForTimeout(500);await ready();console.log('AI review',await gates(),calls);
+await p.evaluate(()=>[...document.querySelectorAll('#s3 button')].filter(b=>b.textContent==='确认'&&!b.disabled).forEach(b=>b.click()));await p.click('.bar button:has-text("保存并重新计算")');await ready();console.log('signed',await gates());
+await p.click('button:has-text("运行拍照检查测试")');await p.waitForTimeout(1500);await ready();console.log('photo',await gates(),calls);
+ck('5.C waits for the QR place',/还没定二维码位置/.test(await p.textContent('#s5')));
+await p.click('#tRelease summary');await p.fill('#tRelease label:nth-of-type(2) input','说明书封面右下角');await p.click('#tRelease button.on');await p.waitForURL(/run=1/);await ready();console.log('release info',await gates());
+ck('QR code drawn in the page',await p.evaluate(()=>{const i=document.querySelector('#s5 img[alt="二维码"]');return !!i&&i.src.startsWith('data:image')}));
+await p.click('button:has-text("批准发布")');await ready();await p.waitForTimeout(300);const g=await gates();ck('approved: all five pass and the banner shows',g==='通过 通过 通过 通过 通过'&&await p.evaluate(()=>!![...document.querySelectorAll('.card')].find(x=>/可以发布/.test(x.textContent))),g);
+ck('engine report itself (not only the page) says pass ×5',await p.evaluate(async()=>{const f=await DB.file(APP.pid,'out/report.json');const r=JSON.parse(new TextDecoder().decode(f.data));return r.stages.map(s=>s.gate).join(' ')})==='通过 通过 通过 通过 通过',await p.evaluate(async()=>{const f=await DB.file(APP.pid,'out/report.json');const r=JSON.parse(new TextDecoder().decode(f.data));return r.stages.map(s=>s.gate+':'+s.checks.filter(c=>c.status!=='pass'&&c.status!=='warn'&&c.status!=='na').map(c=>c.id).join(',')).join(' | ')}));
+const [dl]=await Promise.all([p.waitForEvent('download'),p.click('#tExport')]);const zp=C+'export.zip';await dl.saveAs(zp);ck('project export',fs.statSync(zp).size>1e6,fs.statSync(zp).size);
+await p.goto('http://localhost:8874/app/');await p.waitForTimeout(600);ck('project list shows it with five passes',await p.evaluate(()=>document.querySelectorAll('#list .card .g.通过').length)===5);
+console.log('PASS',R.filter(Boolean).length+'/'+R.length,'err',er);await b.close();srv.close()})();

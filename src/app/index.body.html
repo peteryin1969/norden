@@ -1,0 +1,76 @@
+<main>
+<h1>装配助手平台 · 工作台</h1>
+<div class="mut">上传产品资料，按五个阶段审核，到可以发布。不用注册：项目和文件只保存在这台设备的这个浏览器里。</div>
+<div class="card" id="notice" style="border-left:4px solid var(--wn)">
+<b>使用前请知道</b>
+<ul style="margin:6px 0 0;padding-left:20px">
+<li>没有账号和服务器。换设备、换浏览器或清除浏览器数据，项目就看不到了。重要的项目请用“导出项目”存一份。</li>
+<li>需要 AI 的步骤（独立 AI 审核、拍照检查测试、AI 润色）用你自己的 Claude key，从你的浏览器直接发给 Anthropic；图片和文字会发过去。</li>
+<li>阶段 3 的步骤数据、三维模型和动画由平台制作，做好后以“平台交付包”交回，在项目里导入。</li>
+</ul></div>
+<h2>我的项目</h2><div id="list"></div>
+<h2 id="newh">新建项目</h2>
+<div class="tabs"><button id="tA" class="on">逐项填写</button><button id="tB">上传资料包 zip</button></div>
+<div id="formA"></div>
+<div id="formB" hidden class="card">
+<p>已经按格式整理好的资料包（最上层有 package.json）。</p>
+<label>资料包 zip<input type="file" id="zip" accept=".zip"></label>
+<div class="ans"><button id="goB" class="on">创建并开始审核</button><span id="msgB" class="mut"></span></div>
+<p class="mut" style="font-size:13px">想先试一下：<a href="samples/norden-client.zip" download>下载 NORDEN 模拟客户资料包</a>，创建项目并通过阶段 1 后，再导入 <a href="samples/norden-delivery.zip" download>NORDEN 模拟平台交付包</a>。两个包里的尺寸、规格、授权书和试装记录都是模拟的，仅用于内部测试。</p>
+</div>
+<p class="mut" style="font-size:12px">页面版本 <span id="bld"></span></p>
+</main>
+<script src="app.js"></script>
+<script>
+document.getElementById('bld').textContent=window.APPBUILD||'';
+const ST=['通过','退回补充','待客户确认'];
+async function list(){const L=document.getElementById('list'),ps=await DB.projects();L.textContent='';if(!ps.length){L.append($('div',{class:'card mut'},'还没有项目。在下面新建一个。'));return}
+  ps.forEach(p=>L.append($('a',{class:'card',style:'display:block;text-decoration:none;color:inherit',href:'project.html?id='+p.id},$('b',{style:'font-size:17px'},p.name||'未命名'),$('div',{class:'pipe',style:'margin:8px 0 0'},[1,2,3,4,5].map(i=>$('div',{},$('b',{},'阶段 '+i),p.gates&&p.gates[i-1]?$('span',{class:'g '+p.gates[i-1]},p.gates[i-1]):$('span',{class:'mut',style:'font-size:13px'},i===1?'未审核':'未开始')))),$('div',{class:'mut',style:'font-size:12px;margin-top:6px'},'创建 '+p.created+' · 更新 '+p.updated+(p.delivery?' · 平台已交付 '+p.delivery+' 次':' · 等平台交付'))))) }
+list();
+const tA=document.getElementById('tA'),tB=document.getElementById('tB'),fA=document.getElementById('formA'),fB=document.getElementById('formB');
+tA.onclick=()=>{tA.classList.add('on');tB.classList.remove('on');fA.hidden=false;fB.hidden=true};tB.onclick=()=>{tB.classList.add('on');tA.classList.remove('on');fB.hidden=false;fA.hidden=true};
+document.getElementById('goB').onclick=async e=>{const f=document.getElementById('zip').files[0],m=document.getElementById('msgB');if(!f){m.textContent='请先选择 zip 文件。';return}e.target.disabled=true;
+  let pr;try{pr=await newProject('');await importClientZip(pr.id,f,(i,n,p)=>m.textContent='读取 '+i+'/'+n+'：'+p);location.href='project.html?id='+pr.id}catch(x){if(pr)await DB.delProject(pr.id);m.textContent='出错：'+x.message;e.target.disabled=false}};
+
+/* ---- filling the package item by item: the page writes package.json and safety.json itself ---- */
+const TPL={'parts.csv':'code,name,qty,list\n100001,示例螺丝,8,五金袋\n','hardware.csv':'code,name,type,length_mm,diameter_mm,head,material,description\n100001,示例螺丝,螺丝,30,4,沉头十字,镀锌钢,\n','dimensions.csv':'part,length_mm,width_mm,thickness_mm\n侧板,2020,280,15\n','faq.csv':'step,question,answer\n*,要几个人装,建议两个人一起装。\n','terms.csv':'official,common_names\n螺丝,螺丝钉、螺钉\n','step_times.csv':'step,minutes\n1,5\n'};
+const tpl=n=>$('a',{href:'#',onclick:e=>{e.preventDefault();download(n,'﻿'+TPL[n],'text/csv')}},'下载模板');
+const F={},fld=(k,label,el,hint)=>{F[k]=el;return $('label',{},$('span',{},label),el,hint?$('span',{class:'mut',style:'font-size:12px;display:block'},hint):'')};
+const inp=(o={})=>$('input',Object.assign({type:'text'},o)),file=(o={})=>$('input',Object.assign({type:'file'},o));
+const mans=$('div');function manRow(){const r=$('div',{class:'row3'},file({accept:'.pdf','data-k':'pdf'}),inp({placeholder:'文档编号，如 AA-123456-1','data-k':'doc'}),inp({placeholder:'标题，如 XX 装配说明书','data-k':'title'}));mans.append(r)}manRow();
+fA.append(
+ $('div',{class:'card'},$('h3',{},'1 · 产品'),fld('name','产品名称（必填）',inp({placeholder:'如：XX 六斗柜'})),
+   $('div',{class:'row3'},fld('w','宽（毫米）',inp({inputmode:'numeric'})),fld('d','深（毫米）',inp({inputmode:'numeric'})),fld('h','高（毫米）',inp({inputmode:'numeric'}))),
+   $('label',{class:'chk'},F.conf=$('input',{type:'checkbox'}),'以上外形尺寸来自产品设计数据，我确认')),
+ $('div',{class:'card'},$('h3',{},'2 · 使用授权'),$('div',{class:'mut',style:'font-size:13px'},'平台只能使用你有权使用的说明书、图片和商标。'),fld('auth','授权书 PDF（签字盖章）',file({accept:'.pdf'})),fld('scope','授权范围',inp({placeholder:'如：说明书、图片、零件图、商标'})),fld('valid','有效期至',$('input',{type:'date'}))),
+ $('div',{class:'card'},$('h3',{},'3 · 装配说明书'),$('div',{class:'mut',style:'font-size:13px'},'请用设计部门导出的原始 PDF（能选中文字），不要扫描件或“打印成 PDF”。一个产品有几份说明书就加几行。'),mans,$('div',{class:'ans'},$('button',{onclick:manRow},'再加一份说明书'))),
+ $('div',{class:'card'},$('h3',{},'4 · 零件和尺寸表'),$('div',{class:'mut',style:'font-size:13px'},'CSV 格式（Excel 可以另存为 CSV UTF-8）。表头必须和模板一致。'),
+   fld('parts',['零件清单 parts.csv（必填） · ',tpl('parts.csv')],file({accept:'.csv'}),'每行：零件编号、名称、数量、所属包装袋'),
+   fld('hardware',['五金规格 hardware.csv（必填） · ',tpl('hardware.csv')],file({accept:'.csv'}),'每种五金：类型、长度、直径、头型、材质'),
+   fld('dimensions',['板件尺寸 dimensions.csv（必填） · ',tpl('dimensions.csv')],file({accept:'.csv'}),'每块板件：长、宽、厚（毫米）')),
+ $('div',{class:'card'},$('h3',{},'5 · 安全要求'),$('div',{class:'mut',style:'font-size:13px'},'安全提醒必须来自厂家，平台和 AI 都不会替你写。'),
+   fld('safe','安全要求（必填，一行一条）',$('textarea',{rows:'4',placeholder:'如：\n翻转柜体必须两人操作。\n必须用附带的固定件固定到墙上。'})),
+   fld('two','需要两人操作的步骤号（逗号分隔，没有就留空）',inp({placeholder:'如：8, 12'})),
+   $('label',{class:'chk'},F.tip=$('input',{type:'checkbox'}),'需要防倾倒 / 墙面固定'),fld('tipnote','不需要防倾倒时，说明原因',inp({placeholder:'如：桌子，说明书无墙面固定'})),
+   fld('load','承重限制（一行一条，没有就留空）',$('textarea',{rows:'2',placeholder:'如：每层搁板最多 30 公斤'}))),
+ $('div',{class:'card'},$('h3',{},'6 · 可选资料'),$('div',{class:'mut',style:'font-size:13px'},'有就提供，会提高准确度；没有也能继续。'),
+   fld('model','三维模型（OBJ，可多选；每个零件独立并以零件编号命名，单位毫米）',file({multiple:true,accept:'.obj,.step,.stp,.gltf,.glb'})),
+   fld('photos','实物照片（可多选）',file({multiple:true,accept:'image/*'})),
+   fld('faq',['客服常见问题 faq.csv · ',tpl('faq.csv')],file({accept:'.csv'})),fld('terms',['术语与俗称 terms.csv · ',tpl('terms.csv')],file({accept:'.csv'})),fld('times',['每步预计用时 step_times.csv · ',tpl('step_times.csv')],file({accept:'.csv'}))),
+ $('div',{class:'ans'},$('button',{class:'on',id:'goA',onclick:createA},'创建并开始审核'),$('span',{id:'msgA',class:'mut'})),
+ $('p',{class:'mut',style:'font-size:13px'},'缺的资料不会挡住创建：阶段 1 会逐项告诉你缺什么、为什么要、怎么补，之后在项目的“文件”里补交即可。'));
+async function createA(e){const m=document.getElementById('msgA'),v=k=>(F[k].value||'').trim(),f=k=>F[k].files[0];if(!v('name')){m.textContent='请填写产品名称。';F.name.focus();return}e.target.disabled=true;m.textContent='正在创建…';let pr;
+  try{pr=await newProject(v('name'));const pid=pr.id,num=k=>{const x=parseFloat(v(k));return isFinite(x)?x:null},lines=k=>v(k).split(/\n+/).map(x=>x.trim()).filter(Boolean);
+    const pk={slug:'app-'+pid,name:v('name'),entry:'A',manuals:[],overall_mm:{w:num('w'),d:num('d'),h:num('h'),confirmed:F.conf.checked,src:'客户在工作台填写'},units:[],alternatives:[],similar:{},files:{parts:null,hardware:null,dimensions:null,safety:null},optional:{model3d:null,photos:null,faq:null,terms:null,est_min:null},authorization:null};
+    if(f('auth')){const p='authorization/'+safeName(f('auth').name);await addPkgFile(pid,p,f('auth'),f('auth').name);pk.authorization={file:p,scope:v('scope')||'未填写',valid_to:v('valid')||'未填写'}}
+    for(const r of mans.children){const pf=r.querySelector('[data-k=pdf]').files[0],doc=r.querySelector('[data-k=doc]').value.trim(),title=r.querySelector('[data-k=title]').value.trim();if(!pf&&!doc)continue;let pages=0,path=null;
+      if(pf){m.textContent='正在读取说明书 '+pf.name+'…';path='manual/'+safeName(pf.name);await addPkgFile(pid,path,pf,pf.name);const info=await readJSON(pid,'pkg/'+path+'.info.json');pages=info&&info.pages||0}
+      pk.manuals.push({doc:doc||(pf?pf.name.replace(/\.pdf$/i,''):'说明书'),title:title||v('name')+' 装配说明书',pdf:path,pages_dir:null,pages})}
+    for(const [k,n] of [['parts','parts.csv'],['hardware','hardware.csv'],['dimensions','dimensions.csv']])if(f(k)){await addPkgFile(pid,n,f(k),f(k).name);pk.files[k]=n}
+    if(v('safe')){await addPkgFile(pid,'safety.json',JSON.stringify({items:lines('safe'),two_person_steps:v('two').split(/[,，、\s]+/).filter(Boolean),anti_tip:F.tip.checked,anti_tip_note:v('tipnote'),load_limits:lines('load')},null,1));pk.files.safety='safety.json'}
+    const mods=[...F.model.files];if(mods.length){pk.optional.model3d=[];for(const x of mods){const p='model/'+safeName(x.name);await addPkgFile(pid,p,x,x.name);pk.optional.model3d.push(p)}}
+    const phs=[...F.photos.files];if(phs.length){for(const x of phs)await addPkgFile(pid,'photos/'+safeName(x.name),x,x.name);pk.optional.photos='photos'}
+    for(const [k,key,n] of [['faq','faq','faq.csv'],['terms','terms','terms.csv'],['times','est_min','step_times.csv']])if(f(k)){await addPkgFile(pid,n,f(k),f(k).name);pk.optional[key]=n}
+    await DB.put(pid,'pkg/package.json',JSON.stringify(pk,null,1));location.href='project.html?id='+pid}
+  catch(x){if(pr)await DB.delProject(pr.id);m.textContent='出错：'+x.message;e.target.disabled=false}}
+</script>

@@ -175,8 +175,12 @@ def stage5(P, prior, tests, auto, pkg_dir, out_dir, preview):
     rel = rj('release.json') or {}
     url = rel.get('url')
     if url:
-        import segno
-        os.makedirs(out_dir, exist_ok=True); qr = segno.make(url + ('&' if '?' in url else '?') + 'v=' + str(rel.get('version', 1)), error='m'); qr.save(os.path.join(out_dir, 'qr.png'), scale=8, border=2)
+        try:
+            import segno
+            os.makedirs(out_dir, exist_ok=True)
+            qr = segno.make(url + ('&' if '?' in url else '?') + 'v=' + str(rel.get('version', 1)), error='m')
+            qr.save(os.path.join(out_dir, 'qr.png'), scale=8, border=2)
+        except ImportError: pass   # in the browser the page draws the code itself
     K.append(C('5.C', '必需', 'pass' if url and rel.get('qr_location') else 'todo', '二维码', f'已生成，指向第 {rel.get("version", 1)} 版，印在：{rel.get("qr_location")}。' if url and rel.get('qr_location') else '还没定二维码位置。', '用户扫码直接打开对应版本的装配助手。', '选择二维码印在哪里。'))
     # D. approval
     before = all(c['status'] == 'pass' for c in K)
