@@ -139,7 +139,7 @@ def stage5(P, prior, tests, auto, pkg_dir, out_dir, preview):
     else:
         wrong = [x for x in ph.get('cases', []) if x['expect'] != x['got']]
         st = 'pass' if not wrong and ph.get('cases') else 'fail'
-        det = f'{len(ph.get("cases", []))} 张图，判对 {len(ph.get("cases", [])) - len(wrong)} 张。' + ('判错：' + '；'.join(f'第 {x["step"]} 步 {x["kind"]}' for x in wrong) + '。' if wrong else '装错的都识别出来了，装对的没有误判。')
+        det = ('（模拟结果，没有调用真实 AI）' if ph.get('simulated') else '') + f'{len(ph.get("cases", []))} 张图，判对 {len(ph.get("cases", [])) - len(wrong)} 张。' + ('判错：' + '；'.join(f'第 {x["step"]} 步 {x["kind"]}' for x in wrong) + '。' if wrong else '装错的都识别出来了，装对的没有误判。')
     K.append(C('5.A5', '必需', st, 'AI 测试 · 拍照检查测试', det, '拍照检查要能认出装错，又不能把装对的判成错。', '在门户里运行；判错的步骤调整拍摄角度提示或审核规则。'))
     allt = [n for n in T]; bad = [n for n in allt if T[n]['pass'] != T[n]['total']]
     K.append(C('5.A6', '必需', 'pass' if allt and not bad else ('todo' if not allt else 'fail'), 'AI 测试 · 回归测试', (f'{len(allt)} 组已有测试全部重跑通过，共 {sum(T[n]["total"] for n in allt)} 项。' if not bad else '没通过：' + '、'.join(bad) + '。') if allt else '还没运行。'))

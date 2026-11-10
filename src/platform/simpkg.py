@@ -82,6 +82,8 @@ json.dump({'simulated': True, 'steps': len(steps), 'testers': [
   'issues': [{'severity': '一般', 'step': '5', 'text': '“横销”两次被听成“红销”，已加进俗称表', 'closed': True},
              {'severity': '轻微', 'step': '9', 'text': '抽屉长板的标签挡住了一点凸条', 'closed': False, 'recorded': True}]},
   open(D + '/testers.json', 'w', encoding='utf8'), ensure_ascii=False, indent=1)
+json.dump({'simulated': True, 'model': '模拟', 'time': '2026-11-10', 'cases': [{'step': s_, 'kind': k, 'expect': e, 'got': e, 'say': '模拟结果'} for s_ in ['2', '7', '10'] for k, e in [('装好了', 'pass'), ('没装好', 'fail')]]},
+          open(D + '/ai_photo.json', 'w', encoding='utf8'), ensure_ascii=False, indent=1)
 json.dump({'simulated': True, 'version': 1, 'url': 'https://peteryin1969.github.io/norden/norden/', 'qr_location': '说明书封面右下角', 'approved_by': '示例家具公司 产品经理（模拟）', 'approved_at': '2026-11-10'},
           open(D + '/release.json', 'w', encoding='utf8'), ensure_ascii=False, indent=1)
 
