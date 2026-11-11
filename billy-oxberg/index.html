@@ -589,6 +589,47 @@ window.__audit=s=>audit(s);
 /* for the platform's model export: the assembled scene and how its parts are named */
 window.__model=()=>({scene:sc2,CP,GS,PANEL,codeOf,T3});
 
+/* Model editor hooks (window.__edit), used by the platform's editor and by the published assistant.
+   An edit is a layer on top of the model as built: per part a rotation in quarter turns about its own centre, a shift, a label text.
+   The layer is kept apart from the model (overrides.json), so every change is on record and can be undone; the assistant applies it at each frame after the engine has posed the parts. */
+const OV={parts:{},qty:{}};let ovBase=new Map(),ovOn=true;
+function ovUnits(){return [...CP.map((p,i)=>({key:'cp'+i,o:p.m,p})),...GS.map(G=>({key:'gs:'+G.name,o:G.g,G}))]}
+function ovUnitOf(obj){const U=ovUnits();for(let q=obj;q;q=q.parent){const u=U.find(x=>x.o===q);if(u)return u}return null}
+function ovCentre(u){/* the part's own centre in its local frame, measured once */if(u.o.userData.ovC)return u.o.userData.ovC;u.o.updateWorldMatrix(true,true);const b=new T3.Box3().setFromObject(u.o),c=b.isEmpty()?new T3.Vector3():b.getCenter(new T3.Vector3());u.o.userData.ovC=u.o.worldToLocal(c.clone());return u.o.userData.ovC}
+function ovApply(){if(!ovOn)return;const keys=Object.keys(OV.parts);if(!keys.length)return;const U=ovUnits();keys.forEach(k=>{const u=U.find(x=>x.key===k),e=OV.parts[k];if(!u||!e)return;const o=u.o;if(e.hide){o.visible=false;return}
+    if((e.rot&&e.rot.some(Boolean))||(e.off&&e.off.some(Boolean))){const c=ovCentre(u),q=new T3.Quaternion().setFromEuler(new T3.Euler(...(e.rot||[0,0,0]).map(n=>n*Math.PI/2),'XYZ')),d=c.clone().sub(c.clone().applyQuaternion(q)).multiply(o.scale).applyQuaternion(o.quaternion);
+      o.position.add(d);if(e.off){const w=new T3.Vector3(...e.off);if(o.parent){const pq=o.parent.getWorldQuaternion(new T3.Quaternion()).invert();w.applyQuaternion(pq)}o.position.add(w)}o.quaternion.multiply(q)}})}
+/* the engine does not reset every part's rotation each frame, so the engine's own pose is put back before it runs and the layer is laid on again after */
+let ovL=false;(()=>{const run=applyCab;applyCab=function(s,tt){if(!ovL&&cabReady){ovL=true;if(Object.values(OV.parts).some(e=>e&&e.lbl))ovLabels()}ovBase.forEach((b,o)=>{o.position.copy(b.p);o.quaternion.copy(b.q)});run(s,tt);const U=ovUnits();Object.keys(OV.parts).forEach(k=>{const u=U.find(x=>x.key===k);if(u)ovBase.set(u.o,{p:u.o.position.clone(),q:u.o.quaternion.clone()})});ovApply()}})();
+function ovLabels(){CP.forEach((p,i)=>{const e=OV.parts['cp'+i];if(p._lbl0===undefined)p._lbl0=p.lbl;p.lbl=e&&e.lbl!=null&&e.lbl!==''?e.lbl:p._lbl0});if(ready&&cur&&CIDS.includes(cur)){buildLabels()}}
+/* a part taken out of (or put back into) a step changes how many the step uses: the count the labels show follows */
+function ovQty(){if(typeof byId==='undefined')return;Object.values(byId).forEach(s=>(s.parts||[]).forEach(pp=>{if(pp._q0!==undefined){pp[1]=pp._q0}}));Object.entries(OV.qty||{}).forEach(([sid,m])=>{const s=byId[sid];if(!s)return;Object.entries(m).forEach(([c,n])=>{const pp=(s.parts||[]).find(x=>x[0]===c);if(pp){if(pp._q0===undefined)pp._q0=pp[1];pp[1]=n}})});if(ready&&cur&&CIDS.includes(cur))buildLabels()}
+function ovCode(u){if(!u.p)return null;let c=u.p.code||codeOf(u.p.m);const first=Object.keys(u.p.keys)[0];if(!c&&u.p.m.userData.hr&&typeof SCREW!=='undefined')c=SCREW[first];return c||null}
+function ovLoad(j){OV.qty=JSON.parse(JSON.stringify(j&&j.qty||{}));ovQty();OV.parts=Object.assign({},j&&j.parts||{});ovBase.forEach((b,o)=>{o.position.copy(b.p);o.quaternion.copy(b.q)});ovBase=new Map();if(cabReady)ovLabels()}
+function ovName(u){if(u.p){const c=u.p.code||codeOf(u.p.m),cell=typeof CELLS!=='undefined'&&CELLS.find(x=>x.code===c);return (u.p._lbl0!==undefined?u.p._lbl0:u.p.lbl)||(cell&&cell.name)||c||'零件'}return u.G.name}
+function ovSnap(W){const v=document.getElementById('animView'),w=v.clientWidth,h=v.clientHeight;const keep=t;t=Math.min(t,1);applyCab(cur,t);for(let i=0;i<60;i++){camFit()}ren.render(curScene(), cam);drawLabels();
+  const c=document.createElement('canvas'),k=(W||720)/w;c.width=Math.round(w*k);c.height=Math.round(h*k);const x=c.getContext('2d');x.fillStyle=getComputedStyle(v).backgroundColor&&getComputedStyle(v).backgroundColor!=='rgba(0, 0, 0, 0)'?getComputedStyle(v).backgroundColor:'#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(ren.domElement,0,0,c.width,c.height);
+  const vr=v.getBoundingClientRect();document.querySelectorAll('#animLines line').forEach(l=>{if(l.style.display==='none')return;x.strokeStyle=getComputedStyle(l).stroke||'#1b2420';x.lineWidth=Math.max(1,k);x.beginPath();x.moveTo(l.x1.baseVal.value*k,l.y1.baseVal.value*k);x.lineTo(l.x2.baseVal.value*k,l.y2.baseVal.value*k);x.stroke()});
+  document.querySelectorAll('#animLabels .alabel').forEach(d=>{if(d.style.opacity!=='1')return;const r=d.getBoundingClientRect(),cs=getComputedStyle(d),X=(r.left-vr.left)*k,Y=(r.top-vr.top)*k,Wd=r.width*k,Hd=r.height*k,rad=4*k;x.fillStyle=cs.backgroundColor;x.beginPath();x.moveTo(X+rad,Y);x.arcTo(X+Wd,Y,X+Wd,Y+Hd,rad);x.arcTo(X+Wd,Y+Hd,X,Y+Hd,rad);x.arcTo(X,Y+Hd,X,Y,rad);x.arcTo(X,Y,X+Wd,Y,rad);x.closePath();x.fill();
+    x.fillStyle=cs.color;x.font=cs.fontWeight+' '+(parseFloat(cs.fontSize)*k)+'px '+cs.fontFamily;x.textBaseline='middle';x.fillText(d.textContent,X+parseFloat(cs.paddingLeft)*k,Y+Hd/2+.5*k)});
+  t=keep;return c.toDataURL('image/jpeg',.8)}
+window.__edit={
+  ready:()=>!!(ready&&cabReady&&cur),get:()=>JSON.parse(JSON.stringify(OV)),load:ovLoad,
+  /* what can be chosen in a step: the parts that move in it first, by the names the assistant uses */
+  list(s){const T=targets(s,1).map(x=>({name:x.name,keys:[...new Set(x.objs.map(o=>(ovUnitOf(o)||{}).key).filter(Boolean))],moving:true})).filter(x=>x.keys.length&&x.name!=='孔');const used=new Set(T.flatMap(x=>x.keys));
+    ovUnits().forEach(u=>{if(used.has(u.key))return;let vis=true;for(let q=u.o;q;q=q.parent)if(!q.visible)vis=false;if(vis)T.push({name:ovName(u)+(u.G?'（整组）':''),keys:[u.key],moving:false})});return T},
+  pick(cx,cy){const v=document.getElementById('animView').getBoundingClientRect(),m=new T3.Vector2((cx-v.left)/v.width*2-1,-((cy-v.top)/v.height*2-1)),rc=new T3.Raycaster();rc.setFromCamera(m,cam);const hit=rc.intersectObjects(curScene().children,true).find(h=>{for(let q=h.object;q;q=q.parent)if(!q.visible)return false;return h.object.isMesh&&!!ovUnitOf(h.object)});if(!hit)return null;const u=ovUnitOf(hit.object);return{key:u.key,name:ovName(u)}},
+  set(keys,patch){keys.forEach(k=>{const e=OV.parts[k]=Object.assign({rot:[0,0,0],off:[0,0,0]},OV.parts[k]);if(patch.rot)e.rot=e.rot.map((n,i)=>(((n+patch.rot[i])%4)+4)%4);if(patch.off)e.off=e.off.map((n,i)=>Math.round((n+patch.off[i])*100)/100);if('lbl' in patch)e.lbl=patch.lbl;if('hide' in patch){if(patch.hide)e.hide=true;else delete e.hide}if(!e.rot.some(Boolean)&&!e.off.some(Boolean)&&!e.lbl&&!e.hide)delete OV.parts[k]});if('lbl' in patch)ovLabels()},
+  code(key){const u=ovUnits().find(x=>x.key===key);return u?ovCode(u):null},firstStep(key){const u=ovUnits().find(x=>x.key===key);return u&&u.p?Object.keys(u.p.keys)[0]:null},setQty(step,code,n){OV.qty=OV.qty||{};(OV.qty[step]=OV.qty[step]||{})[code]=n;ovQty()},
+  clear(keys){keys.forEach(k=>delete OV.parts[k]);ovBase.forEach((b,o)=>{o.position.copy(b.p);o.quaternion.copy(b.q)});ovBase=new Map();ovLabels()},
+  label(key){const u=ovUnits().find(x=>x.key===key);return u&&u.p?{now:u.p.lbl||'',orig:u.p._lbl0!==undefined?u.p._lbl0||'':u.p.lbl||''}:null},
+  /* is any of these parts in the picture in this step (the engine must already be showing the step) */
+  inView(keys){const U=ovUnits(),v=new T3.Vector3();applyCab(cur,1);for(let i=0;i<60;i++)camFit();cam.updateMatrixWorld(true);curScene().updateMatrixWorld(true);return keys.some(k=>{const u=U.find(x=>x.key===k);if(!u)return false;for(let q=u.o;q;q=q.parent)if(!q.visible)return false;const b=new T3.Box3().setFromObject(u.o);if(b.isEmpty())return false;b.getCenter(v).project(cam);return v.z<1&&Math.abs(v.x)<=1.05&&Math.abs(v.y)<=1.05})},
+  moves(keys,s){const U=ovUnits();return keys.some(k=>{const u=U.find(x=>x.key===k);return !!u&&(u.p?!!u.p.keys[s]:!!(u.G.seq&&u.G.seq[s]&&u.G.seq[s][1]!==0))})},
+  snap:ovSnap,steps:()=>CIDS.slice(),off:b=>{ovOn=!b}};
+/* the published assistant carries the accepted edits beside the page */
+try{fetch('overrides.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.parts&&!Object.keys(OV.parts).length){OV.parts=j.parts;OV.qty=j.qty||{};ovQty();if(cabReady)ovLabels()}}).catch(()=>{})}catch(e){}
+
 function load(){return loading||(loading=new Promise((ok,no)=>{if(window.THREE)return ok();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';s.onload=ok;s.onerror=no;document.head.append(s)}))}
 function mat(c){return new T3.MeshLambertMaterial({color:c})}
 const EDGE=()=>new T3.LineBasicMaterial({color:0x1b2420});

@@ -9,13 +9,13 @@ CSS += """
 .tools{max-width:880px;margin:0 auto;padding:14px 16px 0}.tools .card{margin:8px 0}.boot{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}.boot .card{max-width:420px;width:100%}
 label{display:block;margin:8px 0;font-size:14px}label>span{display:block;margin-bottom:2px}label.chk{display:flex;gap:6px;align-items:center}label.chk input{width:auto}input[type=date]{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--ln);background:var(--bg);color:inherit}
 .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0;align-items:center}.row5{display:grid;grid-template-columns:1.4fr 1fr 1.2fr auto auto auto;gap:6px;margin:6px 0;align-items:center}.tabs{display:flex;gap:6px;margin:8px 0}
-a.btn{display:inline-block;padding:6px 12px;border-radius:8px;border:1px solid var(--ac);text-decoration:none}button:disabled{opacity:.5;cursor:default}@media (max-width:560px){.row3{grid-template-columns:1fr}.row5{grid-template-columns:1fr 1fr}}"""
+a.btn{display:inline-block;padding:6px 12px;border-radius:8px;border:1px solid var(--ac);text-decoration:none}.edov{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column}.edhead{display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--ln);flex-wrap:wrap}.edbody{flex:1;overflow:auto;display:grid;grid-template-columns:minmax(0,900px) minmax(260px,1fr);gap:12px;padding:12px;align-items:start}.edwrap{overflow:hidden;border:1px solid var(--ln);border-radius:8px;background:#fff}.edside{min-width:0}.edgrp{border-top:1px dashed var(--ln);margin-top:8px;padding-top:6px}@media (max-width:1000px){.edbody{grid-template-columns:1fr}}button:disabled{opacity:.5;cursor:default}@media (max-width:560px){.row3{grid-template-columns:1fr}.row5{grid-template-columns:1fr 1fr}}"""
 shutil.rmtree(OUT, ignore_errors=True); os.makedirs(OUT + '/engine'); os.makedirs(OUT + '/vendor/pyodide'); os.makedirs(OUT + '/vendor/pdfjs'); os.makedirs(OUT + '/samples')
 page = lambda title, body: f'<!doctype html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>{title}</title><style>{CSS}</style><script>window.APPBUILD="{BUILD}"</script></head><body>{body}</body></html>'
 open(OUT + '/index.html', 'w', encoding='utf8').write(page('装配助手平台 · 工作台', open(H + '/index.body.html', encoding='utf8').read()))
 open(OUT + '/project.html', 'w', encoding='utf8').write(page('项目 · 装配助手平台', open(H + '/project.body.html', encoding='utf8').read()))
 open(OUT + '/portal.js', 'w', encoding='utf8').write('(function(){' + JS + '\n})();')
-shutil.copy(H + '/app.js', OUT + '/app.js')
+shutil.copy(H + '/app.js', OUT + '/app.js'); shutil.copy(H + '/editor.js', OUT + '/editor.js')
 for f in ['engine.py', 'stage45.py', 'fixes.py']: shutil.copy(PL + '/engine/' + f, OUT + '/engine/' + f)
 N = H + '/npm/node_modules'
 for f in ['pyodide.js', 'pyodide.asm.js', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json']: shutil.copy(N + '/pyodide/' + f, OUT + '/vendor/pyodide/' + f)
@@ -96,4 +96,6 @@ def e_deliv5(n, d):
     if n.startswith('frames/10_'): return open(H + '/v5fix/' + n.split('/')[1], 'rb').read()
     if n == 'delivery.json': j = json.loads(d); j['note'] = '测试 5 的第一次交付：第 10 步的动画里有一处真实的建模错误，机器自检查不出来。'; return json.dumps(j, ensure_ascii=False, indent=1).encode()
 variant2('norden-client-test5.zip', OUT + '/samples/norden-client.zip', e_client5); variant2('norden-delivery-test5.zip', OUT + '/samples/norden-delivery.zip', e_deliv5)
+# the delivered model of test 5 is the NORDEN model with the notched end board turned over: stated as an edit layer, so the model editor opens on the model as delivered
+with zipfile.ZipFile(OUT + '/samples/norden-delivery-test5.zip', 'a', zipfile.ZIP_DEFLATED) as z: z.writestr('model/overrides.json', json.dumps({'note': '测试 5：交付的模型里，有缺口端板装反了', 'parts': {'cp85': {'rot': [0, 0, 2], 'off': [0, 0, 0]}}}, ensure_ascii=False))
 print('app', OUT, BUILD, {f: os.path.getsize(OUT + '/samples/' + f) // 1024 for f in os.listdir(OUT + '/samples')}, 'KB')

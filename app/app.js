@@ -54,6 +54,7 @@ async function importClientZip(pid,file,onStep){const fs=await unzip(file);if(!f
   const pk=await readJSON(pid,'pkg/package.json');pk.slug='app-'+pid;delete pk.package_zip;await DB.put(pid,'pkg/package.json',JSON.stringify(pk,null,1));const pr=await DB.project(pid);pr.name=pr.name||pk.name;if(fs.some(([p])=>p==='steps.draft.json'))pr.delivery=Math.max(pr.delivery||0,1);await DB.putProject(pr);return pk}
 /* what the platform hands over: steps, generated content, the storyboard frames with the self-check result, the test results. Each import is one more delivery. */
 async function importDelivery(pid,file,onStep){const fs=await unzip(file);const has=p=>fs.some(([x])=>x===p);if(!has('steps.draft.json')&&!has('auto.json'))throw new Error('这不是平台交付包：里面没有 steps.draft.json，也没有 auto.json。');
+  /* a delivery states the model as it now is: an edit layer from before does not carry over unless the delivery brings one */if(has('auto.json')&&!has('model/overrides.json'))await DB.del(pid,'pkg/model/overrides.json');
   let n=0;for(const [p,buf] of fs){onStep&&onStep(++n,fs.length,p);
     if(p==='package.patch.json'){const pk=await readJSON(pid,'pkg/package.json'),patch=JSON.parse(dec.decode(buf));Object.assign(pk,patch);await DB.put(pid,'pkg/package.json',JSON.stringify(pk,null,1))}
     else if(p==='auto.json'||p==='tests.json'||p.startsWith('frames/'))await DB.put(pid,'out/'+p,buf);

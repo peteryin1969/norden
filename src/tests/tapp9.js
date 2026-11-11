@@ -1,0 +1,34 @@
+/* model editor: the error found by the AI in test 5 is put right in the page, the storyboard is taken again, the self-check rerun, only the changed steps reviewed again */
+const {chromium}=require('playwright');const fs=require('fs');const d=process.cwd()+'/site/';
+const MIME={'.html':'text/html;charset=utf8','.js':'text/javascript','.mjs':'text/javascript','.wasm':'application/wasm','.json':'application/json','.zip':'application/zip','.py':'text/plain;charset=utf8','.csv':'text/csv','.png':'image/png'};
+(async()=>{const srv=require('http').createServer((q,s)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u.endsWith('/'))u+='index.html';fs.readFile(d+u.slice(1),(e,c)=>{if(e){s.writeHead(404);s.end()}else{s.writeHead(200,{'content-type':MIME[u.slice(u.lastIndexOf('.'))]||'application/octet-stream'});s.end(c)}})}).listen(8885);
+const BAD=fs.readFileSync(process.cwd()+'/../app/v5fix/10_d.jpg').toString('base64');
+const b=await chromium.launch({args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});const R=[],ck=(n,ok,x)=>{R.push(ok===true);console.log(ok===true?'ok  ':'FAIL',n,x==null?'':String(x).slice(0,420))};const er=[];
+const ctx=await b.newContext({viewport:{width:1280,height:900}});const p=await ctx.newPage();p.on('pageerror',e=>er.push(e.message));p.on('dialog',d=>{console.log('DIALOG',d.message());d.accept()});let calls=0;
+await ctx.route('**/three.min.js',r=>r.fulfill({body:fs.readFileSync('tv/node_modules/three/build/three.min.js'),contentType:'text/javascript'}));await ctx.route('**fonts.g**',r=>r.abort());
+await p.addInitScript(()=>{localStorage.setItem('norden-key','k');Element.prototype.requestFullscreen=()=>Promise.reject(new Error('no'))});
+await p.route('https://api.anthropic.com/**',r=>{calls++;const c=JSON.parse(r.request().postData()).messages[0].content,im=c.filter(x=>x.type==='image').map(x=>x.source.data);r.fulfill({status:200,headers:{'content-type':'application/json','access-control-allow-origin':'*'},body:JSON.stringify({content:[{type:'text',text:im.includes(BAD)?'{"issues":[{"severity":"严重","text":"有缺口端板的缺口朝下，说明书是朝上"}]}':'{"issues":[]}'}]})})});
+const ready=async()=>{await p.waitForSelector('#boot',{state:'detached',timeout:120000});await p.waitForSelector('main h1');await p.waitForTimeout(500)},ckt=t=>p.evaluate(t=>{const e=[...document.querySelectorAll('.ck')].find(x=>x.querySelector('.t').textContent.includes(t));return e?e.querySelector('.st').textContent+'|'+e.textContent.slice(0,260):''},t);
+await p.goto('http://localhost:8885/app/');await p.click('#goS5');await p.waitForURL(/project\.html/);await ready();await p.click('#wSample');await p.waitForURL(/run=1/);await ready();
+await p.evaluate(()=>[...document.querySelectorAll('#s2 button')].filter(b=>/^确认：/.test(b.textContent)).forEach(b=>b.click()));await p.click('.bar button:has-text("保存并重新计算")');await ready();
+await p.click('button:has-text("运行独立 AI 审核")');await p.waitForTimeout(3000);await ready();
+await p.evaluate(()=>[...document.getElementById('f-10').querySelectorAll('button')].find(b=>b.textContent==='确实有问题').click());await p.evaluate(()=>[...document.getElementById('f-10').querySelectorAll('button')].find(b=>b.textContent==='保存并重新计算').click());await ready();
+ck('the finding is confirmed and the review fails',/^不通过/.test(await ckt('独立 AI 对照')));
+const before=await p.evaluate(async()=>(await DB.file(APP.pid,'out/frames/10_d.jpg')).hash);
+/* open the editor at that step */
+await p.click('#f-10 [data-edit]');await p.waitForTimeout(15000);console.log('ED',await p.evaluate(()=>({msg:(document.getElementById('edMsg')||{}).textContent,src:(document.getElementById('edFrame')||{}).src,has:!!document.getElementById('edov')})),er);await p.screenshot({path:'a4/ed_dbg.png'});await p.waitForSelector('#edPart option:nth-child(2)',{state:'attached',timeout:20000});await p.waitForTimeout(800);
+const opts=await p.evaluate(()=>[...document.querySelectorAll('#edPart option')].map(o=>o.textContent));ck('the editor opens on step 10 with its parts',/第 10 步/.test(await p.evaluate(()=>document.getElementById('edStep').selectedOptions[0].textContent))&&opts.some(o=>/★ 有缺口端板/.test(o)),opts.slice(0,5).join(' | '));
+ck('it shows the model as delivered: one edit in the layer (the board turned over)',/有缺口端板：转动 前后轴 180°/.test(await p.textContent('#edLog')),await p.textContent('#edLog'));
+await p.screenshot({path:'a4/ed_ui1.png'});
+await p.selectOption('#edPart',{label:opts.find(o=>/★ 有缺口端板/.test(o))});await p.click('#edFz');await p.waitForTimeout(600);
+ck('turning it half a round about the front-back axis leaves no difference from the original model',/没有任何修改/.test(await p.textContent('#edLog')),await p.textContent('#edLog'));await p.screenshot({path:'a4/ed_ui2.png'});
+await p.click('#edSave');await p.waitForTimeout(300);ck('a reason is asked for before saving',/为什么改/.test(await p.textContent('#edMsg')));
+await p.fill('#edWhy','有缺口端板装反了，说明书缺口朝上');const t0=Date.now();await p.click('#edSave');await p.waitForURL(/run=1/,{timeout:180000});await ready();console.log('save took',Date.now()-t0,'ms');
+const after=await p.evaluate(async()=>{const j=async f=>JSON.parse(new TextDecoder().decode((await DB.file(APP.pid,f)).data));const L=await j('pkg/records/edits.json'),fr=await DB.file(APP.pid,'out/frames/10_d.jpg');return{hash:fr.hash,ver:fr.ver,ov:(await j('pkg/model/overrides.json')).parts,log:L[L.length-1]}});
+ck('step 10 has new frames, the layer is empty, the change is on record',after.hash!==before&&after.ver===2&&Object.keys(after.ov).length===0&&after.log.who==='客户'&&/装反/.test(after.log.why)&&after.log.steps_retaken.includes('10'),JSON.stringify(after.log).slice(0,300));
+fs.writeFileSync('a4/ed_new10d.jpg',Buffer.from(await p.evaluate(async()=>{const f=await DB.file(APP.pid,'out/frames/10_d.jpg');let s='';new Uint8Array(f.data).forEach(c=>s+=String.fromCharCode(c));return btoa(s)}),'base64'));
+ck('machine self-check ran on the new model and is clean',await p.evaluate(()=>!document.querySelector('#s3 .ck.fail [class]')||![...document.querySelectorAll('#s3 .ck.fail .t')].some(x=>!/独立 AI/.test(x.textContent))),await p.evaluate(()=>[...document.querySelectorAll('#s3 .ck.fail .t')].map(x=>x.textContent).join('|')));
+let t=await ckt('独立 AI 对照');const again=after.log.steps_retaken;ck('the AI review asks again for exactly the steps retaken',/^待确认/.test(t)&&again.every(id=>new RegExp('第 [0-9、]*'+id+'[、 ]').test(t)),again.join(',')+' :: '+t);
+calls=0;await p.click('button:has-text("重新审核改过的")');await p.waitForTimeout(2500);await ready();t=await ckt('独立 AI 对照');ck('re-review: one call per retaken step, and it passes',calls===again.length&&/^通过/.test(t),calls+' '+t);
+ck('sign-off opens',!(await p.evaluate(()=>[...document.querySelectorAll('#s3 button')].filter(b=>b.textContent==='确认').every(b=>b.disabled))));
+console.log('PASS',R.filter(Boolean).length+'/'+R.length,'err',er);await b.close();srv.close()})();
