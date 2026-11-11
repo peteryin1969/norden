@@ -38,6 +38,10 @@
       return{label:(f?'上传改好的':'上传')+k[1].replace(/（.*/,''),dl:f?()=>download(f.name||cur,f.data):null,run:(btn,m)=>pick(k[2],fs=>busy(btn,async()=>{m.textContent='正在保存并重新审核…';await registerFiles(pid,kind,Array.isArray(fs)?fs:[fs],'');location.href='project.html?id='+pid+'&run=1#s1'}),kind==='model'||kind==='photos')}},
     /* what was just chosen on the page goes into the package before it is exported */exportZip:async()=>{await syncState();await exportZip(pid)},pickDelivery(btn,m){pick('.zip',f=>busy(btn,async()=>{if(m)m.textContent='正在导入并重新审核…';await importDelivery(pid,f);location.href='project.html?id='+pid+'&run=1#s2'}))},
     sampleFix:/测试 3/.test(pr.name||rep.product||'')?(btn,m)=>busy(btn,async()=>{if(m)m.textContent='正在导入并重新审核…';const r=await fetch('samples/norden-delivery.zip');if(!r.ok)throw new Error('读不到样例包');await importDelivery(pid,await r.blob());location.href='project.html?id='+pid+'&run=1#s2'}):null,
+    /* the data behind a stage 2 mismatch, for editing on the page */
+    async loadEdit(){const p2=await readJSON(pid,'pkg/package.json'),pp=(p2.files||{}).parts,pf=pp&&await DB.file(pid,'pkg/'+pp);return{steps:await readJSON(pid,'pkg/steps.draft.json')||[],pk:p2,partsPath:pp,parts:pf?dec.decode(pf.data):''}},
+    async saveEdit(o){if(o.steps)await DB.put(pid,'pkg/steps.draft.json',JSON.stringify(o.steps,null,1));if(o.pk)await DB.put(pid,'pkg/package.json',JSON.stringify(o.pk,null,1));if(o.partsCsv!=null){const p2=await readJSON(pid,'pkg/package.json');await addPkgFile(pid,(p2.files||{}).parts||'parts.csv',o.partsCsv)}
+      const L=await readJSON(pid,'pkg/records/edits.json')||[];L.push(Object.assign({at:now()},o.log));await DB.put(pid,'pkg/records/edits.json',JSON.stringify(L,null,1));location.href='project.html?id='+pid+'&run=1#s2'},
     async setRelease(o){const r=Object.assign({version:1},await readJSON(pid,'pkg/release.json')||{},o);await DB.put(pid,'pkg/release.json',JSON.stringify(r,null,1));location.href='project.html?id='+pid+'&run=1#s5'},rerun(){location.href='project.html?id='+pid+'&run=1'+location.hash}};
   window.REPORT=rep;window.BUILD=(window.APPBUILD||'')+' · 引擎审核于 '+(pr.engineAt||'');
 
