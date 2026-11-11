@@ -35,6 +35,13 @@ P=[('norden','NORDEN','折叠桌 · 11 步 · 6 个抽屉','AA-2580705-1'),('sto
 cards=''.join(f'<a class="c" href="{s}/"><b>{n}</b><span>{d}</span><small>{a}</small></a>' for s,n,d,a in P)
 open('site/index.html','w',encoding='utf8').write(f'''<!doctype html><html lang="zh"><head><meta charset="utf8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>组装助手</title><style>:root{{--bg:#f4f5f2;--ink:#17201c;--mut:#5d6a63;--c:#fff;--ac:#25624b}}@media (prefers-color-scheme:dark){{:root{{--bg:#141815;--ink:#e9ede9;--mut:#a3aea7;--c:#1e2420;--ac:#7fcfae}}}}body{{margin:0;background:var(--bg);color:var(--ink);font:16px system-ui,sans-serif}}main{{max-width:560px;margin:0 auto;padding:28px 16px}}h1{{font-size:26px;margin:0 0 4px}}p{{color:var(--mut);margin:0 0 20px}}.c{{display:grid;gap:3px;padding:16px;margin-bottom:10px;border-radius:10px;background:var(--c);color:inherit;text-decoration:none;border:1px solid transparent}}.c:active{{border-color:var(--ac)}}.c b{{font-size:19px;color:var(--ac)}}.c span{{font-size:15px}}.c small{{color:var(--mut)}}</style></head><body><main><h1>组装助手</h1><p>选择要组装的产品</p>{cards}<p style="margin-top:18px"><a href="voices.html" style="color:var(--ac)">声音对比</a> · <a href="platform/" style="color:var(--ac)">平台审核（内部测试）</a></p></main></body></html>''')
 
+# data models (phase 1b): one model.json beside each assistant, played by app/model.html
+_dm=[(s,n) for s,n,d,a in P if os.path.exists('model-%s.json'%s)]
+for s,n in _dm:shutil.copy('model-%s.json'%s,'site/%s/model.json'%s)
+if _dm:
+    _h=open('site/index.html',encoding='utf8').read();_b='<p style="max-width:720px;margin:18px auto 0;padding:0 16px;font-size:14px;color:var(--mut)">数据模型（脱离产品程序播放，测试用）：'+' · '.join('<a href="app/model.html?src=../%s/model.json">%s</a>'%(s,n) for s,n in _dm)+'</p>'
+    assert '</body>' in _h;open('site/index.html','w',encoding='utf8').write(_h.replace('</body>',_b+'</body>'))
+
 if os.path.exists('../plat/portal.py'):
     import subprocess;subprocess.run(['python3','../plat/portal.py','site/platform'],check=True)
 if os.path.exists('../app/build.py'):

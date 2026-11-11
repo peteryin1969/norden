@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>数据模型播放器</title>
+<style>
+:root{--bg:#f3f4f1;--card:#fff;--ink:#1b2420;--mut:#5d6963;--line:#d9ddd7;--acc:#23835c;--warn:#a85b00}
+@media(prefers-color-scheme:dark){:root{--bg:#141917;--card:#1d2421;--ink:#e8ece9;--mut:#9aa6a0;--line:#2f3a35;--acc:#4fc393;--warn:#e0a050}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+main{max-width:1100px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 2px}.mut{color:var(--mut);font-size:13px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;margin-top:12px}@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+#view{position:relative;aspect-ratio:3/2;background:#eef0ec;border-radius:8px;overflow:hidden;touch-action:none;cursor:grab}#view canvas{display:block;width:100%;height:100%}
+#cap{position:absolute;left:10px;top:8px;background:rgba(255,255,255,.85);color:#1b2420;padding:2px 8px;border-radius:6px;font-size:13px}
+.row{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}button{font:inherit;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+input[type=range]{flex:1;min-width:120px}
+#steps{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px}#steps button{flex:none;min-width:40px;padding:4px 8px}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{text-align:left;padding:3px 4px;border-bottom:1px solid var(--line)}th{color:var(--mut);font-weight:500}
+.tag{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:6px;padding:0 6px;margin:0 4px 4px 0;cursor:pointer}.tag.on{border-color:var(--acc);color:var(--acc)}
+#err{color:var(--warn)}h2{font-size:15px;margin:0 0 6px}
+</style></head><body><main>
+<h1 id="ttl">数据模型播放器</h1>
+<div class="mut" id="sub">这个页面只读取一份模型数据文件来播放，不含任何产品专用的程序。</div>
+<div id="err"></div>
+<div class="grid">
+  <div class="card">
+    <div id="view"><div id="cap"></div></div>
+    <div id="steps"></div>
+    <div class="row"><button id="play" class="on">▶ 播放</button><input type="range" id="t" min="0" max="1000" value="0" aria-label="这一步的进度"><button id="reset">回到原镜头</button></div>
+    <div class="mut" style="margin-top:6px">拖动可以转动视角，滚轮或双指可以缩放。</div>
+  </div>
+  <div>
+    <div class="card"><h2>这份数据里有什么</h2><table id="info"></table></div>
+    <div class="card" style="margin-top:12px"><h2>这一步用到的零件</h2><table id="bill"></table><div id="moving" style="margin-top:8px"></div></div>
+    <div class="card" style="margin-top:12px"><h2>换一份数据</h2><input type="file" id="file" accept=".json,application/json"><div class="mut">选择本机的 model.json 即可播放，文件不会上传。</div></div>
+  </div>
+</div>
+</main>
+<script src="vendor/three.min.js"></script><script src="mplay.js"></script><script src="app.js"></script>
+<script>
+(async()=>{const $=id=>document.getElementById(id),q=new URLSearchParams(location.search),view=$('view');
+let P=null,M=null,cur=null,t=0,playing=false,az=0,el=0,zoom=1,box=null,sel=null,bytes=0;
+const ren=new THREE.WebGLRenderer({antialias:true,alpha:true});ren.setPixelRatio(Math.min(devicePixelRatio,2));view.prepend(ren.domElement);const cam=new THREE.PerspectiveCamera(32,1.5,1,600);
+const size=()=>{const w=view.clientWidth,h=view.clientHeight;if(!w)return;ren.setSize(w,h,false);const as=w/h;cam.aspect=as;cam.fov=as<1.5?2*Math.atan(Math.tan(16*Math.PI/180)*1.5/as)*180/Math.PI:32;cam.updateProjectionMatrix()};addEventListener('resize',size);
+const draw=()=>{if(!P||!cur)return;const sc=P.pose(cur,t),c=P.camera(cur,t);if(c){const b=c.pos.clone().sub(c.target),r=b.length()*zoom,th=Math.atan2(b.x,b.z)+az,ph=Math.max(-.3,Math.min(1.35,Math.asin(b.y/b.length())+el));cam.position.set(Math.sin(th)*Math.cos(ph)*r,Math.sin(ph)*r,Math.cos(th)*Math.cos(ph)*r).add(c.target);cam.lookAt(c.target)}
+  if(box){if(sel&&sel.sc===sc){box.setFromObject(sel.o);box.visible=sel.o.visible}else box.visible=false}ren.render(sc,cam)};
+let last=0;const loop=ts=>{requestAnimationFrame(loop);const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(playing&&P&&cur){const d=(P.step(cur).dur||1)*4;t+=dt/d;if(t>=1.1){const i=P.steps.indexOf(cur);if(i<P.steps.length-1)go(P.steps[i+1]);else{t=1;setPlay(false)}}$('t').value=Math.round(Math.min(t,1)*1000)}draw()};
+const setPlay=v=>{playing=v;$('play').textContent=v?'⏸ 暂停':'▶ 播放';$('play').classList.toggle('on',!v)};
+function go(id){cur=id;t=0;sel=null;const s=P.step(id);$('cap').textContent=s.label+(s.title?' · '+s.title:'');[...$('steps').children].forEach(b=>b.classList.toggle('on',b.dataset.s===id));const on=$('steps').querySelector('.on');if(on)on.scrollIntoView({block:'nearest',inline:'center'});
+  const names={};M.parts.forEach(p=>{if(p.code&&p.name)names[p.code]=p.name});$('bill').innerHTML='<tr><th>编号</th><th>数量</th></tr>'+(s.parts.length?s.parts.map(p=>'<tr><td>'+p[0]+'</td><td>'+p[1]+'</td></tr>').join(''):'<tr><td colspan=2 class=mut>这一步没有列出零件</td></tr>');
+  const mv=M.parts.filter(p=>p.kind!=='group'&&(p.steps||[]).includes(id)),g={};mv.forEach(p=>{const k=p.name||p.code||p.id;(g[k]=g[k]||[]).push(p)});const box0=$('moving');box0.innerHTML=Object.keys(g).length?'<div class=mut>这一步里移动的零件（点一下在图上框出）：</div>':'';
+  Object.entries(g).forEach(([k,L])=>{const b=document.createElement('span');b.className='tag';b.textContent=k+(L.length>1?' ×'+L.length:'');let n=0;b.onclick=()=>{const p=L[n++%L.length];sel={o:P.node(p.scene,p.node),sc:P.sceneOf(id)};if(!box){box=new THREE.BoxHelper(sel.o,0xd0452b)}sel.sc.add(box);[...box0.querySelectorAll('.tag')].forEach(x=>x.classList.remove('on'));b.classList.add('on')};box0.append(b)})}
+async function load(text,from){$('err').textContent='';try{M=JSON.parse(text);if(M.format!=='assembly-model')throw new Error('这不是模型数据文件');bytes=text.length;P=new ModelPlayer(THREE,M);await P.ready}catch(e){$('err').textContent='打不开这份数据：'+(e.message||e);return}
+  ren.shadowMap.enabled=!!M.render.shadow;if(M.render.shadowType!=null)ren.shadowMap.type=M.render.shadowType;cam.near=M.render.near||1;cam.far=M.render.far||600;box=null;
+  $('ttl').textContent=(M.product||'模型')+' · 数据模型';document.title=$('ttl').textContent;const nodes=M.scenes.reduce((a,s)=>a+s.nodes.length,0),k=M.geoms.reduce((a,g)=>(a[g.k]=(a[g.k]||0)+1,a),{}),real=M.parts.filter(p=>p.kind!=='group').length;
+  $('info').innerHTML=[['来源',from],['格式','assembly-model 第 '+M.version+' 版，单位厘米'],['步骤',M.steps.length+' 步，每步 '+(M.samples+1)+' 个采样点'],['零件',real+' 个（'+new Set(M.parts.filter(p=>p.code).map(p=>p.code)).size+' 种有编号）'],['孔位',M.holes.length+' 个'],['节点',nodes+' 个'],['形状',M.geoms.length+' 种：板 '+(k.box||0)+'、圆柱 '+(k.cyl||0)+'、其它 '+(k.raw||0)+(k.edges?'、轮廓线 '+k.edges:'')],['文件大小',(bytes/1024/1024).toFixed(2)+' MB']].map(r=>'<tr><th>'+r[0]+'</th><td>'+r[1]+'</td></tr>').join('');
+  const S=$('steps');S.innerHTML='';P.steps.forEach(id=>{const b=document.createElement('button');b.textContent=id;b.dataset.s=id;b.title=P.step(id).title;b.onclick=()=>{setPlay(false);go(id)};S.append(b)});size();go(P.steps[0])}
+$('play').onclick=()=>{if(!playing&&t>=1)t=0;setPlay(!playing)};$('t').oninput=e=>{setPlay(false);t=e.target.value/1000};$('reset').onclick=()=>{az=0;el=0;zoom=1};
+$('file').onchange=async e=>{const f=e.target.files[0];if(f)load(await f.text(),'本机文件 '+f.name)};
+let drag=null;const pts=new Map();view.addEventListener('pointerdown',e=>{view.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);drag=[e.clientX,e.clientY,az,el];view.style.cursor='grabbing'});
+view.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;const old=pts.get(e.pointerId);if(pts.size===2){const o=[...pts.entries()].find(x=>x[0]!==e.pointerId)[1],d0=Math.hypot(old[0]-o[0],old[1]-o[1]),d1=Math.hypot(e.clientX-o[0],e.clientY-o[1]);if(d0>0)zoom=Math.max(.3,Math.min(2.5,zoom*d0/d1))}else if(drag){az=drag[2]-(e.clientX-drag[0])*.008;el=drag[3]+(e.clientY-drag[1])*.006}pts.set(e.pointerId,[e.clientX,e.clientY])});
+const up=e=>{pts.delete(e.pointerId);drag=null;view.style.cursor='grab'};view.addEventListener('pointerup',up);view.addEventListener('pointercancel',up);view.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.3,Math.min(2.5,zoom*(e.deltaY>0?1.1:.9)))},{passive:false});
+requestAnimationFrame(loop);window.__viewer={state:()=>({ready:!!P,cur,t,steps:P?P.steps.length:0}),set:(id,v)=>{setPlay(false);if(id!==cur)go(id);t=v;$('t').value=Math.round(v*1000);draw()}};
+const src=q.get('src'),pid=q.get('pid');
+try{if(pid&&typeof DB!=='undefined'){const f=await DB.file(pid,'pkg/model/model.json');if(!f)throw new Error('这个项目还没有生成数据模型。请在模型工坊里点“生成数据模型”。');const d=f.data;await load(typeof d==='string'?d:new TextDecoder().decode(d),'项目里的 model/model.json')}
+  else if(src){const r=await fetch(src);if(!r.ok)throw new Error('读取 '+src+' 失败（'+r.status+'）');await load(await r.text(),src)}
+  else $('err').textContent='请在下面“换一份数据”里选择一份 model.json。'}catch(e){$('err').textContent=e.message||String(e)}
+})();
+</script></body></html>
