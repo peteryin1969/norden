@@ -45,6 +45,15 @@ sp2=await speakAt('16');await fire(sp2.slice(4,16)+'，这个螺丝是哪一个'
 await p.evaluate(()=>{window.__slow=5});await p.waitForTimeout(2500);await idle();const mb2=await p.evaluate(()=>[...document.querySelectorAll('.msg.me')].slice(-1)[0].textContent);ck('the question is kept whole',mb2.trim()==='这个螺丝是哪一个',mb2);
 sp2=await speakAt('17');await fire(sp2.slice(4,14)+'等一下',true);await p.waitForTimeout(400);ck('echo + 等一下 stops',await st()!=='speak',await st());
 sp2=await speakAt('18');await fire(sp2.slice(2,30),true);await p.waitForTimeout(300);ck('pure echo still ignored',await st()==='speak');const w18=await p.evaluate(()=>Voice.session().steps[Voice._s().sid].cap.why||{});ck('ignored echo is logged',w18.spk_echo>=1,JSON.stringify(w18));
+/* the filler said while thinking comes back through the microphone: it is the assistant's own voice, not the user's */
+await p.evaluate(()=>{window.__slow=5});await idle();await go('19');const nMe=()=>p.evaluate(()=>document.querySelectorAll('.msg.me').length);
+await p.unroute('https://api.anthropic.com/**');await p.route('https://api.anthropic.com/**',async r=>{calls.push(1);await new Promise(x=>setTimeout(x,2500));r.fulfill({status:200,headers:{'content-type':'text/event-stream','access-control-allow-origin':'*'},body:ev({type:'content_block_start',index:0,content_block:{type:'text',text:''}})+ev({type:'content_block_delta',index:0,delta:{type:'text_delta',text:'那个孔是给横销用的。'}})+ev({type:'message_delta',delta:{stop_reason:'end_turn'}})})});
+await p.evaluate(()=>{window.__slow=1500});await p.fill('#vTxt','中间那个孔干什么用的？');await p.click('#vSend');await p.waitForTimeout(1100);const me0=await nMe(),c0=calls.length;
+ck('the filler is said while waiting',await p.evaluate(()=>(window.__vlog||[]).some(x=>/我看看/.test(x))),await p.evaluate(()=>(window.__vlog||[]).slice(-3).join('|')));
+await fire('我看看。',true);await p.waitForTimeout(500);await fire('我看看',false);await p.waitForTimeout(300);
+ck('its echo is not shown as something the user said',await nMe()===me0,await nMe()+' vs '+me0);ck('and does not cut the answer off or start another turn',calls.length===c0&&await st()!=='listen',calls.length+' '+await st());
+await p.evaluate(()=>{window.__slow=5});await p.waitForTimeout(3500);await idle();ck('the answer still comes',(await allAi()).some(x=>/横销用的/.test(x)),(await allAi()).slice(-2).join(' / '));
+await fire('我看看。',true);await p.waitForTimeout(600);ck('nor just after the answer has ended',await nMe()===me0,await nMe()+' vs '+me0);
 await p.evaluate(()=>{window.__slow=5});await idle();await go('12');await p.fill('#vTxt','下一步');await p.click('#vSend');await p.waitForTimeout(500);await idle();let la=await lastAi();if(/拍/.test(la)){await p.fill('#vTxt','跳过');await p.click('#vSend');await p.waitForTimeout(500);await idle();la=await lastAi()}
 ck('improvement question asked',/改进/.test(la),la);await fire('哦，这一步有要改进的地方吗？没有。',true);await p.waitForTimeout(2200);await idle();la=await lastAi();ck('answer glued to the echo is kept',/第 13 步/.test(la),la);
 console.log('PASS',R.filter(Boolean).length+'/'+R.length,'err',er);await b.close();srv.close()})();
