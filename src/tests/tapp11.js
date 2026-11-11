@@ -10,7 +10,7 @@ await p.goto('http://localhost:8887/app/');await p.click('#goS6');await p.waitFo
 let t=await ckt('零件移动过程中不穿过别的零件');ck('the self-check finds the part passing through another',/^不通过/.test(t)&&/第 10 步：抽屉底板 穿过 抽屉长板/.test(t),t);
 ck('every other self-check passes: the finished model is right',await p.evaluate(()=>[...document.querySelectorAll('#s3 .ck.fail .t')].map(x=>x.textContent).filter(x=>!/移动过程/.test(x)).length===0));
 ck('AI review is locked meanwhile',/机器自检还没有全部通过/.test(await ckt('独立 AI 对照')));
-await p.click('[data-path="10"]');await p.waitForSelector('#edPart option:nth-child(2)',{state:'attached',timeout:60000});await p.waitForTimeout(800);
+await p.click('[data-path="10"]');await p.waitForSelector('#stStore .stitem',{timeout:60000});await p.waitForTimeout(800);
 await p.click('#edPathCheck');await p.waitForTimeout(600);let pb=await p.textContent('#edPath');ck('the editor shows what is hit and when',/发现 1 处/.test(pb)&&/抽屉底板 在进度 \d+% 处穿过 抽屉长板/.test(pb)&&/已换路线：抽屉底板/.test(pb),pb.slice(0,160));
 await p.click('#edPath a');await p.waitForTimeout(700);await p.screenshot({path:'a4/ed_path1.png'});
 await p.click('#edPathOpt');await p.waitForTimeout(1200);pb=await p.textContent('#edPath');ck('a clear route is found',/✓ 抽屉底板：恢复模型原来的路线/.test(pb)&&/途中都没有穿过别的零件/.test(pb),pb.slice(0,160));await p.screenshot({path:'a4/ed_path2.png'});

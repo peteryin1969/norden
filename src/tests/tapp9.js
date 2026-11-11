@@ -16,12 +16,13 @@ await p.evaluate(()=>[...document.getElementById('f-10').querySelectorAll('butto
 ck('the finding is confirmed and the review fails',/^不通过/.test(await ckt('独立 AI 对照')));
 const before=await p.evaluate(async()=>(await DB.file(APP.pid,'out/frames/10_d.jpg')).hash);
 /* open the editor at that step */
-await p.click('#f-10 [data-edit]');await p.waitForTimeout(15000);console.log('ED',await p.evaluate(()=>({msg:(document.getElementById('edMsg')||{}).textContent,src:(document.getElementById('edFrame')||{}).src,has:!!document.getElementById('edov')})),er);await p.screenshot({path:'a4/ed_dbg.png'});await p.waitForSelector('#edPart option:nth-child(2)',{state:'attached',timeout:20000});await p.waitForTimeout(800);
-const opts=await p.evaluate(()=>[...document.querySelectorAll('#edPart option')].map(o=>o.textContent));ck('the editor opens on step 10 with its parts',/第 10 步/.test(await p.evaluate(()=>document.getElementById('edStep').selectedOptions[0].textContent))&&opts.some(o=>/★ 有缺口端板/.test(o)),opts.slice(0,5).join(' | '));
+await p.click('#f-10 [data-edit]');await p.waitForSelector('#stStore .stitem',{timeout:60000});await p.waitForTimeout(1200);
+const items=await p.evaluate(()=>[...document.querySelectorAll('#stStore .stitem')].map(o=>o.textContent));ck('the studio opens on step 10 with its parts in the store',await p.evaluate(()=>document.querySelector('.ststep.on').getAttribute('data-step'))==='10'&&items.some(o=>/有缺口端板/.test(o)),items.slice(0,5).join(' | '));
 ck('it shows the model as delivered: one edit in the layer (the board turned over)',/有缺口端板：转动 前后轴 180°/.test(await p.textContent('#edLog')),await p.textContent('#edLog'));
 await p.screenshot({path:'a4/ed_ui1.png'});
-await p.selectOption('#edPart',{label:opts.find(o=>/★ 有缺口端板/.test(o))});await p.click('#edFz');await p.waitForTimeout(600);
+await p.click('#stStore .stitem:has-text("有缺口端板")');ck('picking in the store selects the part',/有缺口端板/.test(await p.textContent('#edSel')));await p.click('#edFz');await p.waitForTimeout(600);
 ck('turning it half a round about the front-back axis leaves no difference from the original model',/没有任何修改/.test(await p.textContent('#edLog')),await p.textContent('#edLog'));await p.screenshot({path:'a4/ed_ui2.png'});
+await p.keyboard.press('Control+z');await p.waitForTimeout(400);ck('undo brings the turned board back',/转动 前后轴 180°/.test(await p.textContent('#edLog')));await p.keyboard.press('Control+y');await p.waitForTimeout(400);ck('redo',/没有任何修改/.test(await p.textContent('#edLog')));
 await p.click('#edSave');await p.waitForTimeout(300);ck('a reason is asked for before saving',/为什么改/.test(await p.textContent('#edMsg')));
 await p.fill('#edWhy','有缺口端板装反了，说明书缺口朝上');const t0=Date.now();await p.click('#edSave');await p.waitForURL(/run=1/,{timeout:180000});await ready();console.log('save took',Date.now()-t0,'ms');
 const after=await p.evaluate(async()=>{const j=async f=>JSON.parse(new TextDecoder().decode((await DB.file(APP.pid,f)).data));const L=await j('pkg/records/edits.json'),fr=await DB.file(APP.pid,'out/frames/10_d.jpg');return{hash:fr.hash,ver:fr.ver,ov:(await j('pkg/model/overrides.json')).parts,log:L[L.length-1]}});
