@@ -1,0 +1,559 @@
+{
+ "slug": "norden",
+ "errors": [],
+ "steps": [
+  {
+   "id": "1",
+   "title": "用连接木块连接两片框架",
+   "label": null,
+   "frames": [
+    "frames/1_a.jpg",
+    "frames/1_b.jpg",
+    "frames/1_c.jpg",
+    "frames/1_d.jpg"
+   ],
+   "checks": {
+    "parts": {
+     "ok": true,
+     "note": ""
+    },
+    "holes": {
+     "ok": true,
+     "note": "",
+     "n": 8
+    },
+    "float": {
+     "ok": true,
+     "note": ""
+    },
+    "order": {
+     "ok": false,
+     "note": "板件 100% 才到位，木销 在那之前就开始装，请人工确认是否符合说明书"
+    },
+    "labels": {
+     "ok": true,
+     "note": "",
+     "list": [
+      "14号 连接木块",
+      "3号 木销 × 8",
+      "左 · 12号 框架"
+     ]
+    },
+    "visible": {
+     "ok": true,
+     "note": "",
+     "n": 10,
+     "inView": 10
+    },
+    "path": {
+     "ok": true,
+     "note": "",
+     "n": 14
+    }
+   }
+  },
+  {
+   "id": "2",
+   "title": "在框架顶部装钢条",
+   "label": null,
+   "frames": [
+    "frames/2_a.jpg",
+    "frames/2_b.jpg",
+    "frames/2_c.jpg",
+    "frames/2_d.jpg"
+   ],
+   "checks": {
+    "parts": {
+     "ok": true,
+     "note": ""
+    },
+    "holes": {
+     "ok": true,
+     "note": "",
+     "n": 4
+    },
+    "float": {
+     "ok": true,
+     "note": ""
+    },
+    "order": {
+     "ok": true,
+     "note": ""
+    },
+    "labels": {
+     "ok": true,
+     "note": "",
+     "list": [
+      "10号 钢条 × 2",
+      "1号 短螺丝 × 4",
+      "12号 框架"
+     ]
+    },
+    "visible": {
+     "ok": true,
+     "note": "",
+     "n": 6,
+     "inView": 6
+    },
+    "path": {
+     "ok": true,
+     "note": "",
+     "n": 6
+    }
+   }
+  },
+  {
+   "id": "3",
+   "title": "在桌板下面装垫块",
+   "label": null,
+   "frames": [
+    "frames/3_a.jpg",
+    "frames/3_b.jpg",
+    "frames/3_c.jpg",
+    "frames/3_d.jpg"
+   ],
+   "checks": {
+    "parts": {
+     "ok": true,
+     "note": ""
+    },
+    "holes": {
+     "ok": true,
+     "note": "",
+     "n": 4
+    },
+    "float": {
+     "ok": true,
+     "note": ""
+    },
+    "order": {
+     "ok": true,
+     "note": ""
+    },
+    "labels": {
+     "ok": true,
+     "note": "",
+     "list": [
+      "15号 垫块",
+      "4号 木螺丝 × 4",
+      "16号 中段桌板",
+      "17号 桌板"
+     ]
+    },
+    "visible": {
+     "ok": true,
+     "note": "",
+     "n": 6,
+     "inView": 4
+    },
+    "path": {
+     "ok": true,
+     "note": "",
+     "n": 6
+    }
+   }
+  },
+  {
+   "id": "4",
+   "title": "安装铰链",
+   "label": null,
+   "frames": [
+    "frames/4_a.jpg",
+    "frames/4_b.jpg",
+    "frames/4_c.jpg",
+    "frames/4_d.jpg"
+   ],
+   "checks": {
+    "parts": {
+     "ok": true,
+     "note": ""
+    },
+    "holes": {
+     "ok": true,
+     "note": "",
+     "n": 32
+    },
+    "float": {
+     "ok": true,
+     "note": ""
+    },
+    "order": {
+     "ok": true,
+     "note": ""
+    },
+    "labels": {
+     "ok": true,
+     "note": "",
+     "list": [
+      "11号 铰链 × 4",
+      "1号 短螺丝 × 32",
+      "16号 中段桌板",
+      "17号 桌板"
+     ]
+    },
+    "visible": {
+     "ok": true,
+     "note": "",
+     "n": 40,
+     "inView": 38
+    },
+    "path": {
+     "ok": true,
+     "note": "",
+     "n": 40
+    }
+   }
+  },
+  {
+   "id": "5",
+   "title": "装入横销和长螺栓",
+   "label": null,
+   "frames": [
+    "frames/5_a.jpg",
+    "frames/5_b.jpg",
+    "frames/5_c.jpg",
+    "frames/5_d.jpg"
+   ],
+   "checks": {
+    "parts": {
+     "ok": true,
+     "note": ""
+    },
+    "holes": {
+     "ok": true,
+     "note": "",
+     "n": 8
+    },
+    "float": {
+     "ok": true,
+     "note": ""
+    },
+    "order": {
+     "ok": true,
+     "note": ""
+    },
+    "labels": {
+     "ok": true,
+     "note": "",
+     "list": [
+      "5号 横销 × 4",
+      "6号 长螺栓 × 4",
+      "右 · 13号 支撑腿",
+      "12号 框架"
+     ]
+    },
+    "visible": {
+     "ok": true,
+     "note": "",
+     "n": 8,
+     "inView": 8
+    },
+    "path": {
+     "ok": true,
+     "note": "",
+     "n": 10
+    }
+   }
+  },
+  {
+   "id": "6",
+   "title": "把框架固定到桌面",
+   "label": null,
+   "frames": [
+    "frames/6_a.jpg",
+    "frames/6_b.jpg",
+    "frames/6_c.jpg",
+    "frames/6_d.jpg"
+   ],
+   "checks": {
+    "parts": {
+     "ok": true,
+     "note": ""
+    },
+    "holes": {
+     "ok": true,
+     "note": "",
+     "n": 6
+    },
+    "float": {
+     "ok": true,
+     "note": ""
+    },
+    "order": {
+     "ok": true,
+     "note": ""
+    },
+    "labels": {
+     "ok": true,
+     "note": "",
+     "list": [
+      "1号 短螺丝 × 6",
+      "右 · 12号 框架",
+      "右 · 13号 支撑腿",
+      "16号 中段桌板",
+      "17号 桌板"
+     ]
+    },
+    "visible": {
+     "ok": true,
+     "note": "",
+     "n": 6,
+     "inView": 6
+    },
+    "path": {
+     "ok": true,
+     "note": "",
+     "n": 11
+    }
+   }
+  },
+  {
+   "id": "7",
+   "title": "敲入脚垫",
+   "label": null,
+   "frames": [
+    "frames/7_a.jpg",
+    "frames/7_b.jpg",
+    "frames/7_c.jpg",
+    "frames/7_d.jpg"
+   ],
+   "checks": {
+    "parts": {
+     "ok": true,
+     "note": ""
+    },
+    "holes": {
+     "ok": true,
+     "note": "",
+     "n": 0
+    },
+    "float": {
+     "ok": true,
+     "note": ""
+    },
+    "order": {
+     "ok": true,
+     "note": ""
+    },
+    "labels": {
+     "ok": true,
+     "note": "",
+     "list": [
+      "8号 脚垫 × 4",
+      "13号 支撑腿"
+     ]
+    },
+    "visible": {
+     "ok": true,
+     "note": "",
+     "n": 4,
+     "inView": 3
+    },
+    "path": {
+     "ok": true,
+     "note": "",
+     "n": 4
+    }
+   }
+  },
+  {
+   "id": "8",
+   "title": "敲入止动垫并翻转桌子",
+   "label": null,
+   "frames": [
+    "frames/8_a.jpg",
+    "frames/8_b.jpg",
+    "frames/8_c.jpg",
+    "frames/8_d.jpg"
+   ],
+   "checks": {
+    "parts": {
+     "ok": true,
+     "note": ""
+    },
+    "holes": {
+     "ok": true,
+     "note": "",
+     "n": 0
+    },
+    "float": {
+     "ok": true,
+     "note": ""
+    },
+    "order": {
+     "ok": true,
+     "note": ""
+    },
+    "labels": {
+     "ok": true,
+     "note": "",
+     "list": [
+      "左 · 17号 桌板",
+      "12号 框架",
+      "13号 支撑腿",
+      "16号 中段桌板"
+     ]
+    },
+    "visible": {
+     "ok": true,
+     "note": "",
+     "n": 2,
+     "inView": 2
+    },
+    "path": {
+     "ok": true,
+     "note": "",
+     "n": 4
+    }
+   }
+  },
+  {
+   "id": "9",
+   "title": "组装抽屉框",
+   "label": null,
+   "frames": [
+    "frames/9_a.jpg",
+    "frames/9_b.jpg",
+    "frames/9_c.jpg",
+    "frames/9_d.jpg"
+   ],
+   "checks": {
+    "parts": {
+     "ok": true,
+     "note": ""
+    },
+    "holes": {
+     "ok": true,
+     "note": "",
+     "n": 4
+    },
+    "float": {
+     "ok": true,
+     "note": ""
+    },
+    "order": {
+     "ok": true,
+     "note": ""
+    },
+    "labels": {
+     "ok": true,
+     "note": "",
+     "list": [
+      "左 · 18号 抽屉长板（凸条朝外）",
+      "19号 无缺口端板",
+      "2号 抽屉螺栓 × 4"
+     ]
+    },
+    "visible": {
+     "ok": true,
+     "note": "",
+     "n": 7,
+     "inView": 7
+    },
+    "path": {
+     "ok": true,
+     "note": "",
+     "n": 7
+    }
+   }
+  },
+  {
+   "id": "10",
+   "title": "装抽屉底板和另一端板",
+   "label": null,
+   "frames": [
+    "frames/10_a.jpg",
+    "frames/10_b.jpg",
+    "frames/10_c.jpg",
+    "frames/10_d.jpg"
+   ],
+   "checks": {
+    "parts": {
+     "ok": true,
+     "note": ""
+    },
+    "holes": {
+     "ok": true,
+     "note": "",
+     "n": 4
+    },
+    "float": {
+     "ok": true,
+     "note": ""
+    },
+    "order": {
+     "ok": true,
+     "note": ""
+    },
+    "labels": {
+     "ok": true,
+     "note": "",
+     "list": [
+      "21号 抽屉底板"
+     ]
+    },
+    "visible": {
+     "ok": true,
+     "note": "",
+     "n": 6,
+     "inView": 6
+    },
+    "path": {
+     "ok": false,
+     "note": "抽屉底板 穿过 抽屉长板（凸条朝外）",
+     "n": 6
+    }
+   }
+  },
+  {
+   "id": "11",
+   "title": "推入抽屉并打开支撑腿",
+   "label": null,
+   "frames": [
+    "frames/11_a.jpg",
+    "frames/11_b.jpg",
+    "frames/11_c.jpg",
+    "frames/11_d.jpg"
+   ],
+   "checks": {
+    "parts": {
+     "ok": true,
+     "note": ""
+    },
+    "holes": {
+     "ok": true,
+     "note": "",
+     "n": 0
+    },
+    "float": {
+     "ok": true,
+     "note": ""
+    },
+    "order": {
+     "ok": true,
+     "note": ""
+    },
+    "labels": {
+     "ok": true,
+     "note": "",
+     "list": [
+      "左 · 17号 桌板",
+      "12号 框架",
+      "16号 中段桌板"
+     ]
+    },
+    "visible": {
+     "ok": true,
+     "note": "",
+     "n": 8,
+     "inView": 2
+    },
+    "path": {
+     "ok": true,
+     "note": "",
+     "n": 2
+    }
+   }
+  }
+ ]
+}

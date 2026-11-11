@@ -558,14 +558,41 @@ function audit(s){if(!ready||!cur||cur!==s)return null;const C=typeof CELLS!=='u
   let inV=0;const v=new T3.Vector3();objs.forEach(o=>{new T3.Box3().setFromObject(o).getCenter(v);v.project(cam);if(v.z<1&&Math.abs(v.x)<=1&&Math.abs(v.y)<=1)inV++});
   R.visible={ok:!objs.length||inV>0,note:objs.length&&!inV?'镜头里看不到这一步的零件（'+objs.length+' 个都在画面外）':'',n:objs.length,inView:inV};
   poseAt(Math.min(t,1));return R}
-window.__audit=s=>audit(s);
+/* Path check: while a part travels to its place it must not pass through anything. Every mesh is taken as its own oriented box (shrunk a little, so touching does not count).
+   What the part rests against or goes into at the end (its mates) may overlap it only over the last stretch, as long as the part itself is in the direction of travel; anything else it meets on the way is a collision. */
+function obbOf(m,eps){const g=m.geometry;if(!g)return null;if(!g.boundingBox)g.computeBoundingBox();const b=g.boundingBox;if(!b||b.isEmpty())return null;const c=b.getCenter(new T3.Vector3()),h=b.getSize(new T3.Vector3()).multiplyScalar(.5),M=m.matrixWorld,ax=[new T3.Vector3(),new T3.Vector3(),new T3.Vector3()];M.extractBasis(ax[0],ax[1],ax[2]);const sc=ax.map(a=>a.length());ax.forEach(a=>a.normalize());
+  return{c:c.applyMatrix4(M),ax,h:[Math.max(h.x*sc[0]-eps,.01),Math.max(h.y*sc[1]-eps,.01),Math.max(h.z*sc[2]-eps,.01)]}}
+function obbHit(A,B){const d=B.c.clone().sub(A.c),R=[],AR=[];for(let i=0;i<3;i++){R[i]=[];AR[i]=[];for(let j=0;j<3;j++){R[i][j]=A.ax[i].dot(B.ax[j]);AR[i][j]=Math.abs(R[i][j])+1e-6}}const t=[d.dot(A.ax[0]),d.dot(A.ax[1]),d.dot(A.ax[2])];
+  for(let i=0;i<3;i++)if(Math.abs(t[i])>A.h[i]+B.h[0]*AR[i][0]+B.h[1]*AR[i][1]+B.h[2]*AR[i][2])return false;
+  for(let j=0;j<3;j++)if(Math.abs(t[0]*R[0][j]+t[1]*R[1][j]+t[2]*R[2][j])>A.h[0]*AR[0][j]+A.h[1]*AR[1][j]+A.h[2]*AR[2][j]+B.h[j])return false;
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++){const i1=(i+1)%3,i2=(i+2)%3,j1=(j+1)%3,j2=(j+2)%3;if(Math.abs(t[i2]*R[i1][j]-t[i1]*R[i2][j])>A.h[i1]*AR[i2][j]+A.h[i2]*AR[i1][j]+B.h[j1]*AR[i][j2]+B.h[j2]*AR[i][j1])return false}return true}
+/* how much of box A lies inside box B, measured along B's own axes */
+function obbVol(A,B){const d=A.c.clone().sub(B.c);let v=1;for(let j=0;j<3;j++){const hA=A.h[0]*Math.abs(A.ax[0].dot(B.ax[j]))+A.h[1]*Math.abs(A.ax[1].dot(B.ax[j]))+A.h[2]*Math.abs(A.ax[2].dot(B.ax[j])),o=Math.min(hA+B.h[j]-Math.abs(d.dot(B.ax[j])),2*Math.min(hA,B.h[j]));if(o<=0)return 0;v*=o}return v}
+const gname=G=>(typeof PANEL!=='undefined'&&PANEL[G.name])||G.label||G.name;
+function pathCheck(s,only){if(!ready||!cur||cur!==s||IDS.includes(s))return{ok:true,note:'',hits:[]};const C=typeof CELLS!=='undefined'?CELLS:[],nm=c=>(C.find(x=>x.code===c)||{name:c}).name,sc=curScene(),EPS=.3,N=14;
+  const tools=[FR.ham&&FR.ham.root,FR.ham2,typeof hammer!=='undefined'?hammer:null,FR.key,FR.drill,FR.pencil].filter(Boolean),inT=o=>{for(let q=o;q;q=q.parent)if(tools.includes(q))return true;return false},vis=o=>{for(let q=o;q;q=q.parent)if(!q.visible)return false;return true};
+  const movers=[];CP.forEach((p,i)=>{if(p.keys[s]&&!p.key)movers.push({key:'cp'+i,o:p.m,w:p.tap||p.win||[0,1],name:p.lbl||nm(p.code||codeOf(p.m)||'')||'零件'})});GS.forEach(G=>{const q=G.seq[s];if(q&&q[1]!==0&&q[0]!==q[1])movers.push({key:'gs:'+G.name,o:G.g,w:[(G.startAt&&G.startAt[s])||0,(G.moveAt&&G.moveAt[s])||G.move||1],name:gname(G)})});const okd=(typeof OV!=='undefined'&&OV.pathOk&&OV.pathOk[s])||{};
+  const own=new Map(movers.map(m=>{const S=new Set();m.o.traverse(q=>S.add(q));return [m,S]})),moving=new Set();own.forEach(S=>S.forEach(q=>moving.add(q)));
+  const meshes=()=>{const L=[];sc.traverseVisible(o=>{if(o.isMesh&&o.geometry&&!o.material.isMeshBasicMaterial&&!o.isLineSegments&&!inT(o))L.push(o)});return L};
+  const boxes=(L)=>L.map(o=>({o,b:obbOf(o,EPS)})).filter(x=>x.b);
+  const centre=m=>new T3.Box3().setFromObject(m.o).getCenter(new T3.Vector3());
+  /* the end of each mover's own travel (the whole assembly may go on moving afterwards, so the end of the step is not it): its mates there, its place in its parent's frame, its size */
+  const lp=m=>m.o.position.clone(),end=new Map();movers.forEach(m=>{poseAt(Math.min(m.w[1],1));sc.updateMatrixWorld(true);if(!vis(m.o))return;const all=meshes(),mine=all.filter(o=>own.get(m).has(o)),rest=all.filter(o=>!own.get(m).has(o)),mates=new Map();/* touching counts as a mate (boxes grown a little); how deep the part sits in each mate at the end is kept, a part may not go deeper than that on its way */mine.forEach(a=>{const A=obbOf(a,-.4),A0=obbOf(a,EPS);if(!A)return;rest.forEach(r=>{const B=obbOf(r,-.4),B0=obbOf(r,EPS);if(B&&obbHit(A,B))mates.set(r,(mates.get(r)||0)+(A0&&B0?obbVol(A0,B0):0))})});const bb=new T3.Box3().setFromObject(m.o);end.set(m,{mates,p:lp(m),size:bb.getSize(new T3.Vector3())})});
+  const hits=[];movers.forEach(m=>{if(only&&!only.includes(m.key))return;if(okd[m.key])return;const E=end.get(m);if(!E)return;const seen=new Map();
+    for(let i=0;i<N;i++){const tt=m.w[0]+(Math.min(m.w[1],1)-m.w[0])*(i/N);poseAt(tt);sc.updateMatrixWorld(true);if(!vis(m.o))continue;const rem=lp(m).sub(E.p),r=rem.length();if(r<.2)continue;if(m.o.parent)rem.applyQuaternion(m.o.parent.getWorldQuaternion(new T3.Quaternion()));const dir=rem.clone().normalize(),ext=Math.abs(dir.x)*E.size.x+Math.abs(dir.y)*E.size.y+Math.abs(dir.z)*E.size.z;
+      const all=boxes(meshes()),mine=all.filter(x=>own.get(m).has(x.o)),rest=all.filter(x=>!own.get(m).has(x.o)&&!moving.has(x.o));
+      rest.forEach(b=>{if(seen.has(b.o))return;let hit=false,vol=0;mine.forEach(a=>{if(obbHit(a.b,b.b)){hit=true;vol+=obbVol(a.b,b.b)}});if(!hit)return;const mate=E.mates.has(b.o);if(mate&&r<=ext+1&&vol<=E.mates.get(b.o)*1.3+.5)return;seen.set(b.o,{t:Math.round(tt*100),mate})})}
+    seen.forEach((v,o)=>{let n='';for(let q=o;q&&!n;q=q.parent){const p=CP.find(x=>x.m===q),G=GS.find(x=>x.g===q);if(p)n=p.lbl||nm(p.code||codeOf(p.m)||'')||'零件';else if(G)n=gname(G)}hits.push({key:m.key,part:m.name,with:n||'别的零件',at:v.t,mate:v.mate})})});
+  poseAt(Math.min(t,1));const g={};hits.forEach(h=>{const k=h.part+' 穿过 '+h.with;g[k]=g[k]||h});const L=Object.keys(g);return{ok:!L.length,note:L.length?L.slice(0,4).join('；')+(L.length>4?' 等 '+L.length+' 处':''):'',hits,n:movers.length}}
+window.__path=(s,only)=>pathCheck(s,only);
+window.__audit=s=>{const R=audit(s);if(R){try{R.path=pathCheck(s);delete R.path.hits}catch(e){R.path={ok:true,note:'',error:String(e.message||e)}}}return R};
 /* for the platform's model export: the assembled scene and how its parts are named */
 window.__model=()=>({scene:sc2,CP,GS,PANEL,codeOf,T3});
 
 /* Model editor hooks (window.__edit), used by the platform's editor and by the published assistant.
    An edit is a layer on top of the model as built: per part a rotation in quarter turns about its own centre, a shift, a label text.
    The layer is kept apart from the model (overrides.json), so every change is on record and can be undone; the assistant applies it at each frame after the engine has posed the parts. */
-const OV={parts:{},qty:{}};let ovBase=new Map(),ovOn=true;
+const OV={parts:{},qty:{},path:{},pathOk:{}};let ovEnds={};let ovBase=new Map(),ovOn=true;
 function ovUnits(){return [...CP.map((p,i)=>({key:'cp'+i,o:p.m,p})),...GS.map(G=>({key:'gs:'+G.name,o:G.g,G}))]}
 function ovUnitOf(obj){const U=ovUnits();for(let q=obj;q;q=q.parent){const u=U.find(x=>x.o===q);if(u)return u}return null}
 function ovCentre(u){/* the part's own centre in its local frame, measured once */if(u.o.userData.ovC)return u.o.userData.ovC;u.o.updateWorldMatrix(true,true);const b=new T3.Box3().setFromObject(u.o),c=b.isEmpty()?new T3.Vector3():b.getCenter(new T3.Vector3());u.o.userData.ovC=u.o.worldToLocal(c.clone());return u.o.userData.ovC}
@@ -573,12 +600,27 @@ function ovApply(){if(!ovOn)return;const keys=Object.keys(OV.parts);if(!keys.len
     if((e.rot&&e.rot.some(Boolean))||(e.off&&e.off.some(Boolean))){const c=ovCentre(u),q=new T3.Quaternion().setFromEuler(new T3.Euler(...(e.rot||[0,0,0]).map(n=>n*Math.PI/2),'XYZ')),d=c.clone().sub(c.clone().applyQuaternion(q)).multiply(o.scale).applyQuaternion(o.quaternion);
       o.position.add(d);if(e.off){const w=new T3.Vector3(...e.off);if(o.parent){const pq=o.parent.getWorldQuaternion(new T3.Quaternion()).invert();w.applyQuaternion(pq)}o.position.add(w)}o.quaternion.multiply(q)}})}
 /* the engine does not reset every part's rotation each frame, so the engine's own pose is put back before it runs and the layer is laid on again after */
-let ovL=false;(()=>{const run=applyCab;applyCab=function(s,tt){if(!ovL&&cabReady){ovL=true;if(Object.values(OV.parts).some(e=>e&&e.lbl))ovLabels()}ovBase.forEach((b,o)=>{o.position.copy(b.p);o.quaternion.copy(b.q)});run(s,tt);const U=ovUnits();Object.keys(OV.parts).forEach(k=>{const u=U.find(x=>x.key===k);if(u)ovBase.set(u.o,{p:u.o.position.clone(),q:u.o.quaternion.clone()})});ovApply()}})();
+let ovL=false;(()=>{const run=applyCab;applyCab=function(s,tt){if(!ovL&&cabReady){ovL=true;if(Object.values(OV.parts).some(e=>e&&e.lbl))ovLabels()}ovBase.forEach((b,o)=>{o.position.copy(b.p);o.quaternion.copy(b.q)});const PS=ovOn&&OV.path&&OV.path[s];if(PS&&!ovEnds[s]){/* where the engine starts and ends each rerouted part in this step, measured once */const U0=ovUnits(),E={};Object.keys(PS).forEach(k=>{const u=U0.find(x=>x.key===k);if(!u)return;const w=u.p?(u.p.tap||u.p.win||[0,1]):[(u.G.startAt&&u.G.startAt[s])||0,(u.G.moveAt&&u.G.moveAt[s])||u.G.move||1];run(s,w[0]);const a=u.o.position.clone();run(s,Math.min(w[1],1));E[k]={a,b:u.o.position.clone(),w1:Math.min(w[1],1)}});ovEnds[s]=E}
+    run(s,tt);const U=ovUnits();if(PS){Object.keys(PS).forEach(k=>{const u=U.find(x=>x.key===k),e=ovEnds[s]&&ovEnds[s][k],c=PS[k];if(!u||!e||!c)return;const L=e.a.distanceTo(e.b);if(L<1e-4||tt>=e.w1)return;const f=Math.min(1,u.o.position.distanceTo(e.b)/L),w=1-f,pq=u.o.parent?u.o.parent.getWorldQuaternion(new T3.Quaternion()).invert():new T3.Quaternion(),loc=v=>new T3.Vector3(...v).applyQuaternion(pq).add(e.b),A=loc(c.from);
+      if(c.via){const V=loc(c.via);if(w<.5)u.o.position.copy(A).lerp(V,w*2);else u.o.position.copy(V).lerp(e.b,(w-.5)*2)}else u.o.position.copy(A).lerp(e.b,w)})}
+    Object.keys(OV.parts).forEach(k=>{const u=U.find(x=>x.key===k);if(u)ovBase.set(u.o,{p:u.o.position.clone(),q:u.o.quaternion.clone()})});ovApply()}})();
+/* Route finding for a part that hits something on its way: straight in from another side first (the side nearest the original direction), then in two legs: from where it started to a point off one side, then straight in. The first route with no hit is taken. */
+const DIRS=[[[1,0,0],'右'],[[-1,0,0],'左'],[[0,1,0],'上'],[[0,-1,0],'下'],[[0,0,1],'前'],[[0,0,-1],'后']];
+function ovOptimise(s){const res=[],first=pathCheck(s),bad=[...new Set(first.hits.map(h=>h.key))];if(!bad.length)return res;const U=ovUnits();OV.path[s]=OV.path[s]||{};
+  bad.forEach(k=>{const u=U.find(x=>x.key===k),name=(first.hits.find(h=>h.key===k)||{}).part||k;if(!u)return;const had=OV.path[s][k];delete OV.path[s][k];delete ovEnds[s];
+    const w=u.p?(u.p.tap||u.p.win||[0,1]):[(u.G.startAt&&u.G.startAt[s])||0,(u.G.moveAt&&u.G.moveAt[s])||u.G.move||1],wq=()=>u.o.parent?u.o.parent.getWorldQuaternion(new T3.Quaternion()):new T3.Quaternion();poseAt(w[0]);const c0=u.o.position.clone();poseAt(Math.min(w[1],1));const c1=u.o.position.clone(),d=c0.clone().sub(c1).applyQuaternion(wq()),D=d.length();if(D<.5){res.push({key:k,part:name,ok:false,how:'这个零件几乎不移动，没有可换的路线'});return}
+    const d0=d.clone().normalize(),order=DIRS.map(x=>({v:x[0],n:x[1],dot:d0.x*x[0][0]+d0.y*x[0][1]+d0.z*x[0][2]})).sort((a,b)=>b.dot-a.dot),cands=[];
+    order.forEach(o=>{if(o.dot<.985)cands.push({from:o.v.map(n=>Math.round(n*D*100)/100),via:null,how:'改为从'+o.n+'方直线进入'})});
+    order.forEach(o=>{if(Math.abs(o.dot)<.9)cands.push({from:[d.x,d.y,d.z].map(n=>Math.round(n*100)/100),via:o.v.map(n=>Math.round(n*Math.max(D*.7,3)*100)/100),how:'先绕到'+o.n+'方，再直线进入'})});
+    /* a route laid on earlier may itself be the trouble: the model's own route is tried first */if(had&&pathCheck(s,[k]).ok){res.push({key:k,part:name,ok:true,how:'恢复模型原来的路线'});return}
+    let pick=null;for(const c of cands){OV.path[s][k]={from:c.from,via:c.via};delete ovEnds[s];if(pathCheck(s,[k]).ok){pick=c;break}}
+    if(pick){OV.path[s][k]={from:pick.from,via:pick.via,how:pick.how};res.push({key:k,part:name,ok:true,how:pick.how})}else{if(had)OV.path[s][k]=had;else delete OV.path[s][k];res.push({key:k,part:name,ok:false,how:'试了 '+cands.length+' 条路线都会碰到别的零件，需要人来判断'})}delete ovEnds[s]});
+  if(!Object.keys(OV.path[s]).length)delete OV.path[s];poseAt(Math.min(t,1));return res}
 function ovLabels(){CP.forEach((p,i)=>{const e=OV.parts['cp'+i];if(p._lbl0===undefined)p._lbl0=p.lbl;p.lbl=e&&e.lbl!=null&&e.lbl!==''?e.lbl:p._lbl0});if(ready&&cur&&CIDS.includes(cur)){buildLabels()}}
 /* a part taken out of (or put back into) a step changes how many the step uses: the count the labels show follows */
 function ovQty(){if(typeof byId==='undefined')return;Object.values(byId).forEach(s=>(s.parts||[]).forEach(pp=>{if(pp._q0!==undefined){pp[1]=pp._q0}}));Object.entries(OV.qty||{}).forEach(([sid,m])=>{const s=byId[sid];if(!s)return;Object.entries(m).forEach(([c,n])=>{const pp=(s.parts||[]).find(x=>x[0]===c);if(pp){if(pp._q0===undefined)pp._q0=pp[1];pp[1]=n}})});if(ready&&cur&&CIDS.includes(cur))buildLabels()}
 function ovCode(u){if(!u.p)return null;let c=u.p.code||codeOf(u.p.m);const first=Object.keys(u.p.keys)[0];if(!c&&u.p.m.userData.hr&&typeof SCREW!=='undefined')c=SCREW[first];return c||null}
-function ovLoad(j){OV.qty=JSON.parse(JSON.stringify(j&&j.qty||{}));ovQty();OV.parts=Object.assign({},j&&j.parts||{});ovBase.forEach((b,o)=>{o.position.copy(b.p);o.quaternion.copy(b.q)});ovBase=new Map();if(cabReady)ovLabels()}
+function ovLoad(j){OV.path=JSON.parse(JSON.stringify(j&&j.path||{}));OV.pathOk=JSON.parse(JSON.stringify(j&&j.pathOk||{}));ovEnds={};OV.qty=JSON.parse(JSON.stringify(j&&j.qty||{}));ovQty();OV.parts=Object.assign({},j&&j.parts||{});ovBase.forEach((b,o)=>{o.position.copy(b.p);o.quaternion.copy(b.q)});ovBase=new Map();if(cabReady)ovLabels()}
 function ovName(u){if(u.p){const c=u.p.code||codeOf(u.p.m),cell=typeof CELLS!=='undefined'&&CELLS.find(x=>x.code===c);return (u.p._lbl0!==undefined?u.p._lbl0:u.p.lbl)||(cell&&cell.name)||c||'零件'}return u.G.name}
 function ovSnap(W){const v=document.getElementById('animView'),w=v.clientWidth,h=v.clientHeight;const keep=t;t=Math.min(t,1);applyCab(cur,t);for(let i=0;i<60;i++){camFit()}ren.render(curScene(), cam);drawLabels();
   const c=document.createElement('canvas'),k=(W||720)/w;c.width=Math.round(w*k);c.height=Math.round(h*k);const x=c.getContext('2d');x.fillStyle=getComputedStyle(v).backgroundColor&&getComputedStyle(v).backgroundColor!=='rgba(0, 0, 0, 0)'?getComputedStyle(v).backgroundColor:'#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(ren.domElement,0,0,c.width,c.height);
@@ -599,9 +641,13 @@ window.__edit={
   /* is any of these parts in the picture in this step (the engine must already be showing the step) */
   inView(keys){const U=ovUnits(),v=new T3.Vector3();applyCab(cur,1);for(let i=0;i<60;i++)camFit();cam.updateMatrixWorld(true);curScene().updateMatrixWorld(true);return keys.some(k=>{const u=U.find(x=>x.key===k);if(!u)return false;for(let q=u.o;q;q=q.parent)if(!q.visible)return false;const b=new T3.Box3().setFromObject(u.o);if(b.isEmpty())return false;b.getCenter(v).project(cam);return v.z<1&&Math.abs(v.x)<=1.05&&Math.abs(v.y)<=1.05})},
   moves(keys,s){const U=ovUnits();return keys.some(k=>{const u=U.find(x=>x.key===k);return !!u&&(u.p?!!u.p.keys[s]:!!(u.G.seq&&u.G.seq[s]&&u.G.seq[s][1]!==0))})},
+  /* the path of each moving part in a step: what it hits, a route that hits nothing, or a recorded decision that it is not a collision */
+  collide(s){const r=pathCheck(s),g={};r.hits.forEach(h=>{const k=h.key+'|'+h.with;if(!g[k])g[k]=h});return{n:r.n,hits:Object.values(g),routes:Object.assign({},OV.path[s]||{}),accepted:Object.assign({},OV.pathOk[s]||{})}},
+  optimise(s){return ovOptimise(s)},
+  acceptPath(s,key,why){(OV.pathOk[s]=OV.pathOk[s]||{})[key]=why},clearPath(s,key){if(OV.path[s]){delete OV.path[s][key];if(!Object.keys(OV.path[s]).length)delete OV.path[s]}if(OV.pathOk[s]){delete OV.pathOk[s][key];if(!Object.keys(OV.pathOk[s]).length)delete OV.pathOk[s]}delete ovEnds[s]},
   snap:ovSnap,steps:()=>CIDS.slice(),off:b=>{ovOn=!b}};
 /* the published assistant carries the accepted edits beside the page */
-try{fetch('overrides.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.parts&&!Object.keys(OV.parts).length){OV.parts=j.parts;OV.qty=j.qty||{};ovQty();if(cabReady)ovLabels()}}).catch(()=>{})}catch(e){}
+try{fetch('overrides.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.parts&&!Object.keys(OV.parts).length){OV.parts=j.parts;OV.qty=j.qty||{};OV.path=j.path||{};OV.pathOk=j.pathOk||{};ovQty();if(cabReady)ovLabels()}}).catch(()=>{})}catch(e){}
 
 function load(){return loading||(loading=new Promise((ok,no)=>{if(window.THREE)return ok();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';s.onload=ok;s.onerror=no;document.head.append(s)}))}
 function mat(c){return new T3.MeshLambertMaterial({color:c})}

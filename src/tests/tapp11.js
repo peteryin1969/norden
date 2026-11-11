@@ -1,0 +1,22 @@
+/* test 6: a part travels through another on its way; the self-check finds it; the editor shows where, finds a clear route, and the step is checked again */
+const {chromium}=require('playwright');const fs=require('fs');const d=process.cwd()+'/site/';
+const MIME={'.html':'text/html;charset=utf8','.js':'text/javascript','.mjs':'text/javascript','.wasm':'application/wasm','.json':'application/json','.zip':'application/zip','.py':'text/plain;charset=utf8','.csv':'text/csv','.png':'image/png'};
+(async()=>{const srv=require('http').createServer((q,s)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u.endsWith('/'))u+='index.html';fs.readFile(d+u.slice(1),(e,c)=>{if(e){s.writeHead(404);s.end()}else{s.writeHead(200,{'content-type':MIME[u.slice(u.lastIndexOf('.'))]||'application/octet-stream'});s.end(c)}})}).listen(8887);
+const b=await chromium.launch({args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});const R=[],ck=(n,ok,x)=>{R.push(ok===true);console.log(ok===true?'ok  ':'FAIL',n,x==null?'':String(x).slice(0,420))};const er=[];
+const ctx=await b.newContext({viewport:{width:1280,height:900}});const p=await ctx.newPage();p.on('pageerror',e=>er.push(e.message));p.on('dialog',d=>{console.log('DIALOG',d.message().slice(0,80));d.accept()});
+await ctx.route('**/three.min.js',r=>r.fulfill({body:fs.readFileSync('tv/node_modules/three/build/three.min.js'),contentType:'text/javascript'}));await ctx.route('**fonts.g**',r=>r.abort());await p.addInitScript(()=>{Element.prototype.requestFullscreen=()=>Promise.reject(new Error('no'))});
+const ready=async()=>{await p.waitForSelector('#boot',{state:'detached',timeout:120000});await p.waitForSelector('main h1');await p.waitForTimeout(500)},ckt=t=>p.evaluate(t=>{const e=[...document.querySelectorAll('.ck')].find(x=>x.querySelector('.t').textContent.includes(t));return e?e.querySelector('.st').textContent+'|'+e.textContent.slice(0,240):''},t);
+await p.goto('http://localhost:8887/app/');await p.click('#goS6');await p.waitForURL(/project\.html/);await ready();await p.click('#wSample');await p.waitForURL(/run=1/);await ready();
+let t=await ckt('零件移动过程中不穿过别的零件');ck('the self-check finds the part passing through another',/^不通过/.test(t)&&/第 10 步：抽屉底板 穿过 抽屉长板/.test(t),t);
+ck('every other self-check passes: the finished model is right',await p.evaluate(()=>[...document.querySelectorAll('#s3 .ck.fail .t')].map(x=>x.textContent).filter(x=>!/移动过程/.test(x)).length===0));
+ck('AI review is locked meanwhile',/机器自检还没有全部通过/.test(await ckt('独立 AI 对照')));
+await p.click('[data-path="10"]');await p.waitForSelector('#edPart option:nth-child(2)',{state:'attached',timeout:60000});await p.waitForTimeout(800);
+await p.click('#edPathCheck');await p.waitForTimeout(600);let pb=await p.textContent('#edPath');ck('the editor shows what is hit and when',/发现 1 处/.test(pb)&&/抽屉底板 在进度 \d+% 处穿过 抽屉长板/.test(pb)&&/已换路线：抽屉底板/.test(pb),pb.slice(0,160));
+await p.click('#edPath a');await p.waitForTimeout(700);await p.screenshot({path:'a4/ed_path1.png'});
+await p.click('#edPathOpt');await p.waitForTimeout(1200);pb=await p.textContent('#edPath');ck('a clear route is found',/✓ 抽屉底板：恢复模型原来的路线/.test(pb)&&/途中都没有穿过别的零件/.test(pb),pb.slice(0,160));await p.screenshot({path:'a4/ed_path2.png'});
+await p.fill('#edWhy','底板应当沿槽从端头推入，不能从侧面穿过长板');await p.click('#edSave');await p.waitForURL(/run=1/,{timeout:240000});await ready();
+t=await ckt('零件移动过程中不穿过别的零件');ck('after saving the self-check on the path passes',/^通过/.test(t),t);
+const A=await p.evaluate(async()=>{const j=async f=>JSON.parse(new TextDecoder().decode((await DB.file(APP.pid,f)).data));const L=await j('pkg/records/edits.json'),ov=await j('pkg/model/overrides.json');return{path:ov.path,log:L[L.length-1]}});
+ck('the layer no longer carries the bad route; the change is on record with the step retaken',Object.keys(A.path||{}).length===0&&A.log.steps_retaken.join()==='10'&&A.log.paths[0].step==='10'&&!!A.log.paths[0].before.routes,JSON.stringify(A.log).slice(0,300));
+ck('AI review is open now',!/机器自检还没有全部通过/.test(await ckt('独立 AI 对照')));
+console.log('PASS',R.filter(Boolean).length+'/'+R.length,'err',er);await b.close();srv.close()})();

@@ -278,7 +278,7 @@ def stage3(P, auto, signoff, preview, ai=None, out_dir=None, step_data=None):
     V = {s['id']: ver(s) for s in steps}
     ROUTE = {'visible': ('ai', '镜头问题由 AI 自动调整后重跑自检，不用客户处理（这一版先由平台代为执行）'), 'labels': ('ai', '标签问题由 AI 自动去重、补编号后重跑自检，不用客户处理（这一版先由平台代为执行）'),
              'parts': ('human', '需要建模人员补零件，改完回到机器自检'), 'holes': ('human', '需要建模人员补孔或改落点，改完回到机器自检'),
-             'float': ('human', '需要建模人员改落点或尺寸，改完回到机器自检'), 'order': ('human', '需要建模人员调整动作顺序，改完回到机器自检')}
+             'float': ('human', '需要建模人员改落点或尺寸，改完回到机器自检'), 'path': ('ai', '轨迹可以自动优化：在模型编辑器里点“检查轨迹”，再点“自动找一条不碰撞的路线”，保存后这一步重新自检'), 'order': ('human', '需要建模人员调整动作顺序，改完回到机器自检')}
     def agg(key, title, why, fix, level='必需'):
         bad = [s for s in steps if s['checks'].get(key, {}).get('ok') is False]
         det = '；'.join(f'第 {s["id"]} 步：{s["checks"][key].get("note","")}' for s in bad[:12])
@@ -292,6 +292,9 @@ def stage3(P, auto, signoff, preview, ai=None, out_dir=None, step_data=None):
     agg('order', '大件到位后才上紧固件', '整体还在移动时拧紧固件，与说明书不符。', '把紧固件的动作移到大件停稳之后。', '建议')
     agg('labels', '每种零件标一次且带编号', '标签太多会乱，没编号用户说不出是哪个。', '去掉重复标签，补编号。')
     agg('visible', '画面里能看到这一步的零件', '镜头没对准，用户会说“什么都看不到”。', '调整这一步的镜头。')
+    if any('path' in s['checks'] for s in steps): agg('path', '零件移动过程中不穿过别的零件', '零件穿过别的零件飞到位，用户会照着从装不进去的方向去装，也可能以为要先拆别的零件。', '到模型编辑器里检查这一步的轨迹：能换一条不碰撞的路线就自动换；确实不是碰撞的，写明原因后确认。')
+    else:
+        c = C('3.path', '可选', 'na', '零件移动过程中不穿过别的零件', '这份交付的自检结果里没有轨迹检查（交付早于这项检查）。在模型编辑器里可以逐步检查。'); c['sub'] = 'A'; K.append(c)
     # the quantity written on a label is drawn into the animation: when the step data says otherwise, one of the two is wrong, and a label can only be changed by delivering the animation again
     if step_data is not None:
         nm = {r['name']: r['code'] for r in (P.get('_hw') or []) + (P.get('_parts') or []) if r.get('name')}
