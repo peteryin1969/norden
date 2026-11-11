@@ -1,0 +1,34 @@
+/* test 5: the independent AI review finds a real modelling error; a person confirms it; the platform delivers again; only the changed step is reviewed again */
+const {chromium}=require('playwright');const fs=require('fs');const d=process.cwd()+'/site/';
+const MIME={'.html':'text/html;charset=utf8','.js':'text/javascript','.mjs':'text/javascript','.wasm':'application/wasm','.json':'application/json','.zip':'application/zip','.py':'text/plain;charset=utf8','.csv':'text/csv'};
+(async()=>{const srv=require('http').createServer((q,s)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u.endsWith('/'))u+='index.html';fs.readFile(d+u.slice(1),(e,c)=>{if(e){s.writeHead(404);s.end()}else{s.writeHead(200,{'content-type':MIME[u.slice(u.lastIndexOf('.'))]||'application/octet-stream'});s.end(c)}})}).listen(8883);
+const BAD=fs.readFileSync(process.cwd()+'/../app/v5fix/10_d.jpg').toString('base64');
+const b=await chromium.launch();const R=[],ck=(n,ok,x)=>{R.push(ok===true);console.log(ok===true?'ok  ':'FAIL',n,x==null?'':String(x).slice(0,420))};const er=[];
+const open=async(key)=>{const p=await (await b.newContext({viewport:{width:390,height:800},acceptDownloads:true})).newPage();p.on('pageerror',e=>er.push(e.message));p.on('dialog',d=>{console.log('DIALOG',d.message());d.accept()});p.calls=0;
+  if(key)await p.addInitScript(()=>localStorage.setItem('norden-key','k'));
+  await p.route('https://api.anthropic.com/**',r=>{p.calls++;const c=JSON.parse(r.request().postData()).messages[0].content,im=c.filter(x=>x.type==='image').map(x=>x.source.data);r.fulfill({status:200,headers:{'content-type':'application/json','access-control-allow-origin':'*'},body:JSON.stringify({content:[{type:'text',text:im.includes(BAD)?'{"issues":[{"severity":"严重","text":"有缺口端板的缺口朝下，说明书是朝上"}]}':'{"issues":[]}'}]})})});
+  p.ready=async()=>{await p.waitForSelector('#boot',{state:'detached',timeout:120000});await p.waitForSelector('main h1');await p.waitForTimeout(500)};p.g=()=>p.evaluate(()=>[...document.querySelectorAll('.pipe a .g')].map(x=>x.textContent).join(' '));
+  p.ckt=t=>p.evaluate(t=>{const e=[...document.querySelectorAll('.ck')].find(x=>x.querySelector('.t').textContent.includes(t));return e?e.querySelector('.st').textContent+'|'+e.textContent.slice(0,300):''},t);
+  p.signLocked=()=>p.evaluate(()=>[...document.querySelectorAll('#s3 button')].filter(b=>b.textContent==='确认').every(b=>b.disabled));
+  await p.goto('http://localhost:8883/app/');await p.click('#goS5');await p.waitForURL(/project\.html/);await p.ready();await p.click('#wSample');await p.waitForURL(/run=1/);await p.ready();
+  await p.evaluate(()=>[...document.querySelectorAll('#s2 button')].filter(b=>/^确认：/.test(b.textContent)).forEach(b=>b.click()));await p.click('.bar button:has-text("保存并重新计算")');await p.ready();return p};
+let p=await open(true);let g=await p.g();
+ck('data and self-check are clean: only the AI review and what follows are open',/^通过 通过 待客户确认/.test(g)&&await p.evaluate(()=>!document.querySelector('#s1 .ck.fail,#s2 .ck.fail,#s3 .ck.fail')),g);
+await p.click('button:has-text("运行独立 AI 审核")');await p.waitForTimeout(3000);await p.ready();let t=await p.ckt('独立 AI 对照');
+ck('the AI reports one serious problem, waiting for a person',/^待确认/.test(t)&&/报了 1 个严重问题/.test(t)&&/1 个还没处理/.test(t)&&p.calls===11,t);ck('sign-off stays locked',await p.signLocked());
+ck('the finding shows at step 10 of the storyboard with the two choices',await p.evaluate(()=>{const c=document.getElementById('f-10');return /缺口朝下/.test(c.textContent)&&!![...c.querySelectorAll('button')].find(b=>b.textContent==='确实有问题')&&!![...c.querySelectorAll('button')].find(b=>/误报/.test(b.textContent))}));
+await p.click('#nextBtn');await p.waitForTimeout(300);
+await p.evaluate(()=>[...document.getElementById('f-10').querySelectorAll('button')].find(b=>b.textContent==='确实有问题').click());await p.evaluate(()=>[...document.getElementById('f-10').querySelectorAll('button')].find(b=>b.textContent==='保存并重新计算').click());await p.ready();
+t=await p.ckt('独立 AI 对照');ck('confirmed as real: the review fails and the hand-over sits beside it',/^不通过/.test(t)&&/1 个确实有问题/.test(t)&&await p.evaluate(()=>{const e=[...document.querySelectorAll('.ck')].find(x=>x.querySelector('.t').textContent.includes('独立 AI 对照'));return !!e.querySelector('[data-prow]')}),t);
+ck('stage 3 is returned',/^通过 通过 退回补充/.test(await p.g()),await p.g());
+const [dl]=await Promise.all([p.waitForEvent('download'),p.evaluate(()=>{const e=[...document.querySelectorAll('.ck')].find(x=>x.querySelector('.t').textContent.includes('独立 AI 对照'));e.querySelector('[data-prow] button').click()})]);const zp=process.cwd()+'/../app/cli/t5.zip';await dl.saveAs(zp);const z=await require('../app/npm/node_modules/jszip').loadAsync(fs.readFileSync(zp));const air=JSON.parse(await z.file('资料包/ai_review.json').async('string'));
+ck('the export tells the platform what the AI found and that a person confirmed it',/缺口朝下/.test(air.steps['10'].issues[0].text)&&air.dispositions['r:10:0'].status==='real',JSON.stringify(air.dispositions));
+p.calls=0;await p.evaluate(()=>{const e=[...document.querySelectorAll('.ck')].find(x=>x.querySelector('.t').textContent.includes('独立 AI 对照'));e.querySelector('[data-sample]').click()});await p.waitForURL(/run=1/);await p.ready();
+t=await p.ckt('独立 AI 对照');ck('after the new delivery: self-check clean, the AI review asks for step 10 only',/^待确认/.test(t)&&/第 10 步要重新审核/.test(t)&&await p.evaluate(()=>!document.querySelector('#s3 .ck.fail')),t);ck('still locked until that is done',await p.signLocked());
+await p.click('button:has-text("重新审核改过的 1 步")');await p.waitForTimeout(1500);await p.ready();t=await p.ckt('独立 AI 对照');ck('one call, one step, and the review passes',p.calls===1&&/^通过/.test(t),p.calls+' '+t);ck('sign-off opens',!(await p.signLocked()));
+ck('the old decision on step 10 is gone with the old finding',await p.evaluate(()=>!Object.keys(JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>/aidisp3$/.test(k)))||'{}')).length));
+await p.context().close();
+/* no key: the stand-in results give the same path */
+p=await open(false);ck('without a key the stand-in is offered in this test project',!!(await p.$('#simAI')));await p.click('#simAI');await p.ready();t=await p.ckt('独立 AI 对照');
+ck('stand-in result: one serious problem at step 10, marked as simulated',/模拟结果（没有调用真实 AI）/.test(t)&&/报了 1 个严重问题/.test(t)&&p.calls===0,t);
+console.log('PASS',R.filter(Boolean).length+'/'+R.length,'err',er);await b.close();srv.close()})();

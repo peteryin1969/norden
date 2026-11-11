@@ -89,4 +89,11 @@ def variant2(name, src_zip, edit):
             if d2 is False: continue
             z.writestr(n, d if d2 is None else d2)
 variant2('norden-client-test4.zip', OUT + '/samples/norden-client.zip', e_client4); variant2('norden-delivery-test4.zip', OUT + '/samples/norden-delivery.zip', e_deliv4)
+# test 5: a real modelling error that the geometry checks cannot see (the notched end board of the drawer is upside down in step 10): the storyboard of that step comes from a build with the error (nord/mkv5.sh)
+def e_client5(n, d):
+    if n == 'package.json': j = json.loads(d); j['name'] = 'NORDEN 折叠桌（模拟资料 · 测试 5）'; return json.dumps(j, ensure_ascii=False, indent=1).encode()
+def e_deliv5(n, d):
+    if n.startswith('frames/10_'): return open(H + '/v5fix/' + n.split('/')[1], 'rb').read()
+    if n == 'delivery.json': j = json.loads(d); j['note'] = '测试 5 的第一次交付：第 10 步的动画里有一处真实的建模错误，机器自检查不出来。'; return json.dumps(j, ensure_ascii=False, indent=1).encode()
+variant2('norden-client-test5.zip', OUT + '/samples/norden-client.zip', e_client5); variant2('norden-delivery-test5.zip', OUT + '/samples/norden-delivery.zip', e_deliv5)
 print('app', OUT, BUILD, {f: os.path.getsize(OUT + '/samples/' + f) // 1024 for f in os.listdir(OUT + '/samples')}, 'KB')
