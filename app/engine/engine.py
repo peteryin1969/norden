@@ -228,12 +228,12 @@ def questions(P, steps):
             q(f'two-{s["id"]}', s['id'], '两人操作', f'第 {s["id"]} 步需要两个人吗？', '需要', '说明书两人图示')
     return Q
 
-def stage2(P, steps, answers, preview):
+def stage2(P, steps, answers, preview, list_checked=False):
     K = []
     rows = recon(P, steps)
     diff = [r for r in rows if r['listed'] != r['used']]
     K.append(C('2.1', '必需', 'fail' if diff else 'pass', '零件核对：每步用量 × 重复次数 = 清单数量',
-               ('不一致：' + '；'.join(f'{r["code"]}（{r["list"]}）清单 {r["listed"]}，步骤合计 {r["used"]}' for r in diff[:10]) + '。') if diff else f'{len(rows)} 项全部一致，零差异。',
+               ('不一致：' + '；'.join(f'{r["code"]}（{r["list"]}）清单 {r["listed"]}，步骤合计 {r["used"]}（' + ('、'.join('第 ' + x.split(':')[0] + ' 步 ' + x.split(':')[1] for x in r['steps']) or '步骤里没用到') + '）' for r in diff[:10]) + '。' + ('阶段 1 已经核对过：清单和说明书零件页的数量一致。所以问题更可能在步骤数据里（某一步的数量或重复次数）。' if list_checked else '')) if diff else f'{len(rows)} 项全部一致，零差异。',
                '有差异说明步骤或清单有一处错了，用户会少零件或多零件。', '核对有差异的编号：步骤里的数量、重复次数或清单数量。'))
     bad = [s['id'] for s in steps if not s.get('do') or s.get('parts') is None]
     K.append(C('2.2', '必需', 'fail' if bad else 'pass', '每一步都有“做什么”和“用哪些零件”', f'缺内容的步骤：{"、".join(bad)}。' if bad else f'{len(steps)} 步都有。'))
@@ -246,13 +246,16 @@ def stage2(P, steps, answers, preview):
     K.append(C('2.3', '必需', 'fail' if order_bad else 'pass', '步骤顺序与说明书一致', f'页码倒退的步骤：{"、".join(order_bad)}。' if order_bad else '每份说明书内页码顺序递增。'))
     Q = questions(P, steps)
     ans = answers or {}
-    open_q = [x for x in Q if x['id'] not in ans]
+    # an answer belongs to the question as it was asked: when the platform changes the step data and the suggested answer changes, the question is asked again
+    cur = lambda x: x['id'] in ans and (not ans[x['id']].get('sug') or ans[x['id']]['sug'] == x['suggest'])
+    open_q = [x for x in Q if not cur(x) or not ans[x['id']].get('status', 'ok')]
+    fixes_q = [x for x in Q if cur(x) and ans[x['id']].get('status') == 'fix']
     contra = [x for x in Q if x['id'] in ans and ans[x['id']].get('status') == 'contradicts']
-    K.append(C('2.4', '必需', 'todo' if open_q else 'pass', '待确认问题全部有答案', f'{len(Q)} 个问题，{len(open_q)} 个还没有回答。' if open_q else f'{len(Q)} 个问题都已回答。',
+    K.append(C('2.4', '必需', 'todo' if open_q or fixes_q else 'pass', '待确认问题全部有答案', f'{len(Q)} 个问题，{len(open_q)} 个还没有回答。' if open_q else ((f'{len(Q)} 个问题都已回答，其中 {len(fixes_q)} 个客户写了更正（' + '；'.join(x['q'] + ' → ' + str(ans[x['id']].get('text', '')) for x in fixes_q[:5]) + '）。平台要按更正修改步骤数据，再交付一次。') if fixes_q else f'{len(Q)} 个问题都已回答。'),
                '说明书没写清的地方，必须由厂家确认，不能带着推断进入建模。', '在门户的“待确认问题”里逐条确认或修改。'))
     if contra: K.append(C('2.5', '必需', 'fail', '客户答案与说明书图示不矛盾', '矛盾：' + '、'.join(x['id'] for x in contra)))
     unsure = [s['id'] for s in steps if s.get('unsure')]
-    K.append(C('2.6', '必需', 'pass' if not open_q else 'todo', '推断内容已全部确认', f'{len(unsure)} 步含推断内容：{"、".join(unsure)}。确认后转为“已确认”。' if unsure and open_q else '没有未确认的推断。'))
+    K.append(C('2.6', '必需', 'pass' if not open_q and not fixes_q else 'todo', '推断内容已全部确认', f'{len(unsure)} 步含推断内容：{"、".join(unsure)}。确认后转为“已确认”。' if unsure and open_q else '没有未确认的推断。'))
     r = gate(K, 2, preview)
     r['recon'] = rows; r['questions'] = Q
     return r
@@ -348,7 +351,7 @@ def run(pkg_dir, out_dir, auto=None):
         os.makedirs(out_dir, exist_ok=True); FX.propose(P, steps, None, [r1])
         json.dump(rep, open(os.path.join(out_dir, 'report.json'), 'w', encoding='utf8'), ensure_ascii=False, indent=1)
         return rep
-    r2 = stage2(P, steps, rj('answers.json'), pre)
+    r2 = stage2(P, steps, rj('answers.json'), pre, any(c['id'] == '1.4' and c['status'] == 'pass' and '零件页' in c['title'] for c in r1['checks']))
     r3 = stage3(P, auto, rj('signoff.json'), pre or r2['gate'] != '通过', rj('ai_review.json'), out_dir) if auto else None
     r4 = r5 = None; gen = None
     gd = os.path.join(pkg_dir, 'generated')

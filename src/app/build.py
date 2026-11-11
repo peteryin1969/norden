@@ -55,4 +55,19 @@ with zipfile.ZipFile(OUT + '/samples/norden-delivery.zip', 'w', zipfile.ZIP_DEFL
     I = S + '/nord/site/norden/img'
     for f in sorted(os.listdir(I)):
         if re.fullmatch(r's\w+\.png', f): z.write(I + '/' + f, 'img/' + f)
+# test 3: the client's data is clean; the platform's first delivery has two mistakes in the step data (a quantity in one step, a repeat count), the second delivery (the normal one) has them right
+def variant(name, src_zip, edit):
+    zin = zipfile.ZipFile(src_zip)
+    with zipfile.ZipFile(OUT + '/samples/' + name, 'w', zipfile.ZIP_DEFLATED) as z:
+        for n in zin.namelist():
+            d = zin.read(n); d2 = edit(n, d); z.writestr(n, d if d2 is None else d2)
+def e_client3(n, d):
+    if n == 'package.json': j = json.loads(d); j['name'] = 'NORDEN 折叠桌（模拟资料 · 测试 3）'; return json.dumps(j, ensure_ascii=False, indent=1).encode()
+def e_deliv3(n, d):
+    if n == 'steps.draft.json':
+        j = json.loads(d); s6 = next(x for x in j if x['id'] == '6'); assert s6['parts'] == [['110733', 6]]; s6['parts'] = [['110733', 4]]; return json.dumps(j, ensure_ascii=False, indent=1).encode()
+    if n == 'package.patch.json':
+        j = json.loads(d); assert j['units'][0]['repeat'] == {'9': 6, '10': 6}; j['units'][0]['repeat'] = {'9': 5, '10': 5}; return json.dumps(j, ensure_ascii=False, indent=1).encode()
+    if n == 'delivery.json': j = json.loads(d); j['note'] = '测试 3 的第一次交付：步骤数据里有两处错。'; return json.dumps(j, ensure_ascii=False, indent=1).encode()
+variant('norden-client-test3.zip', OUT + '/samples/norden-client.zip', e_client3); variant('norden-delivery-test3.zip', OUT + '/samples/norden-delivery.zip', e_deliv3)
 print('app', OUT, BUILD, {f: os.path.getsize(OUT + '/samples/' + f) // 1024 for f in os.listdir(OUT + '/samples')}, 'KB')
