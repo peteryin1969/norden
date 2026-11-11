@@ -16,13 +16,13 @@ await p.evaluate(()=>{[...document.querySelectorAll('#s2 .card.q')].forEach(c=>{
 ck('the suggested repeat count shown is the wrong one',await p.evaluate(()=>/确认：5 次/.test(document.querySelector('#s2').textContent)));
 await p.click('.bar button:has-text("保存并重新计算")');await ready();t=await ckt('#s2','待确认问题全部有答案');ck('the correction keeps stage 2 open and says who acts',/^待确认/.test(t)&&/写了更正/.test(t)&&/导出项目 zip/.test(t),t);
 /* who puts the parts mismatch right */
-ck('no way forward offered before the cause is chosen',!(await p.$('#c2Import')));
+ck('no way forward offered before the cause is chosen',!(await p.$('#s2 .ck.fail [data-prow]')));ck('the correction itself has the hand-over beside it',!!(await p.$('#s2 .ck.todo [data-prow]')));
 await p.click('#s2 button:has-text("步骤数据有误（平台改）")');await p.fill('#s2 .ck.fail input[type=text]','第 6 步应是 6 颗；抽屉是 6 个');
-ck('platform side chosen: export and import offered',!!(await p.$('#c2Import'))&&!!(await p.$('#c2Sample')));
-const [dl]=await Promise.all([p.waitForEvent('download'),p.click('#s2 button:has-text("导出项目 zip")')]);const zp=process.cwd()+'/../app/cli/t3.zip';await dl.saveAs(zp);
+ck('platform side chosen: export and import offered',!!(await p.$('#s2 .ck.fail [data-prow]'))&&!!(await p.$('#s2 .ck.fail [data-sample]')));
+const [dl]=await Promise.all([p.waitForEvent('download'),p.click('#s2 .ck.fail button:has-text("导出项目 zip")')]);const zp=process.cwd()+'/../app/cli/t3.zip';await dl.saveAs(zp);
 const JSZip=require('../app/npm/node_modules/jszip');const z=await JSZip.loadAsync(fs.readFileSync(zp));const ans=JSON.parse(await z.file('资料包/answers.json').async('string')),rec=JSON.parse(await z.file('资料包/records/resubmit.json').async('string'));
 ck('the exported project carries the correction and the cause for the platform',Object.values(ans).some(a=>a.status==='fix'&&/6 次/.test(a.text))&&rec.stage2.who==='platform'&&/第 6 步/.test(rec.stage2.text),JSON.stringify(rec.stage2));
-await p.click('#c2Sample');await p.waitForURL(/run=1/);await ready();t=await ckt('#s2','零件核对');ck('after the second delivery the parts agree',/^通过/.test(t),t);
+await p.click('#s2 .ck.fail [data-sample]');await p.waitForURL(/run=1/);await ready();t=await ckt('#s2','零件核对');ck('after the second delivery the parts agree',/^通过/.test(t),t);
 ck('the corrected question is asked again with the new suggestion',await p.evaluate(()=>{const c=[...document.querySelectorAll('#s2 .card.q')].find(c=>/重复几次/.test(c.textContent));return /确认：6 次/.test(c.textContent)&&/建议答案变了/.test(c.textContent)&&/6 次，一共 6 个抽屉/.test(c.textContent)&&!c.querySelector('button.on')}));
 t=await ckt('#s2','待确认问题全部有答案');ck('stage 2 waits for that one question only',/1 个还没有回答/.test(t)&&/重新问的/.test(t),t);
 await p.click('#nextBtn');await p.waitForTimeout(300);ck('next step points at that question',await p.evaluate(()=>{const c=[...document.querySelectorAll('#s2 .card.q')].find(c=>/重复几次/.test(c.textContent)).getBoundingClientRect();return c.top>=0&&c.top<300}));

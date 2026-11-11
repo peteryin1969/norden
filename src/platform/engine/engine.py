@@ -233,7 +233,7 @@ def stage2(P, steps, answers, preview, list_checked=False):
     rows = recon(P, steps)
     diff = [r for r in rows if r['listed'] != r['used']]
     K.append(C('2.1', '必需', 'fail' if diff else 'pass', '零件核对：每步用量 × 重复次数 = 清单数量',
-               ('不一致：' + '；'.join(f'{r["code"]}（{r["list"]}）清单 {r["listed"]}，步骤合计 {r["used"]}（' + ('、'.join('第 ' + x.split(':')[0] + ' 步 ' + x.split(':')[1] for x in r['steps']) or '步骤里没用到') + '）' for r in diff[:10]) + '。' + ('阶段 1 已经核对过：清单和说明书零件页的数量一致。所以问题更可能在步骤数据里（某一步的数量或重复次数）。' if list_checked else '')) if diff else f'{len(rows)} 项全部一致，零差异。',
+               ('不一致：' + '；'.join(f'{r["code"]}（{r["list"]}）清单 {r["listed"]}，步骤合计 {r["used"]}（' + ('、'.join('第 ' + x.split(':')[0] + ' 步 ' + x.split(':')[1] for x in r['steps']) or '步骤里没用到') + '）' for r in diff[:10]) + '。' + ('阶段 1 已经核对过：清单和说明书零件页的数量一致。所以问题更可能在步骤数据里（某一步的数量或重复次数）。' if list_checked else '') + ('其中 ' + '、'.join(r['code'] for r in diff if r['listed'] and not r['used']) + ' 在步骤里完全没有出现，很可能是漏了一步。' if any(r['listed'] and not r['used'] for r in diff) else '')) if diff else f'{len(rows)} 项全部一致，零差异。',
                '有差异说明步骤或清单有一处错了，用户会少零件或多零件。', '核对有差异的编号：步骤里的数量、重复次数或清单数量。'))
     bad = [s['id'] for s in steps if not s.get('do') or s.get('parts') is None]
     K.append(C('2.2', '必需', 'fail' if bad else 'pass', '每一步都有“做什么”和“用哪些零件”', f'缺内容的步骤：{"、".join(bad)}。' if bad else f'{len(steps)} 步都有。'))
@@ -261,7 +261,7 @@ def stage2(P, steps, answers, preview, list_checked=False):
     return r
 
 # ---------------- stage 3: model and animation ----------------
-def stage3(P, auto, signoff, preview, ai=None, out_dir=None):
+def stage3(P, auto, signoff, preview, ai=None, out_dir=None, step_data=None):
     """auto comes from stage3.js: per step storyboard frames and runtime checks on the animation.
     Three sub-steps in a fixed order, each a loop that must come out clean before the next one opens:
     A machine self-check -> B independent AI review -> C client storyboard sign-off.
@@ -292,6 +292,27 @@ def stage3(P, auto, signoff, preview, ai=None, out_dir=None):
     agg('order', '大件到位后才上紧固件', '整体还在移动时拧紧固件，与说明书不符。', '把紧固件的动作移到大件停稳之后。', '建议')
     agg('labels', '每种零件标一次且带编号', '标签太多会乱，没编号用户说不出是哪个。', '去掉重复标签，补编号。')
     agg('visible', '画面里能看到这一步的零件', '镜头没对准，用户会说“什么都看不到”。', '调整这一步的镜头。')
+    # the quantity written on a label is drawn into the animation: when the step data says otherwise, one of the two is wrong, and a label can only be changed by delivering the animation again
+    if step_data is not None:
+        nm = {r['name']: r['code'] for r in (P.get('_hw') or []) + (P.get('_parts') or []) if r.get('name')}
+        want = {s['id']: {c: q for c, q in s['parts']} for s in step_data}; bad = []
+        altids = {x for a_ in (P.get('alternatives') or []) for sid in a_['steps'] for x in [sid] + sid.split('+')}   # either-or steps are drawn together, their ids differ between the two sides
+        sd = {s['id'] for s in step_data} - altids; au = {s['id'] for s in steps} - altids
+        for s in steps:
+            for lab in (s['checks'].get('labels') or {}).get('list') or []:
+                m = re.match(r'(?:.*· )?(?:\d+号 )?(.+?) × (\d+)$', lab)
+                if not m: continue
+                code = nm.get(m.group(1).strip())
+                if code and s['id'] in want and code in want[s['id']] and want[s['id']][code] != int(m.group(2)): bad.append((s['id'], f'第 {s["id"]} 步 {m.group(1).strip()}：标签 × {m.group(2)}，步骤数据 {want[s["id"]][code]}'))
+        miss = sorted(sd - au, key=lambda x: int(re.sub(r'\D', '', x) or 0)); extra_ = sorted(au - sd, key=lambda x: int(re.sub(r'\D', '', x) or 0))
+        c = C('3.qty', '必需', 'fail' if bad else 'pass', '标签上的数量与步骤数据一致', (f'{len(bad)} 处不一致：' + '；'.join(b[1] for b in bad[:8]) + '。') if bad else '标签上写了数量的零件，都和步骤数据一致。', '标签上的数量和讲解、清单对不上，用户不知道该信哪个。', '先确认哪一个是对的：步骤数据错了就改步骤数据；标签错了要平台修改动画后重新交付。')
+        c['sub'] = 'A'
+        if bad: c['route'] = 'human'; c['route_text'] = '标签画在动画里，改标签要平台重新交付；如果错的是步骤数据，回阶段 2 改'; c['bad_steps'] = sorted({b[0] for b in bad})
+        K.append(c)
+        c = C('3.cover', '必需', 'fail' if miss or extra_ else 'pass', '每一步都有动画，动画没有多出的步骤', (('步骤数据里有、动画里没有：第 ' + '、'.join(miss) + ' 步。') if miss else '') + (('动画里有、步骤数据里没有：第 ' + '、'.join(extra_) + ' 步。') if extra_ else '') or f'{len(sd)} 步一一对应。', '少一步的动画，用户到那一步什么都看不到。', '平台补做或删去这一步的动画，重新交付。')
+        c['sub'] = 'A'
+        if miss or extra_: c['route'] = 'human'; c['route_text'] = '要平台修改步骤数据或动画后重新交付'; c['bad_steps'] = miss + extra_
+        K.append(c)
     alt = [x for a in (P.get('alternatives') or []) for x in a['steps'][1:]]
     if alt:
         c = C('3.alt', '可选', 'na', '分支步骤说明', '第 ' + '、'.join(alt) + ' 步是二选一里不走的那条路，动画演示完会把零件收回，所以落点和孔位检查对它们只作参考。'); c['sub'] = 'A'; K.append(c)
@@ -352,7 +373,7 @@ def run(pkg_dir, out_dir, auto=None):
         json.dump(rep, open(os.path.join(out_dir, 'report.json'), 'w', encoding='utf8'), ensure_ascii=False, indent=1)
         return rep
     r2 = stage2(P, steps, rj('answers.json'), pre, any(c['id'] == '1.4' and c['status'] == 'pass' and '零件页' in c['title'] for c in r1['checks']))
-    r3 = stage3(P, auto, rj('signoff.json'), pre or r2['gate'] != '通过', rj('ai_review.json'), out_dir) if auto else None
+    r3 = stage3(P, auto, rj('signoff.json'), pre or r2['gate'] != '通过', rj('ai_review.json'), out_dir, steps) if auto else None
     r4 = r5 = None; gen = None
     gd = os.path.join(pkg_dir, 'generated')
     if r3 and os.path.isdir(gd):

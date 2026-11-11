@@ -1,0 +1,35 @@
+/* test 4: problems only a new delivery can put right, handed over from beside each message; and quantity edits that carry the step's words with them */
+const {chromium}=require('playwright');const fs=require('fs');const d=process.cwd()+'/site/';
+const MIME={'.html':'text/html;charset=utf8','.js':'text/javascript','.mjs':'text/javascript','.wasm':'application/wasm','.json':'application/json','.zip':'application/zip','.py':'text/plain;charset=utf8','.csv':'text/csv'};
+(async()=>{const srv=require('http').createServer((q,s)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u.endsWith('/'))u+='index.html';fs.readFile(d+u.slice(1),(e,c)=>{if(e){s.writeHead(404);s.end()}else{s.writeHead(200,{'content-type':MIME[u.slice(u.lastIndexOf('.'))]||'application/octet-stream'});s.end(c)}})}).listen(8882);
+const b=await chromium.launch();const R=[],ck=(n,ok,x)=>{R.push(ok===true);console.log(ok===true?'ok  ':'FAIL',n,x==null?'':String(x).slice(0,400))};const er=[];
+const open=async(go)=>{const p=await (await b.newContext({viewport:{width:390,height:800},acceptDownloads:true})).newPage();p.on('pageerror',e=>er.push(e.message));p.on('dialog',d=>{console.log('DIALOG',d.message());d.accept()});
+  p.ready=async()=>{await p.waitForSelector('#boot',{state:'detached',timeout:120000});await p.waitForSelector('main h1');await p.waitForTimeout(500)};p.g=()=>p.evaluate(()=>[...document.querySelectorAll('.pipe a .g')].map(x=>x.textContent).join(' '));
+  p.ckt=(sec,t)=>p.evaluate(([sec,t])=>{const e=[...document.querySelectorAll(sec+' .ck')].find(x=>x.querySelector('.t').textContent.includes(t));return e?e.querySelector('.st').textContent+'|'+e.textContent.slice(0,300):''},[sec,t]);
+  p.row=t=>p.evaluate(t=>{const e=[...document.querySelectorAll('.ck')].find(x=>x.querySelector('.t').textContent.includes(t));if(!e)return 'no check';const r=e.querySelector('[data-prow]');return r?[...r.querySelectorAll('button')].map(b=>b.textContent).join(' / '):'no row'},t);
+  await p.goto('http://localhost:8882/app/');await p.click(go);await p.waitForURL(/project\.html/);await p.ready();await p.click('#wSample');await p.waitForURL(/run=1/);await p.ready();return p};
+let p=await open('#goS4');
+const f=await p.evaluate(()=>[...document.querySelectorAll('.ck.fail .t')].map(x=>x.textContent));ck('the three planted problems are found',['零件核对','步骤顺序与说明书一致','每个紧固件落点处都有孔'].every(t=>f.some(x=>x.includes(t))),f.join(' | '));
+let t=await p.ckt('#s2','零件核对');ck('the missing step is named as the likely cause',/107271 在步骤里完全没有出现，很可能是漏了一步/.test(t),t);
+ck('export and import sit beside the wrong-order message',/导出项目 zip（发给平台） \/ 导入平台改好的交付包 \/ 模拟/.test(await p.row('步骤顺序与说明书一致')),await p.row('步骤顺序与说明书一致'));
+await p.click('#s2 button:has-text("步骤数据有误（平台改）")');await p.waitForSelector('#esSave');ck('a part no step uses cannot be fixed by typing a number: it says so, and offers the hand-over',/步骤里没有用到这个零件/.test(await p.textContent('#s2 .ck.fail'))&&/导出项目 zip/.test(await p.row('零件核对')));
+await p.evaluate(()=>{const e=[...document.querySelectorAll('#s3 .ck.fail')].find(x=>/落点处都有孔/.test(x.textContent));[...e.querySelectorAll('button')].find(b=>b.textContent==='模型做错了').click()});
+ck('model fault in stage 3: the hand-over appears beside it',/导出项目 zip/.test(await p.row('每个紧固件落点处都有孔')),await p.row('每个紧固件落点处都有孔'));
+const [dl]=await Promise.all([p.waitForEvent('download'),p.evaluate(()=>{const e=[...document.querySelectorAll('.ck')].find(x=>x.querySelector('.t').textContent.includes('步骤顺序与说明书一致'));e.querySelector('[data-prow] button').click()})]);const zp4=process.cwd()+'/../app/cli/t4.zip';await dl.saveAs(zp4);const z4=await require('../app/npm/node_modules/jszip').loadAsync(fs.readFileSync(zp4));ck('export from beside the message works and carries the cause chosen',!!z4.file('资料包/steps.draft.json')&&/"who": "platform"/.test(await z4.file('资料包/records/resubmit.json').async('string')));
+await p.evaluate(()=>{const e=[...document.querySelectorAll('.ck')].find(x=>x.querySelector('.t').textContent.includes('步骤顺序与说明书一致'));e.querySelector('[data-sample]').click()});await p.waitForURL(/run=1/);await p.ready();
+const f2=await p.evaluate(()=>[...document.querySelectorAll('.ck.fail .t')].map(x=>x.textContent));ck('after the second delivery none of the three is left',f2.length===0,f2.join(' | ')+' '+await p.g());
+ck('eleven steps again, with the storyboard of step 7',await p.evaluate(()=>REPORT.steps.length===11&&!!document.getElementById('f-7')));
+await p.context().close();
+/* quantity edit that carries the words: in test 3 change step 2 from 4 to 5 on purpose */
+p=await open('#goS3');await p.click('#s2 button:has-text("步骤数据有误（平台改）")');await p.waitForSelector('#esSave');
+const setIn=(card,row,col,v)=>p.evaluate(([card,row,col,v])=>{const i=document.querySelectorAll('#s2 .ck.fail .card')[card].querySelectorAll('tr')[row].querySelectorAll('td')[col].querySelector('input');i.value=v;i.dispatchEvent(new Event('input'))},[card,row,col,v]);
+await setIn(0,1,1,'5');await setIn(0,3,1,'6');await p.click('#esSave');await p.waitForTimeout(400);
+const props=await p.evaluate(()=>[...document.querySelectorAll('#s2 .ck.fail textarea')].map(x=>x.closest('.card').querySelector('label').textContent+' => '+x.value));
+ck('words that state the old quantity are listed with the change',props.some(x=>/第 2 步 · 步骤文字 => .*共 5 颗/.test(x))&&props.some(x=>/第 2 步 · 讲解词/.test(x)||/第 2 步 · 问答/.test(x)),props.join(' ;; '));
+ck('step 6 words already say six: nothing proposed for it',!props.some(x=>/第 6 步/.test(x)));
+ck('nothing saved until confirmed',await p.evaluate(async()=>!(await DB.file(APP.pid,'pkg/records/edits.json'))));
+await p.click('#esSave');await p.waitForURL(/run=1/);await p.ready();
+const after=await p.evaluate(async()=>{const j=async f=>JSON.parse(new TextDecoder().decode((await DB.file(APP.pid,'pkg/'+f)).data));const s=await j('steps.draft.json'),n=await j('generated/narration.json'),L=await j('records/edits.json');return{do2:s.find(x=>x.id==='2').do.join(''),n2:n['2'],log:L[0].changes.map(c=>c.what)}});
+ck('step words, narration and record all changed together',/共 5 颗/.test(after.do2)&&after.log.length>=4,JSON.stringify(after));
+t=await p.ckt('#s3','标签上的数量与步骤数据一致');ck('stage 3 then sees the label still says the old number, and offers the hand-over',/^不通过/.test(t)&&/第 2 步 短螺丝：标签 × 4，步骤数据 5/.test(t)&&/导出项目 zip/.test(await p.row('标签上的数量与步骤数据一致')),t);
+console.log('PASS',R.filter(Boolean).length+'/'+R.length,'err',er);await b.close();srv.close()})();

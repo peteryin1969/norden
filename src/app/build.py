@@ -70,4 +70,23 @@ def e_deliv3(n, d):
         j = json.loads(d); assert j['units'][0]['repeat'] == {'9': 6, '10': 6}; j['units'][0]['repeat'] = {'9': 5, '10': 5}; return json.dumps(j, ensure_ascii=False, indent=1).encode()
     if n == 'delivery.json': j = json.loads(d); j['note'] = '测试 3 的第一次交付：步骤数据里有两处错。'; return json.dumps(j, ensure_ascii=False, indent=1).encode()
 variant('norden-client-test3.zip', OUT + '/samples/norden-client.zip', e_client3); variant('norden-delivery-test3.zip', OUT + '/samples/norden-delivery.zip', e_deliv3)
+# test 4: problems that only a new delivery can put right: a step left out, two steps in the wrong order, an animation that fails the self-check
+def e_client4(n, d):
+    if n == 'package.json': j = json.loads(d); j['name'] = 'NORDEN 折叠桌（模拟资料 · 测试 4）'; return json.dumps(j, ensure_ascii=False, indent=1).encode()
+def e_deliv4(n, d):
+    if n.startswith('frames/7_'): return False
+    if n == 'steps.draft.json':
+        j = [x for x in json.loads(d) if x['id'] != '7']; i5 = next(i for i, x in enumerate(j) if x['id'] == '5'); j[i5], j[i5 + 1] = j[i5 + 1], j[i5]; return json.dumps(j, ensure_ascii=False, indent=1).encode()
+    if n in ('generated/narration.json', 'generated/qa.json'): j = json.loads(d); j.pop('7', None); return json.dumps(j, ensure_ascii=False).encode()
+    if n == 'auto.json':
+        j = json.loads(d); j['steps'] = [x for x in j['steps'] if x['id'] != '7']; next(x for x in j['steps'] if x['id'] == '5')['checks']['holes'].update(ok=False, note='横销落点处没有孔（4 处）'); return json.dumps(j, ensure_ascii=False).encode()
+    if n == 'delivery.json': j = json.loads(d); j['note'] = '测试 4 的第一次交付：少一步、两步顺序反了、一步的模型缺孔（缺孔是加在自检结果里的，分镜图仍是正常的）。'; return json.dumps(j, ensure_ascii=False, indent=1).encode()
+def variant2(name, src_zip, edit):
+    zin = zipfile.ZipFile(src_zip)
+    with zipfile.ZipFile(OUT + '/samples/' + name, 'w', zipfile.ZIP_DEFLATED) as z:
+        for n in zin.namelist():
+            d = zin.read(n); d2 = edit(n, d)
+            if d2 is False: continue
+            z.writestr(n, d if d2 is None else d2)
+variant2('norden-client-test4.zip', OUT + '/samples/norden-client.zip', e_client4); variant2('norden-delivery-test4.zip', OUT + '/samples/norden-delivery.zip', e_deliv4)
 print('app', OUT, BUILD, {f: os.path.getsize(OUT + '/samples/' + f) // 1024 for f in os.listdir(OUT + '/samples')}, 'KB')

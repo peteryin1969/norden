@@ -26,6 +26,12 @@
 <div class="ans"><button id="goS3" class="on">用这个资料包创建项目</button><a class="btn" href="samples/norden-client-test3.zip" download>下载客户资料包</a><a class="btn" href="samples/norden-delivery-test3.zip" download>下载第一次交付包（有问题）</a><a class="btn" href="samples/norden-delivery.zip" download>下载第二次交付包（改好的）</a></div>
 <div id="msgS3" class="mut" style="font-size:13px;margin-top:6px">创建后在“等平台交付”卡片里点导入（会导入有问题的第一次交付）。</div>
 </div>
+<div class="card" id="sample4" style="border:2px solid var(--wn)">
+<b style="font-size:17px">测试 4：要平台重新交付的问题</b>
+<div class="mut" style="font-size:13px;margin:4px 0">客户资料没有问题。平台第一次交付里有几处在页面上改不了的问题（不只是数量）。看阶段 2、3 能不能查出来，再从每条提示旁边“导出项目 zip → 导入平台改好的交付包”走一遍重新交付。</div>
+<div class="ans"><button id="goS4" class="on">用这个资料包创建项目</button><a class="btn" href="samples/norden-client-test4.zip" download>下载客户资料包</a><a class="btn" href="samples/norden-delivery-test4.zip" download>下载第一次交付包（有问题）</a><a class="btn" href="samples/norden-delivery.zip" download>下载第二次交付包（改好的）</a></div>
+<div id="msgS4" class="mut" style="font-size:13px;margin-top:6px">创建后在“等平台交付”卡片里点导入（会导入有问题的第一次交付）。</div>
+</div>
 <h2>我的项目</h2><div id="list"></div>
 <h2 id="newh">新建项目</h2>
 <div class="tabs"><button id="tA" class="on">逐项填写</button><button id="tB">上传资料包 zip</button></div>
@@ -50,6 +56,7 @@ tA.onclick=()=>{tA.classList.add('on');tB.classList.remove('on');fA.hidden=false
 document.getElementById('goS').onclick=async e=>{const m=document.getElementById('msgS');e.target.disabled=true;let pr;try{m.textContent='正在读取模拟资料…';const r=await fetch('samples/norden-client.zip');if(!r.ok)throw new Error('读不到样例包（'+r.status+'）');pr=await newProject('');await importClientZip(pr.id,await r.blob(),(i,n,p)=>m.textContent='读取 '+i+'/'+n+'：'+p);location.href='project.html?id='+pr.id}catch(x){if(pr)await DB.delProject(pr.id);m.textContent='出错：'+x.message;e.target.disabled=false}};
 document.getElementById('goS2').onclick=async e=>{const m=document.getElementById('msgS2');e.target.disabled=true;let pr;try{m.textContent='正在读取模拟资料…';const r=await fetch('samples/norden-client-test2.zip');if(!r.ok)throw new Error('读不到样例包（'+r.status+'）');pr=await newProject('');await importClientZip(pr.id,await r.blob(),(i,n,p)=>m.textContent='读取 '+i+'/'+n+'：'+p);location.href='project.html?id='+pr.id}catch(x){if(pr)await DB.delProject(pr.id);m.textContent='出错：'+x.message;e.target.disabled=false}};
 document.getElementById('goS3').onclick=async e=>{const m=document.getElementById('msgS3');e.target.disabled=true;let pr;try{m.textContent='正在读取模拟资料…';const r=await fetch('samples/norden-client-test3.zip');if(!r.ok)throw new Error('读不到样例包（'+r.status+'）');pr=await newProject('');await importClientZip(pr.id,await r.blob(),(i,n,p)=>m.textContent='读取 '+i+'/'+n+'：'+p);location.href='project.html?id='+pr.id}catch(x){if(pr)await DB.delProject(pr.id);m.textContent='出错：'+x.message;e.target.disabled=false}};
+document.getElementById('goS4').onclick=async e=>{const m=document.getElementById('msgS4');e.target.disabled=true;let pr;try{m.textContent='正在读取模拟资料…';const r=await fetch('samples/norden-client-test4.zip');if(!r.ok)throw new Error('读不到样例包（'+r.status+'）');pr=await newProject('');await importClientZip(pr.id,await r.blob(),(i,n,p)=>m.textContent='读取 '+i+'/'+n+'：'+p);location.href='project.html?id='+pr.id}catch(x){if(pr)await DB.delProject(pr.id);m.textContent='出错：'+x.message;e.target.disabled=false}};
 document.getElementById('goB').onclick=async e=>{const f=document.getElementById('zip').files[0],m=document.getElementById('msgB');if(!f){m.textContent='请先选择 zip 文件。';return}e.target.disabled=true;
   let pr;try{pr=await newProject('');await importClientZip(pr.id,f,(i,n,p)=>m.textContent='读取 '+i+'/'+n+'：'+p);location.href='project.html?id='+pr.id}catch(x){if(pr)await DB.delProject(pr.id);m.textContent='出错：'+x.message;e.target.disabled=false}};
 
