@@ -27,6 +27,7 @@ h2{font-size:14px;margin:0 0 6px}h3{font-size:13px;margin:12px 0 4px;color:var(-
 .recbox{border:2px solid #c8452b;border-radius:8px;padding:8px;margin:6px 0}
 </style></head><body>
 <div id="top"><b>数据工坊</b><span id="ttl" class="mut"></span>
+  <input type="text" id="cmd" placeholder="说或输入指令，如：把这个往左移 5 厘米" style="flex:1;min-width:200px;max-width:380px" aria-label="指令"><button id="mic" title="用说的：鼠标指着零件，说“把这个往左移五厘米”">🎤 语音</button><button id="cmdHelp">能说什么</button><span id="heard" class="mut" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
   <span class="sp"></span><button id="undo" title="撤销 Ctrl+Z">撤销</button><button id="redo">重做</button><button id="dl">下载 model.json</button><button id="save" class="on">保存到项目</button><a id="back" href="index.html" style="color:var(--mut)">返回</a></div>
 <div id="err"></div>
 <div id="wrap">
@@ -66,17 +67,18 @@ h2{font-size:14px;margin:0 0 6px}h3{font-size:13px;margin:12px 0 4px;color:var(-
     <div class="mut">点零件选中；拖空白处转视角，滚轮缩放。选中后拖箭头或圆环，或在右边填数字。</div>
   </div>
   <div class="col" id="side">
+    <div id="confirm" class="recbox" hidden></div><div id="helpBox" class="note" hidden></div>
     <h2>选中的零件</h2><div id="insp"><div class="mut">还没有选中零件。在图上点一个，或在左边仓库里点“定位”。</div></div>
     <h3>材料清单变动</h3><div id="bill"><div class="mut">还没有变动。</div></div>
     <h3>修改记录</h3><div id="log"><div class="mut">还没有修改。</div></div>
   </div>
 </div>
-<script src="vendor/three.min.js"></script><script src="vendor/TransformControls.js"></script><script src="mplay.js"></script><script src="medit.js"></script><script src="app.js"></script>
+<script src="vendor/three.min.js"></script><script src="vendor/TransformControls.js"></script><script src="mplay.js"></script><script src="medit.js"></script><script src="mvoice.js"></script><script src="app.js"></script>
 <script>
 (async()=>{const $=id=>document.getElementById(id),ME=MEdit,qs=new URLSearchParams(location.search),pid=qs.get('pid'),src=qs.get('src'),view=$('view');
 const el=(t,a,...c)=>{const e=document.createElement(t);Object.entries(a||{}).forEach(([k,v])=>{if(v==null||v===false)return;if(k==='class')e.className=v;else if(k.startsWith('on'))e[k]=v;else if(k==='value')e.value=v;else e.setAttribute(k,v===true?'':v)});c.flat().forEach(x=>{if(x!=null&&x!==false)e.append(x)});return e};
 const dec=d=>typeof d==='string'?d:new TextDecoder().decode(d),say=(s,keep)=>{const m=$('msg');m.textContent=s;m.classList.add('on');clearTimeout(say.t);if(!keep)say.t=setTimeout(()=>m.classList.remove('on'),4500)};
-let rec=null,M=null,P=null,cur=null,t=1,playing=false,az=0,elv=0,zoom=1,sel=null,box=null,dragging=false,hist=[],hi=-1,bill0=null,dirty=false,mode='translate',pickFor=null,from='';
+let hov=null,hbox=null,mouse=null,hovAt=0,pend=null,micOn=false,sr=null,rec=null,M=null,P=null,cur=null,t=1,playing=false,az=0,elv=0,zoom=1,sel=null,box=null,dragging=false,hist=[],hi=-1,bill0=null,dirty=false,mode='translate',pickFor=null,from='';
 const ren=new THREE.WebGLRenderer({antialias:true,alpha:true});ren.setPixelRatio(Math.min(devicePixelRatio,2));view.prepend(ren.domElement);const cam=new THREE.PerspectiveCamera(32,1.5,1,900);
 const tc=new THREE.TransformControls(cam,ren.domElement);tc.setSize(.9);tc.setSpace('world');
 const size=()=>{const w=view.clientWidth,h=view.clientHeight;if(!w)return;ren.setSize(w,h,false);const as=w/h;cam.aspect=as;cam.fov=as<1.5?2*Math.atan(Math.tan(16*Math.PI/180)*1.5/as)*180/Math.PI:32;cam.updateProjectionMatrix()};addEventListener('resize',size);
@@ -84,11 +86,12 @@ const step=()=>P.step(cur),nodesOf=sc=>M.scenes[sc].nodes,part=()=>sel&&ME.part(
 const shown=o=>{for(let x=o;x;x=x.parent)if(!x.visible)return false;return true};
 function camNow(){const c=P.camera(cur,t);if(!c)return;const b=c.pos.clone().sub(c.target),r=b.length()*zoom,th=Math.atan2(b.x,b.z)+az,ph=Math.max(-.3,Math.min(1.4,Math.asin(b.y/b.length())+elv));cam.position.set(Math.sin(th)*Math.cos(ph)*r,Math.sin(ph)*r,Math.cos(th)*Math.cos(ph)*r).add(c.target);cam.lookAt(c.target);cam.updateMatrixWorld(true);return c}
 function mount(){const sc=P.sceneOf(cur),p=part();if(tc.parent!==sc)sc.add(tc);if(p&&p.scene===step().scene&&shown(objOf(p))){if(tc.object!==objOf(p))tc.attach(objOf(p));tc.visible=true;tc.enabled=true}else{if(tc.object)tc.detach();tc.visible=false}
+  if(!hbox){hbox=new THREE.BoxHelper(new THREE.Object3D(),0x2f6fd0)}if(hbox.parent!==sc)sc.add(hbox);{const h=hov&&hov!==sel&&ME.part(M,hov);if(h&&!h.removed&&h.scene===step().scene&&shown(objOf(h))){hbox.setFromObject(objOf(h));hbox.visible=true}else hbox.visible=false}
   if(!box){box=new THREE.BoxHelper(new THREE.Object3D(),0xd0452b)}if(box.parent!==sc)sc.add(box);if(p&&p.scene===step().scene&&shown(objOf(p))){box.setFromObject(objOf(p));box.visible=true}else box.visible=false}
 function draw(){if(!P||!cur)return;if(!dragging){P.pose(cur,t);if(rec&&rec.pose&&part()){const o=objOf(part());o.position.fromArray(rec.pose,0);o.quaternion.fromArray(rec.pose,3);o.updateMatrixWorld(true)}}$('tl').style.setProperty('--ph',(t*100)+'%');camNow();mount();ren.render(P.sceneOf(cur),cam)}
 let last=0;const loop=ts=>{requestAnimationFrame(loop);const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(playing&&P&&cur){t+=dt/((step().dur||1)*4);if(t>=1){t=1;setPlay(false)}$('t').value=Math.round(t*1000);if(sel)pos2ui()}draw()};
 const setPlay=v=>{playing=v;$('play').textContent=v?'⏸ 暂停':'▶ 播放'};
-function rebuild(){if(tc.object)tc.detach();if(tc.parent)tc.parent.remove(tc);if(P)P.scenes.forEach(X=>X.sc.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.dispose())}));P=new ModelPlayer(THREE,M);box=null;ren.shadowMap.enabled=!!M.render.shadow;if(M.render.shadowType!=null)ren.shadowMap.type=M.render.shadowType}
+function rebuild(){if(tc.object)tc.detach();if(tc.parent)tc.parent.remove(tc);if(P)P.scenes.forEach(X=>X.sc.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.dispose())}));P=new ModelPlayer(THREE,M);box=null;hbox=null;ren.shadowMap.enabled=!!M.render.shadow;if(M.render.shadowType!=null)ren.shadowMap.type=M.render.shadowType}
 /* ---------- history ---------- */
 const snap=()=>JSON.stringify(M);
 function commit(note){hist=hist.slice(0,hi+1);hist.push(snap());if(hist.length>16)hist.shift();hi=hist.length-1;dirty=true;rebuild();refresh();if(note)say(note)}
@@ -166,7 +169,7 @@ $('sDel').onclick=()=>{const i=P.steps.indexOf(cur),why=ME.removeStep(M,cur);if(
 function billUI(){const B=$('bill'),D=ME.billDiff(bill0,M);B.innerHTML='';if(!D.length){B.append(el('div',{class:'mut'},'还没有变动。'));}else{const T0={},T1=ME.totals(M);Object.values(bill0).forEach(s=>Object.entries(s).forEach(([c,n])=>{T0[c]=(T0[c]||0)+n}));
     D.forEach(d=>B.append(el('div',{class:'chg'},d.label+'：'+d.code+' 由 '+d.from+' 个改为 '+d.to+' 个')));const codes=[...new Set(D.map(d=>d.code))];B.append(el('div',{class:'note',id:'billNote'},'整套合计：'+codes.map(c=>c+' '+(T0[c]||0)+' → '+(T1[c]||0)).join('；')+'。保存时会一起改项目里的步骤数据和材料清单；说明书上的数量需要客户相应更新。'))}
   const L=$('log');L.innerHTML='';const G=(M.log||[]).slice(-8).reverse();if(!G.length)L.append(el('div',{class:'mut'},'还没有修改。'));G.forEach(g=>L.append(el('div',{class:'chg'},g.text)))}
-function refresh(){list();toolsUI();insp();billUI();tlUI();$('undo').disabled=hi<=0;$('redo').disabled=hi>=hist.length-1;$('ttl').textContent=(M.product||'')+' · '+from+(dirty?' · 有未保存的修改':'');tc.setMode(mode);$('mMove').classList.toggle('on',mode==='translate');$('mTurn').classList.toggle('on',mode==='rotate')}
+let lastSel=null;function refresh(){if(sel!==lastSel){lastSel=sel;hov=null}list();toolsUI();insp();billUI();tlUI();$('undo').disabled=hi<=0;$('redo').disabled=hi>=hist.length-1;$('ttl').textContent=(M.product||'')+' · '+from+(dirty?' · 有未保存的修改':'');tc.setMode(mode);$('mMove').classList.toggle('on',mode==='translate');$('mTurn').classList.toggle('on',mode==='rotate')}
 function tab(n){['have','new','imp','tool'].forEach(k=>{$('tab-'+k).hidden=k!==n});document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===n))}
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>tab(b.dataset.tab));$('find').oninput=list;
 $('nKind').onchange=()=>{const c=$('nKind').value==='cyl';$('nL1').textContent=c?'直径':'长';$('nL2').textContent=c?'长':'宽';$('nL3').hidden=c;$('nC').hidden=c;$('nA').value=c?0.8:60;$('nB').value=c?3:30;if(/^新(板|圆柱件)$/.test($('nName').value))$('nName').value=c?'新圆柱件':'新板'};
@@ -183,13 +186,19 @@ const ray=new THREE.Raycaster();
 function pick(cx,cy){const r=ren.domElement.getBoundingClientRect(),v=new THREE.Vector2((cx-r.left)/r.width*2-1,-((cy-r.top)/r.height)*2+1);P.pose(cur,t);camNow();ray.setFromCamera(v,cam);const sc=P.sceneOf(cur),hits=ray.intersectObjects(sc.children,true).filter(h=>h.object.isMesh&&h.object.userData.node!=null&&shown(h.object));if(!hits.length)return null;
   const N=nodesOf(step().scene),by=new Map();ME.live(M).filter(p=>p.scene===step().scene).forEach(p=>{if(!by.has(p.node)||p.kind!=='group')by.set(p.node,p)});
   for(const h of hits){let i=h.object.userData.node,grp=null;if(N[i].t!=='M')continue;const big=h.object.geometry.boundingSphere&&h.object.geometry.boundingSphere.radius>150;if(big)continue;for(;i>=0;i=N[i].p){const p=by.get(i);if(p){if(p.kind!=='group')return p;grp=grp||p}}if(grp)return grp}return null}
+function attachTo(me,p){P.pose(me.step,1);const po=objOf(p),mo=objOf(me),m=new THREE.Matrix4().copy(po.matrixWorld).invert().multiply(mo.matrixWorld),a=new THREE.Vector3(),b=new THREE.Quaternion(),c=new THREE.Vector3();m.decompose(a,b,c);
+  const pwq=wquat(po),aw=new THREE.Vector3(...(me.approachW||me.approach||[0,12,0]));if(!ME.attach(M,me,p.node,[a.x,a.y,a.z,b.x,b.y,b.z,b.w,c.x,c.y,c.z]))return'不能固定到这个零件上（它是在这个零件之后加入的）。';setApproach(me,aw,pwq);
+  ME.log(M,'“'+me.name+'”固定到“'+(p.name||p.code||'一组零件')+'”上');commit('已固定：以后的步骤里它会跟着“'+(p.name||p.code||'那组零件')+'”一起动。');return''}
 let drag=null,down=null;const pts=new Map();
+/* the mouse points: the part under it is "这个", the spot under it is "这里" */
+view.addEventListener('pointermove',e=>{mouse=[e.clientX,e.clientY];if(!P||pts.size||dragging||(tc.axis&&tc.object))return;const now=performance.now();if(now-hovAt<70)return;hovAt=now;const p=pick(e.clientX,e.clientY);if(p)hov=p.id});
+function hitPoint(){if(!mouse||!P)return null;const r=ren.domElement.getBoundingClientRect(),v=new THREE.Vector2((mouse[0]-r.left)/r.width*2-1,-((mouse[1]-r.top)/r.height)*2+1);if(Math.abs(v.x)>1||Math.abs(v.y)>1)return null;P.pose(cur,t);camNow();ray.setFromCamera(v,cam);const me=part()&&objOf(part()),under=o=>{for(let x=o;x;x=x.parent)if(x===me)return true;return false};
+  const h=ray.intersectObjects(P.sceneOf(cur).children,true).find(h=>h.object.isMesh&&h.object.userData.node!=null&&shown(h.object)&&!under(h.object));return h?h.point.clone():null}
 view.addEventListener('pointerdown',e=>{if(tc.axis&&tc.object)return;view.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);drag=[e.clientX,e.clientY,az,elv];down=[e.clientX,e.clientY]});
 view.addEventListener('pointermove',e=>{if(dragging||!pts.has(e.pointerId))return;const old=pts.get(e.pointerId);if(pts.size===2){const o=[...pts.entries()].find(x=>x[0]!==e.pointerId)[1],d0=Math.hypot(old[0]-o[0],old[1]-o[1]),d1=Math.hypot(e.clientX-o[0],e.clientY-o[1]);if(d0>0)zoom=Math.max(.2,Math.min(3,zoom*d0/d1))}else if(drag){az=drag[2]-(e.clientX-drag[0])*.008;elv=drag[3]+(e.clientY-drag[1])*.006}pts.set(e.pointerId,[e.clientX,e.clientY])});
 const up=e=>{const was=pts.has(e.pointerId);pts.delete(e.pointerId);drag=null;if(!was||!down||dragging)return;const still=Math.hypot(e.clientX-down[0],e.clientY-down[1])<5;down=null;if(!still||!P)return;const p=pick(e.clientX,e.clientY);
-  if(pickFor){const me=ME.part(M,pickFor);pickFor=null;if(!p||p.id===me.id){say('没有点到别的零件，已取消。');insp();return}P.pose(me.step,1);const po=objOf(p),mo=objOf(me),m=new THREE.Matrix4().copy(po.matrixWorld).invert().multiply(mo.matrixWorld),a=new THREE.Vector3(),b=new THREE.Quaternion(),c=new THREE.Vector3();m.decompose(a,b,c);
-    const pwq=wquat(po),aw=new THREE.Vector3(...(me.approachW||me.approach||[0,12,0]));if(!ME.attach(M,me,p.node,[a.x,a.y,a.z,b.x,b.y,b.z,b.w,c.x,c.y,c.z])){say('不能固定到这个零件上（它是在这个零件之后加入的）。');insp();return}setApproach(me,aw,pwq);ME.log(M,'“'+me.name+'”固定到“'+(p.name||p.code||'一组零件')+'”上');commit('已固定：以后的步骤里它会跟着“'+(p.name||p.code||'那组零件')+'”一起动。');return}
-  if(p)select(p.id);else{sel=null;refresh()}};view.addEventListener('pointerup',up);view.addEventListener('pointercancel',e=>{pts.delete(e.pointerId);drag=null});
+  if(pickFor){const me=ME.part(M,pickFor);pickFor=null;if(!p||p.id===me.id){say('没有点到别的零件，已取消。');insp();return}const why=attachTo(me,p);if(why){say(why);insp()}return}
+  if(p)select(p.id);else{sel=null;hov=null;refresh()}};view.addEventListener('pointerup',up);view.addEventListener('pointercancel',e=>{pts.delete(e.pointerId);drag=null});
 view.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.2,Math.min(3,zoom*(e.deltaY>0?1.1:.9)))},{passive:false});
 addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();travel(e.shiftKey?1:-1)}});
 $('undo').onclick=()=>travel(-1);$('redo').onclick=()=>travel(1);addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
@@ -200,12 +209,60 @@ async function projectBill(D){const done=[];const sf=await DB.file(pid,'pkg/step
   if(cf){const rows=ME.csvParse(dec(cf.data)),H=rows[0]||[],ci=H.indexOf('code'),qi=H.indexOf('qty'),ni=H.indexOf('name');if(ci>=0&&qi>=0){const net={};D.forEach(d=>{net[d.code]=(net[d.code]||0)+d.to-d.from});Object.entries(net).forEach(([c,dv])=>{if(!dv)return;const r=rows.slice(1).find(x=>x[ci]===c);if(r)r[qi]=String(Math.max(0,(+r[qi]||0)+dv));else if(dv>0){const nr=H.map(()=>'');nr[ci]=c;nr[qi]=String(dv);if(ni>=0){const p=ME.live(M).find(x=>x.code===c);nr[ni]=(p&&p.name)||''}rows.push(nr)}});await DB.put(pid,'pkg/'+pp,ME.csvText(rows));done.push('材料清单 '+pp)}}return done}
 $('save').onclick=async()=>{if(!pid){dl();say('这份数据不是从项目里打开的，已改为下载 model.json。');return}const b=$('save');b.disabled=true;try{const D=ME.billDiff(bill0,M);await DB.put(pid,'pkg/model/model.json',snap());let extra=[];if(D.length)extra=await projectBill(D);bill0=ME.billMap(M);dirty=false;refresh();
     say('已保存到项目的 model/model.json。'+(M.steps.some(s=>s.made)?'新增的步骤只存在数据模型里，项目的步骤数据、讲解词和分镜里没有这一步。':'')+(extra.length?'同时改了'+extra.join('和')+'（'+D.length+' 处数量），回到项目页会重新审核。':'')+'已发布的助手仍按原模型运行，修改后的效果请用“播放数据模型”查看。',true)}catch(e){say('保存失败：'+(e.message||e),true)}b.disabled=false};
+/* ---------- commands: spoken or typed, working together with the mouse ---------- */
+const nameOf=p=>p.name||p.code||'零件',heard=(x,soft)=>{$('heard').textContent=(soft?'听到：':'指令：')+x};
+function confirmUI(){const C=$('confirm');C.innerHTML='';C.hidden=!pend;if(!pend)return;C.append(el('b',{},pend.title||'请确认'),el('div',{id:'cText',style:'margin:4px 0'},pend.text),el('div',{class:'row'},el('button',{class:'on',id:'cYes',onclick:()=>{const f=pend;pend=null;confirmUI();f.run()}},'这样做'),el('button',{id:'cNo',onclick:()=>{pend=null;confirmUI();say('已取消。')}},'不用')),el('div',{class:'mut'},'也可以直接说“确认”或“取消”。'))}
+function target(deix){const h=hov&&ME.part(M,hov),ok=x=>x&&!x.removed;if(deix&&ok(h))return h;return part()||(ok(h)?h:null)}
+function act(a,deix){const need=()=>{const p=target(deix);if(!p)return null;if(p.id!==sel){sel=p.id;rec=rec&&rec.id===p.id?rec:null}return p},NO={fail:'请先选中一个零件，或把鼠标指在零件上再说。'},seen=p=>p.scene===step().scene&&(P.pose(cur,t),shown(objOf(p)));
+  switch(a.k){
+    case'move':case'turn':{const p=need();if(!p)return NO;if(!seen(p))return{fail:'“'+nameOf(p)+'”在这一步的这个时刻看不到，先切到它出现的步骤。'};
+      if(rec&&rec.id===p.id){if(a.k!=='move')return{fail:'录制的时候只记位置，请用“往左移…”这样的话，或直接拖。'};const o=objOf(p);P.pose(cur,t);if(rec.pose){o.position.fromArray(rec.pose,0);o.quaternion.fromArray(rec.pose,3)}const d=new THREE.Vector3(...a.d).applyQuaternion(pquat(o).invert());rec.pose=[o.position.x+d.x,o.position.y+d.y,o.position.z+d.z,...o.quaternion.toArray()];rec.pts.push(rec.pose.slice());insp();return{ok:'，已记下第 '+rec.pts.length+' 个点'}}
+      if(a.k==='move')moveWorld(p,new THREE.Vector3(...a.d));else turnWorld(p,new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(a.axis==='x'?1:0,a.axis==='y'?1:0,a.axis==='z'?1:0),a.deg*Math.PI/180));commit();return{ok:'：“'+nameOf(p)+'”'}}
+    case'place':{const p=part();if(!p)return{fail:'先选中要放的零件，再把鼠标指到要放的地方说“放到这里”。'};if(!seen(p))return{fail:'“'+nameOf(p)+'”在这一步看不到。'};const pt=hitPoint();if(!pt)return{fail:'没看到鼠标指着哪里：请把鼠标停在画面里要放的位置上。'};P.pose(cur,t);const b=new THREE.Box3().setFromObject(objOf(p)),c=b.getCenter(new THREE.Vector3());moveWorld(p,pt.clone().sub(new THREE.Vector3(c.x,b.min.y,c.z)));commit();return{ok:'：“'+nameOf(p)+'”'}}
+    case'attach':{const me=part(),h=hov&&ME.part(M,hov);if(!me||!me.made||me.kind==='tool')return{fail:'先选中一个在工坊里新加的零件，再把鼠标指着要固定到的零件。'};if(!h||h.id===me.id||h.removed)return{fail:'请把鼠标指着要固定到的那个零件。'};const why=attachTo(me,h);return why?{fail:why}:{ok:'：“'+nameOf(me)+'”固定到“'+nameOf(h)+'”上'}}
+    case'take':{const p=need();if(!p||p.kind==='tool'||p.kind==='group')return NO;take(p);return{ok:'：“'+nameOf(p)+'”'}}
+    case'del':{const p=need();if(!p)return NO;refresh();return{confirm:{title:'要删除吗？',text:'删除“'+nameOf(p)+'”'+(p.code&&p.kind!=='group'&&p.kind!=='tool'?'，材料清单会减 1。':'。'),run:()=>{const n=nameOf(p);ME.remove(M,p);sel=null;hov=null;commit('“'+n+'”已删除。')}}}}
+    case'tool':{const h=deix&&hov&&ME.part(M,hov);if(h&&!h.removed&&h.kind!=='tool')sel=h.id;useTool(a.type);return{ok:''}}
+    case'step':{const S=P.steps,i=S.indexOf(cur),to=a.to==='next'?S[i+1]:a.to==='prev'?S[i-1]:S.find(x=>x===a.to);if(!to)return{fail:a.to==='next'?'已经是最后一步。':a.to==='prev'?'已经是第一步。':'没有第 '+a.to+' 步。'};setPlay(false);go(to);return{ok:'：'+step().label}}
+    case'play':{if(a.op==='pause')setPlay(false);else{if(a.op==='replay'||t>=1)t=0;setPlay(true)}return{ok:''}}
+    case'view':{if(a.to==='reset'){az=0;elv=0;zoom=1}else if(a.to==='top'){elv=1.2}else{elv=0;az=a.to==='left'?-1.2:a.to==='right'?1.2:Math.PI}return{ok:''}}
+    case'zoom':zoom=Math.max(.2,Math.min(3,zoom*a.f));return{ok:''};
+    case'undo':if(hi<=0)return{fail:'没有可以撤销的修改。'};travel(-1);return{ok:''};
+    case'redo':if(hi>=hist.length-1)return{fail:'没有可以重做的修改。'};travel(1);return{ok:''};
+    case'save':$('save').click();return{ok:''};
+    case'rec':{if(a.op==='start'){const p=need();if(!p)return NO;refresh();const b=$('rStart');if(!b||b.disabled)return{fail:'这个零件在这一步不能录制：请切到它安装的那一步。'};b.click();return{ok:''}}if(!rec)return{fail:'现在没有在录制。'};if(a.op==='done'){if(!rec.pts.length)return{fail:'还没有记下任何点：先拖一下零件，或说“往上移十厘米”。'};recDone();return{ok:''}}rec=null;insp();return{ok:''}}
+    case'board':addShape({geom:ME.board(a.l,a.w,a.t),kind:'board',name:'新板',color:14272677,lift:a.t/2});return{ok:''};
+    case'cyl':addShape({geom:ME.cyl(a.d,a.len),kind:'cyl',name:'新圆柱件',color:14272677,lift:a.len/2});return{ok:''};
+    case'retime':{const p=need();if(!p)return NO;const sp=ME.span(M,p,cur);if(!sp)return{fail:'“'+nameOf(p)+'”在这一步里没有动作。'};const d=Math.max(-sp.a,Math.min(1-sp.b,a.d));if(Math.abs(d)<.005)return{fail:a.d<0?'已经在这一步的最开头了。':'已经在这一步的最末尾了。'};ME.retime(M,p,cur,sp.a+d,sp.b+d);commit();return{ok:'：“'+nameOf(p)+'”现在是 '+Math.round((sp.a+d)*100)+'% 到 '+Math.round((sp.b+d)*100)+'%'}}
+    case'find':{const q=a.q.toLowerCase(),L=ME.live(M).filter(p=>p.kind!=='group'&&((p.code||'').toLowerCase()===q||(p.name||'').toLowerCase().includes(q)||q.includes((p.name||'\u0000').toLowerCase())));if(!L.length)return{fail:'仓库里没有找到“'+a.q+'”。'};P.pose(cur,t);const p=L.find(p=>p.scene===step().scene&&shown(objOf(p)))||L[0];select(p.id,true);return{ok:'（共 '+L.length+' 个，这是其中一个）'}}
+    case'pick':{const h=hov&&ME.part(M,hov);if(!h||h.removed)return{fail:'鼠标没有指着零件。'};select(h.id);return{ok:'：“'+nameOf(h)+'”'}}
+    case'help':helpUI(true);return{ok:''};
+    default:return{fail:'这个动作我还不会做。'}}}
+function run(r){let tail='';for(const a of r.acts){const o=act(a,r.deix);if(o.fail){say(o.fail,true);return false}if(o.confirm){pend=o.confirm;confirmUI();say('请在右边确认，或直接说“确认”。',true);return true}tail=o.ok||tail}say('✓ '+r.say+tail);return true}
+const KS=['move','turn','place','attach','take','del','tool','step','play','view','zoom','undo','redo','rec','board','cyl','retime','find','pick'];
+async function askAI(text){let key='';try{key=localStorage.getItem('norden-key')||''}catch(e){}if(!key){say('没听懂：“'+text+'”。点“能说什么”看看例子。（在助手里填过 Claude key 的话，听不懂的话会交给 AI 理解。）',true);return}
+  P.pose(cur,t);const here=ME.live(M).filter(p=>p.kind!=='group'&&p.scene===step().scene&&shown(objOf(p))),names=[...new Set(here.map(nameOf))].slice(0,40),sp=part(),hp=hov&&ME.part(M,hov);
+  const prompt='你在帮装配人员操作一个三维装配模型编辑器。把他说的话变成动作。只输出一个 JSON 对象，不要别的字：{"say":"用一句中文说明你理解成什么","acts":[动作…]}。听不懂或做不到就输出 {"say":"原因","acts":[]}。\n可用动作（单位厘米，x 右、y 上、z 朝向人）：{"k":"move","d":[x,y,z]}；{"k":"turn","axis":"x|y|z","deg":数}；{"k":"place"}（放到鼠标指着的地方）；{"k":"attach"}（固定到鼠标指着的零件上）；{"k":"take"}；{"k":"del"}；{"k":"tool","type":"hammer|phillips|flat|hex"}；{"k":"step","to":"next|prev|步骤编号"}；{"k":"play","op":"play|pause|replay"}；{"k":"view","to":"left|right|back|top|reset"}；{"k":"zoom","f":数}；{"k":"undo"}；{"k":"redo"}；{"k":"rec","op":"start|done|cancel"}；{"k":"board","l":长,"w":宽,"t":厚}；{"k":"cyl","d":直径,"len":长}；{"k":"retime","d":-0.1 到 0.1}；{"k":"find","q":"零件名称或编号"}。\n现在是'+step().label+'（'+(step().title||'')+'）。选中的零件：'+(sp?nameOf(sp):'无')+'。鼠标指着的零件：'+(hp?nameOf(hp):'无')+'。这一步里看得到的零件：'+names.join('、')+'。\n他说：'+text;
+  say('没有直接听懂，正在请 AI 理解…',true);let o;try{const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-5-5',max_tokens:400,messages:[{role:'user',content:prompt}]})});const j=await r.json();if(!r.ok)throw new Error((j.error&&j.error.message)||('HTTP '+r.status));const tx=(j.content||[]).map(c=>c.text||'').join(''),m=tx.match(/\{[\s\S]*\}/);o=JSON.parse(m?m[0]:tx)}catch(e){say('AI 没有答上来：'+String(e.message||e).slice(0,120),true);return}
+  const acts=(o.acts||[]).filter(a=>a&&KS.includes(a.k));if(!acts.length){say('AI：'+(o.say||'没有听明白')+'。',true);return}pend={title:'AI 理解为',text:o.say||acts.map(a=>a.k).join('、'),run:()=>run({acts,say:o.say||'已执行',deix:/这|那|它/.test(text)})};confirmUI();say('AI 理解好了，请在右边确认，或直接说“确认”。',true)}
+async function command(text,spoken){text=String(text||'').trim();if(!text||!P)return;heard(text);const r=MVoice.parse(text),k=r&&r.acts[0].k;
+  if(pend){if(k==='yes'){const f=pend;pend=null;confirmUI();f.run();return}pend=null;confirmUI();if(k==='no'){say('已取消。');return}}
+  if(!r)return askAI(text);if(k==='yes'||k==='no'){say('现在没有需要确认的事。');return}run(r)}
+function helpUI(on){const H=$('helpBox');H.hidden=on===undefined?!H.hidden:!on;if(H.hidden)return;H.innerHTML='';H.append(el('b',{},'可以这样说或输入'),el('div',{class:'mut'},'“这个”指鼠标指着的零件（蓝框），没有指着时指选中的零件（红框）；“这里”指鼠标指着的位置。'),...MVoice.HELP.map(x=>el('div',{class:'chg'},x)),el('div',{class:'mut',style:'margin-top:4px'},'语音：用浏览器自带的识别，声音由浏览器厂商转成文字，这里不保存录音。听不懂的句子：只有填过 Claude key 时才把这句话的文字和这一步的零件名称发给 Anthropic 理解，并且先给你确认再执行。'),el('div',{class:'row',style:'margin-top:4px'},el('button',{onclick:()=>helpUI(false)},'收起')))}
+$('cmd').onkeydown=e=>{if(e.key==='Enter'){const v=$('cmd').value;$('cmd').value='';command(v)}};$('cmdHelp').onclick=()=>helpUI();
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let srFast=0;
+function micUI(){$('mic').classList.toggle('on',micOn);$('mic').textContent=micOn?'🎤 正在听':'🎤 语音'}
+function micStart(){if(!micOn)return;sr=new SR();sr.lang='zh-CN';sr.continuous=true;sr.interimResults=true;const t0=Date.now();
+  sr.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i],x=r[0].transcript;if(r.isFinal)command(x,true);else heard(x,true)}};
+  sr.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'||e.error==='audio-capture'){micOn=false;micUI();say(e.error==='audio-capture'?'没有找到麦克风。':'浏览器没有允许使用麦克风：请在地址栏旁边允许后再点“语音”。',true)}else if(e.error==='network'){micOn=false;micUI();say('浏览器的语音识别连不上，请改用输入框打字。',true)}};
+  sr.onend=()=>{if(!micOn)return;if(Date.now()-t0<400&&++srFast>4){micOn=false;micUI();say('语音识别一直启动不了，请改用输入框打字。',true);return}if(Date.now()-t0>=400)srFast=0;setTimeout(micStart,150)};try{sr.start()}catch(e){}}
+$('mic').onclick=()=>{if(!SR){say('这个浏览器没有语音识别，请用输入框打字，效果一样。',true);return}micOn=!micOn;micUI();if(micOn){srFast=0;micStart();say('正在听。鼠标指着零件，说“把这个往左移五厘米”。说明：浏览器自带的语音识别会把声音发给浏览器厂商（Chrome 是谷歌）转成文字，这里不保存录音。',true)}else{try{sr&&sr.abort()}catch(e){}say('已停止听。')}};
 /* ---------- loading ---------- */
 toolsUI();
 async function load(text,where){try{M=JSON.parse(text);if(M.format!=='assembly-model')throw new Error('这不是模型数据文件')}catch(e){$('err').textContent='打不开这份数据：'+(e.message||e);return}from=where;bill0=ME.billMap(M);hist=[snap()];hi=0;dirty=false;sel=null;rebuild();cam.near=M.render.near||1;size();strip();go(P.steps[0]);refresh()}
 if(pid)$('back').href='project.html?id='+encodeURIComponent(pid);else{$('save').textContent='下载 model.json';$('dl').hidden=true}
 requestAnimationFrame(loop);
-window.__ws={rec:()=>rec&&{n:rec.pts.length},M:()=>M,state:()=>({ready:!!P,cur,t,sel,dirty,hist:hist.length,hi}),set:(id,v)=>{setPlay(false);if(id!==cur)go(id,true);t=v;$('t').value=Math.round(v*1000);draw();insp()},select:id=>select(id,true),
+window.__ws={cmd:x=>command(x),hov:()=>hov,pend:()=>pend&&pend.text,view:()=>({az,elv,zoom,playing}),rec:()=>rec&&{n:rec.pts.length},M:()=>M,state:()=>({ready:!!P,cur,t,sel,dirty,hist:hist.length,hi}),set:(id,v)=>{setPlay(false);if(id!==cur)go(id,true);t=v;$('t').value=Math.round(v*1000);draw();insp()},select:id=>select(id,true),
   axis:()=>tc.axis,screen:id=>{const p=ME.part(M,id);P.pose(cur,t);camNow();const o=objOf(p),b=new THREE.Box3().setFromObject(o),c=b.getCenter(new THREE.Vector3()).project(cam),r=ren.domElement.getBoundingClientRect();return{x:r.left+(c.x+1)/2*r.width,y:r.top+(1-c.y)/2*r.height,vis:shown(o)}},
   world:id=>{const p=ME.part(M,id);P.pose(cur,t);return{p:wpos(objOf(p)).toArray(),vis:shown(objOf(p))}}};
 try{if(pid&&typeof DB!=='undefined'){const f=await DB.file(pid,'pkg/model/model.json');if(!f)throw new Error('这个项目还没有数据模型。请先在项目页的“模型编辑器”里点“生成数据模型”。');await load(dec(f.data),'项目里的 model/model.json');
