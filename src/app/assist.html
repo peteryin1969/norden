@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow">
+<title>装配助手</title>
+<style>
+:root{--bg:#f3f4f1;--card:#fff;--ink:#1b2420;--mut:#5d6963;--line:#d9ddd7;--acc:#23835c;--warn:#a85b00;--bad:#b3261e;--soft:#eef4f0}
+@media(prefers-color-scheme:dark){:root{--bg:#141917;--card:#1d2421;--ink:#e8ece9;--mut:#9aa6a0;--line:#2f3a35;--acc:#4fc393;--warn:#e0a050;--bad:#f08a80;--soft:#22302a}}
+*{box-sizing:border-box}[hidden]{display:none!important}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;-webkit-text-size-adjust:100%}
+button,input,textarea{font:inherit;color:var(--ink)}button{padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);cursor:pointer;min-height:44px}button.on{background:var(--acc);border-color:var(--acc);color:#fff}button:disabled{opacity:.4}
+#app{max-width:760px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:8px;padding:10px 14px}header b{font-size:17px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}header button{padding:6px 10px;min-height:36px;font-size:14px}
+.mut{color:var(--mut);font-size:13px}.flag{margin:0 14px 8px;border:1px solid var(--warn);color:var(--warn);border-radius:10px;padding:6px 10px;font-size:13px}
+#view{position:relative;margin:0 14px;background:#c3cfcc;border-radius:14px;overflow:hidden;touch-action:none;height:min(52vh,460px)}#view canvas{display:block;width:100%;height:100%}
+#prog{position:absolute;left:10px;top:8px;background:rgba(255,255,255,.9);color:#1b2420;border-radius:8px;padding:2px 9px;font-size:13px}#again{position:absolute;right:8px;bottom:8px;min-height:38px;padding:6px 12px;font-size:14px;background:rgba(255,255,255,.92);color:#1b2420;border-color:#bbb}
+#bar{height:4px;background:var(--line);margin:8px 14px 0;border-radius:2px;overflow:hidden}#bar i{display:block;height:100%;background:var(--acc);width:0}
+main{padding:10px 14px 110px;flex:1}h1{font-size:22px;margin:4px 0 6px}h2{font-size:16px;margin:14px 0 6px}#say{font-size:17px;white-space:pre-wrap;margin:6px 0 10px}
+.parts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}.pc{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:6px}.pc img{width:60px;height:45px;object-fit:contain;border-radius:6px;background:#e2e8e5;flex:none}.pc b{font-size:18px}.pc span{font-size:13px;line-height:1.3;word-break:break-word}
+#nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:8px 14px calc(8px + env(safe-area-inset-bottom))}#nav .in{max-width:732px;margin:0 auto;display:grid;grid-template-columns:1fr auto 1.4fr;gap:8px}#nav button{font-size:17px}
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;z-index:5}#sheet .box{background:var(--card);border-radius:16px 16px 0 0;padding:14px;width:100%;max-width:760px;margin:0 auto;max-height:86vh;overflow:auto}#sheet textarea,#sheet input[type=password]{width:100%;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--card)}#sheet textarea{min-height:70px}
+#ans{background:var(--soft);border-radius:10px;padding:10px;margin-top:8px;white-space:pre-wrap}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}#err{color:var(--bad);padding:14px}
+#cover{width:100%;border-radius:14px;background:#e2e8e5;display:block}
+</style></head><body>
+<div id="app">
+  <header><b id="name">装配助手</b><button id="snd" title="朗读每一步的讲解">🔊 朗读：开</button><button id="list" hidden>零件清单</button></header>
+  <div id="err"></div><div class="flag" id="flag" hidden></div>
+  <section id="home" hidden style="padding:0 14px 110px"><img id="cover" alt="装好后的样子"><h1 id="hname"></h1><div class="mut" id="hinfo"></div><h2>开始前，先清点零件</h2><div class="parts" id="all"></div><p class="mut" id="src"></p></section>
+  <section id="run" hidden><div id="view"><div id="prog"></div><button id="again">↻ 再看一遍</button></div><div id="bar"><i></i></div>
+    <main><h1 id="title"></h1><div id="say"></div><h2 id="ph">这一步要用的零件</h2><div class="parts" id="parts"></div><div class="mut" id="tip" style="margin-top:10px">拖动画面可以转着看，双指或滚轮缩放。</div></main></section>
+  <section id="done" hidden style="padding:0 14px 110px"><h1>装好了</h1><img id="fin" alt="装好后的样子" style="width:100%;border-radius:14px;background:#e2e8e5"><p id="dtxt" class="mut"></p></section>
+</div>
+<div id="nav" hidden><div class="in"><button id="prev">‹ 上一步</button><button id="ask">问一下</button><button id="next" class="on">开始装配 ›</button></div></div>
+<div id="sheet" hidden><div class="box"><div class="row"><b style="flex:1">问一下</b><button id="askX" style="min-height:36px;padding:4px 12px">关闭</button></div>
+  <div class="mut">回答只根据这份装配资料。资料里没有的内容（比如承重、力度、安全要求）它会直说没有，请以厂家的说明为准。你的问题和这份资料的文字会发给 Anthropic（Claude）。</div>
+  <div id="keyBox" style="margin-top:8px"><div class="mut">需要一个 Claude key，只存在这台设备的浏览器里：</div><input type="password" id="key" placeholder="sk-ant-…" autocomplete="off"></div>
+  <textarea id="q" placeholder="比如：这一步的零件哪个朝上？" style="margin-top:8px"></textarea>
+  <div class="row" style="margin-top:8px"><button id="mic" hidden>🎤 用说的</button><button id="send" class="on">发送</button><span class="mut" id="amsg"></span></div><div id="ans" hidden></div></div></div>
+<script src="vendor/three.min.js"></script><script src="mplay.js"></script>
+<script>
+(async()=>{const $=id=>document.getElementById(id),qs=new URLSearchParams(location.search),pid=qs.get('pid');
+const esc=x=>String(x==null?'':x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let M=null,P=null,cur=-1,t=1,playing=false,az=0,elv=0,zoom=1,speak=true,thumbs={},kinds=[];
+const view=$('view'),ren=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});ren.setPixelRatio(Math.min(devicePixelRatio,2));view.prepend(ren.domElement);const cam=new THREE.PerspectiveCamera(32,1.3,1,2000);
+const size=()=>{const w=view.clientWidth,h=view.clientHeight;if(!w||!h)return;ren.setSize(w,h,false);const as=w/h;cam.aspect=as;cam.fov=as<1.5?2*Math.atan(Math.tan(16*Math.PI/180)*1.5/as)*180/Math.PI:32;cam.updateProjectionMatrix()};addEventListener('resize',size);
+const N=()=>M.steps.length,stepText=i=>{const s=M.steps[i];return{title:s.title||('第 '+(i+1)+' 步'),say:s.say||'',parts:s.parts||[]}};
+/* names and numbers: from the editing data when the file has it, else from the parts list of the model */
+function kindList(){const out=[];if(M.asm&&M.asm.parts){Object.entries(M.asm.kinds).forEach(([k,K])=>{const L=M.asm.parts.map((p,i)=>p.kind===k?i:-1).filter(i=>i>=0);if(L.length)out.push({key:(K.code||K.name||k),name:K.name||k,code:K.code||'',n:L.length,node:M.asm.parts[L[0]].node})})}else{const g={};M.parts.filter(p=>p.kind!=='group'&&p.kind!=='tool'&&!p.removed).forEach(p=>{const k=p.code||p.name||p.id;(g[k]=g[k]||{key:k,name:p.name||k,code:p.code||'',n:0,node:p.node}).n++});out.push(...Object.values(g))}return out}
+function shot(w,h,setup){const pr=ren.getPixelRatio(),old=ren.getSize(new THREE.Vector2()),c2=new THREE.PerspectiveCamera(32,w/h,.1,2000);ren.setPixelRatio(1);ren.setSize(w,h,false);const sc=setup(c2),bg=sc.background;sc.background=new THREE.Color(0xe2e8e5);c2.updateMatrixWorld(true);ren.render(sc,c2);const u=ren.domElement.toDataURL('image/jpeg',.85);sc.background=bg;ren.setPixelRatio(pr);ren.setSize(old.x,old.y,false);return u}
+function pictures(){const last=M.steps[N()-1].id,root=()=>{const b=new THREE.Box3();P.scenes[0].objs.forEach(o=>{if(o.isMesh&&o.visible)b.expandByObject(o)});return b};
+  const fin=shot(880,660,c2=>{const sc=P.pose(last,1),b=root(),ct=b.getCenter(new THREE.Vector3()),r=b.getSize(new THREE.Vector3()).length()/2;c2.position.copy(ct).add(new THREE.Vector3(.75,.55,1).normalize().multiplyScalar(r*3.7));c2.lookAt(ct);return sc});
+  kinds.forEach(k=>{thumbs[k.key]=shot(240,180,c2=>{const sc=P.pose(last,1),objs=P.scenes[0].objs,keep=objs[k.node],was=[];objs.forEach(o=>{if(o.isMesh||o.isLineSegments){was.push([o,o.visible]);o.visible=(o===keep||o.parent===keep)}});const b=new THREE.Box3().setFromObject(keep),ct=b.getCenter(new THREE.Vector3()),r=Math.max(1.2,b.getSize(new THREE.Vector3()).length()/2);c2.position.copy(ct).add(new THREE.Vector3(.8,.6,1).normalize().multiplyScalar(r*3.9));c2.lookAt(ct);c2.updateMatrixWorld(true);ren.setClearColor(0xe2e8e5,1);const bg=sc.background;sc.background=new THREE.Color(0xe2e8e5);ren.render(sc,c2);k.img=ren.domElement.toDataURL('image/jpeg',.85);sc.background=bg;was.forEach(([o,v])=>{o.visible=v});return sc});thumbs[k.key]=k.img});return fin}
+const card=(k,n)=>'<div class="pc">'+(k&&k.img?'<img src="'+k.img+'" alt="">':'')+'<b>'+n+'×</b><span>'+esc(k?k.name:'')+(k&&k.code&&k.code!==k.name?'<br><span class="mut">'+esc(k.code)+'</span>':'')+'</span></div>';
+function draw(){if(!P||cur<0||cur>=N())return;const id=M.steps[cur].id,sc=P.pose(id,Math.min(1,t)),c=P.camera(id,Math.min(1,t));if(c){const b=c.pos.clone().sub(c.target),r=b.length()*zoom,th=Math.atan2(b.x,b.z)+az,ph=Math.max(-1.2,Math.min(1.45,Math.asin(b.y/b.length())+elv));cam.position.set(Math.sin(th)*Math.cos(ph)*r,Math.sin(ph)*r,Math.cos(th)*Math.cos(ph)*r).add(c.target);cam.lookAt(c.target)}ren.render(sc,cam)}
+let last=0;function loop(ts){requestAnimationFrame(loop);const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(playing){t+=dt/4.2;if(t>=1){t=1;playing=false}}if(!$('run').hidden)draw()}
+function talk(x){try{speechSynthesis.cancel();if(!speak||!x)return;const u=new SpeechSynthesisUtterance(x);u.lang='zh-CN';u.rate=1;speechSynthesis.speak(u)}catch(e){}}
+function show(i){cur=i;const home=i<0,done=i>=N();$('home').hidden=!home;$('run').hidden=home||done;$('done').hidden=!done;$('prev').disabled=home;$('next').textContent=home?'开始装配 ›':done?'从头再看':i===N()-1?'完成 ✓':'下一步 ›';$('list').hidden=home;scrollTo(0,0);
+  if(home){talk('');return}if(done){talk('装好了。');return}const s=stepText(i);$('prog').textContent='第 '+(i+1)+' 步，共 '+N()+' 步';$('bar').firstElementChild.style.width=((i+1)/N()*100)+'%';$('title').textContent=s.title;$('say').textContent=s.say;$('say').hidden=!s.say;
+  $('ph').hidden=!s.parts.length;$('parts').innerHTML=s.parts.map(p=>card(kinds.find(k=>k.key===p[0])||{name:p[0]},p[1])).join('');az=elv=0;zoom=1;size();t=0;playing=true;talk(s.title+'。'+s.say)}
+$('next').onclick=()=>{show(cur>=N()?-1:cur+1)};$('prev').onclick=()=>{if(cur>=0)show(cur-1)};$('again').onclick=()=>{t=0;playing=true;const s=stepText(cur);talk(s.title+'。'+s.say)};$('list').onclick=()=>show(-1);
+$('snd').onclick=()=>{speak=!speak;$('snd').textContent=speak?'🔊 朗读：开':'🔇 朗读：关';if(!speak)talk('')};
+let drag=null;const pts=new Map();view.addEventListener('pointerdown',e=>{if(e.target.id==='again')return;view.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);drag=[e.clientX,e.clientY,az,elv]});
+view.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;const o0=pts.get(e.pointerId);if(pts.size===2){const o=[...pts.entries()].find(x=>x[0]!==e.pointerId)[1],d0=Math.hypot(o0[0]-o[0],o0[1]-o[1]),d1=Math.hypot(e.clientX-o[0],e.clientY-o[1]);if(d0>0)zoom=Math.max(.3,Math.min(2.5,zoom*d0/d1))}else if(drag){az=drag[2]-(e.clientX-drag[0])*.008;elv=drag[3]+(e.clientY-drag[1])*.006}pts.set(e.pointerId,[e.clientX,e.clientY])});
+const up=e=>{pts.delete(e.pointerId);drag=null};view.addEventListener('pointerup',up);view.addEventListener('pointercancel',up);view.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.3,Math.min(2.5,zoom*(e.deltaY>0?1.1:.9)))},{passive:false});
+/* questions: answered from this file's text only */
+const getKey=()=>{try{return localStorage.getItem('norden-key')||''}catch(e){return''}};
+function facts(){return'产品：'+(M.product||'')+'\n零件：'+kinds.map(k=>k.name+(k.code&&k.code!==k.name?'（'+k.code+'）':'')+' ×'+k.n).join('；')+'\n步骤：\n'+M.steps.map((s,i)=>'第 '+(i+1)+' 步「'+(s.title||'')+'」 零件：'+((s.parts||[]).map(p=>{const k=kinds.find(x=>x.key===p[0]);return(k?k.name:p[0])+' ×'+p[1]}).join('、')||'无')+'。讲解：'+(s.say||'（没有写）')).join('\n')}
+$('ask').onclick=()=>{$('sheet').hidden=false;$('key').value=getKey();$('keyBox').hidden=!!getKey();talk('')};$('askX').onclick=()=>{$('sheet').hidden=true};
+$('key').onchange=e=>{try{const v=e.target.value.trim();if(v)localStorage.setItem('norden-key',v);else localStorage.removeItem('norden-key')}catch(x){}};
+$('send').onclick=async()=>{const q=$('q').value.trim(),key=$('key').value.trim()||getKey(),msg=$('amsg');if(!q){msg.textContent='请先写下你的问题。';return}if(!key){$('keyBox').hidden=false;msg.textContent='请先填 Claude key。';return}$('send').disabled=true;msg.textContent='正在问…';$('ans').hidden=true;
+  try{const prompt='你是一件产品的装配助手。只根据下面的装配资料回答用户的问题。资料里没有的内容（尺寸、力度、承重、安全要求、工具型号等）不要编造，直接说“这份资料里没有，请以厂家的说明为准”。回答用中文，不超过 100 个字。\n\n'+facts()+'\n\n用户现在在：'+(cur<0?'开始前的零件清单页':cur>=N()?'已经装完':'第 '+(cur+1)+' 步')+'。\n用户的问题：'+q;
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-5-5',max_tokens:400,messages:[{role:'user',content:prompt}]})}),j=await r.json();if(!r.ok)throw new Error((j.error&&j.error.message)||('HTTP '+r.status));
+    const a=(j.content||[]).map(c=>c.text||'').join('').trim();$('ans').textContent=a||'没有得到回答。';$('ans').hidden=false;msg.textContent='';$('keyBox').hidden=true;talk(a)}catch(e){msg.textContent='没有成功：'+String(e.message||e).slice(0,160)}$('send').disabled=false};
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(SR){$('mic').hidden=false;let rec=null;$('mic').onclick=()=>{if(rec){rec.abort();return}rec=new SR();rec.lang='zh-CN';rec.interimResults=false;rec.onresult=e=>{$('q').value=($('q').value+' '+e.results[0][0].transcript).trim()};rec.onend=()=>{rec=null;$('mic').textContent='🎤 用说的'};rec.onerror=()=>{};$('mic').textContent='🎤 正在听，再点一下停止';try{rec.start()}catch(e){rec=null}}}
+async function start(m,from){M=m;if(M.format!=='assembly-model'||!M.steps||!M.steps.length)throw new Error('这份数据里没有装配步骤。');P=new ModelPlayer(THREE,M);await P.ready;kinds=kindList();$('run').hidden=false;size();const fin=pictures();$('run').hidden=true;
+  $('name').textContent=M.product||'装配助手';document.title=(M.product||'')+' 装配助手';$('hname').textContent=M.product||'';$('hinfo').textContent='共 '+N()+' 步　·　'+kinds.reduce((a,k)=>a+k.n,0)+' 个零件';$('cover').src=fin;$('fin').src=fin;$('all').innerHTML=kinds.map(k=>card(k,k.n)).join('');
+  $('src').textContent=(M.asm&&M.asm.copyright?'三维数据：'+M.asm.copyright+'。':'')+'画面由三维数据自动生成。';$('dtxt').textContent='全部 '+N()+' 步完成。可以点“从头再看”回到开头。';
+  const open=(M.asm&&M.asm.steps||[]).filter(s=>s.by==='ai'&&!s.ok).length,W=(M.warn||[]).length;if(open||W){$('flag').hidden=false;$('flag').textContent='注意：这份装配助手还没有定稿（'+(open?open+' 步是 AI 排的、没有人确认':'')+(open&&W?'；':'')+(W?'编辑器里还有 '+W+' 条检查提醒':'')+'）。只能用于测试。'}
+  $('nav').hidden=false;show(-1)}
+window.__assist={state:()=>({ready:!!P,cur,t,playing,steps:M?N():0,speak}),go:i=>show(i),end:()=>{t=1;playing=false;draw()},facts:()=>facts()};requestAnimationFrame(loop);
+try{if(window.__MODEL)await start(window.__MODEL,'内置');
+  else if(pid){await new Promise((ok,no)=>{const s=document.createElement('script');s.src='app.js';s.onload=ok;s.onerror=()=>no(new Error('读不到项目数据'));document.head.append(s)});const f=await DB.file(pid,'pkg/model/model.json');if(!f)throw new Error('这个项目还没有模型数据。');const d=f.data;await start(JSON.parse(typeof d==='string'?d:new TextDecoder().decode(d)),'项目')}
+  else if(qs.get('src')){const r=await fetch(qs.get('src'));if(!r.ok)throw new Error('读取数据失败（'+r.status+'）');await start(await r.json(),qs.get('src'))}
+  else throw new Error('没有指定要打开的装配数据。请从编辑器里点“生成装配助手”。')}catch(e){$('err').textContent=e.message||String(e)}
+})();
+</script></body></html>
