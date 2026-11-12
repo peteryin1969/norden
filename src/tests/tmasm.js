@@ -1,0 +1,18 @@
+/* masm.js rules, without a browser: sentences, a fastener's own axis, the way in along it, room for the tool */
+const T=require('./tv/node_modules/three/build/three.js'),A=require('./masm.js');const R=[],ck=(n,ok,x)=>{R.push(ok===true);console.log(ok===true?'ok  ':'FAIL',n,x==null?'':String(x).slice(0,300))};
+const K=[{key:'s',name:'侧板'},{key:'t',name:'顶板'}],ps=x=>{const o=A.parseSay(x,K);return o&&[o.kinds.join(''),o.a||'',o.b||'',o.spin===undefined?'':o.spin].join('|')};
+ck('sentence: two stretches for the part named',ps('侧板先按进去，再往下推')==='s|auto|U|');ck('sentence: one direction for all parts of the step',ps('从上往下放')==='st|U||');ck('sentence: left then into the depth',ps('先从左边靠上，然后往里推')==='st|L|F|');
+ck('sentence: turning only',ps('把顶板拧上去')==='t|||true');ck('sentence: direction and turning',ps('从后面拧进去')==='st|B||true');ck('sentence: nothing about the way is not understood',A.parseSay('小心一点',K)===null);ck('sentence: “不用拧” switches turning off',ps('先往下放，再往右推，不用拧')==='st|U|L|false');
+const mesh=(g,c)=>{g=g.index?g:g.toNonIndexed();if(!g.index){const n=g.attributes.position.count;g.setIndex([...Array(n).keys()])}g.computeBoundingBox();g.computeBoundingSphere();const o=new T.Mesh(g,new T.MeshBasicMaterial({side:T.DoubleSide}));o.position.set(...c);o.updateMatrixWorld(true);return o};
+const cyl=(r,h,rot)=>{const g=new T.CylinderGeometry(r,r,h,24);if(rot)g.applyMatrix4(new T.Matrix4().makeRotationFromEuler(new T.Euler(...rot)));return g};
+ck('axis: an upright screw is round about the vertical',JSON.stringify(A.axisOf(T,cyl(.4,6)).map(Math.abs))==='[0,1,0]');ck('axis: a washer is round about its thin direction',JSON.stringify(A.axisOf(T,cyl(1.3,.3,[0,0,Math.PI/2])).map(Math.abs))==='[1,0,0]');
+const tilt=A.axisOf(T,cyl(.4,6,[0,0,Math.PI/6]));ck('axis: a screw set at 30° keeps its slanted axis',tilt&&Math.abs(Math.abs(tilt[0])-.5)<.03&&Math.abs(Math.abs(tilt[1])-.866)<.03&&Math.abs(tilt[2])<.03,JSON.stringify(tilt));
+ck('axis: a board and a cube have none',A.axisOf(T,new T.BoxGeometry(30,2,12))===null&&A.axisOf(T,new T.BoxGeometry(3,3,3))===null);
+/* a block with a slanted screw half sunk into its top face; then a wall close above */
+const size=g=>{g.computeBoundingBox();return g.boundingBox.getSize(new T.Vector3()).toArray()};const gB=new T.BoxGeometry(30,10,30),gS=cyl(.4,6,[0,0,Math.PI/6]),gW=new T.BoxGeometry(30,2,30);
+const M={asm:{size:[30,40,30],parts:[{c:[0,0,0],size:size(gB)},{c:[0,5,0],size:size(gS)},{c:[0,22,0],size:size(gW)}]}},rc=[mesh(gB,[0,0,0]),mesh(gS,[0,5,0]),mesh(gW,[0,22,0])];
+const r1=A.autoDir(T,M,rc,1,[0],'up');ck('a slanted fastener goes in along its own axis, from outside the block',r1.axis===1&&!r1.blocked&&r1.d[1]>.8&&Math.abs(Math.abs(r1.d[0])-.5)<.03&&!r1.tight,JSON.stringify(r1));
+const r2=A.autoDir(T,M,rc,1,[0,2],'up');ck('with a wall 13 cm above the way in stays along the axis, and it says there is little room for hand or tool',r2.tight>0.2&&r2.axis===1&&!r2.blocked,JSON.stringify({d:r2.d,tight:r2.tight,ratio:r2.ratio}));
+M.asm.tool=6;const r3=A.autoDir(T,M,rc,1,[0,2],'up');ck('with a short tool (6 cm) the same place is fine',!r3.tight&&r3.axis===1,JSON.stringify({d:r3.d,tight:r3.tight}));M.asm.tool=20;
+const c1=A.pathCheck(T,M,rc,1,[0,2],[0,1,0],null);ck('a way chosen by hand gets the same reminder',c1.tight>.2&&!c1.blocked,JSON.stringify(c1));
+console.log(R.every(x=>x)?'PASS':'FAIL',R.filter(x=>x).length+'/'+R.length);
