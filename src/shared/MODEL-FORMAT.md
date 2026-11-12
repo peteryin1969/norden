@@ -41,3 +41,8 @@ fitted in), `approach` (offset it comes in from, in its parent's frame; `approac
 onto), `size` for imported meshes, `from` (the part it was copied from). A deleted part keeps its entry with `removed:1` and is
 hidden everywhere. `log:[{at,text}]` records the edits. `step.parts` follows parts being added, removed, renumbered or moved to
 another step.
+
+Phase 3 additions: a tool is a part with `kind:"tool"` and `tool:{type,at,dir,win,n,on?}` (shown only inside `win`, never on the
+parts list). A recorded move is `path:{<step>:{pts:[[x,y,z,qx,qy,qz,qw]…],win,fin?}}` on the part; for a part of the original
+model `orig:{<step>:{p,q}}` keeps the keys it replaced. `win:[from,to]` on a made part is when it moves within its step. A step
+added in the workshop has `made:1` and an id `N<n>`.
