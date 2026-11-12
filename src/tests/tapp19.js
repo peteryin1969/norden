@@ -24,7 +24,11 @@ await p.click('#lib .li[data-key="n:抽屉底板"]');await p.waitForTimeout(300)
 await p.click('#bMark');const sf0=await W(()=>__man.surf('n:抽屉底板')),cn0=await W(()=>__man.screen('n:抽屉底板','角8')),sf={x:sf0.x*.6+cn0.x*.4,y:sf0.y*.6+cn0.y*.4};await p.mouse.move(sf.x,sf.y);await p.waitForTimeout(150);const tp=await p.textContent('#tip');await p.mouse.click(sf.x,sf.y);await p.waitForTimeout(300);let M=await MAN();
 ck('“加标记点” then a click on the surface puts a point there that can be grabbed like a hole',(M.marks['n:抽屉底板']||[]).length===1&&M.marks['n:抽屉底板'][0].name==='标记1'&&M.marks['n:抽屉底板'][0].p.length===3&&(await ST()).grab.pt==='标记1'&&/1 个标记点/.test(await cap())&&/点这里加一个标记点/.test(tp),JSON.stringify(M.marks['n:抽屉底板'][0]));
 /* 3. the state of the assembly follows the confirmed steps */
-await p.click('#vState');await p.waitForTimeout(200);ck('before anything is confirmed the state view says so',/还没有确认的步骤/.test(await cap()));
+await p.click('#vState');await p.waitForTimeout(200);ck('before any step is understood the state view says so',/还没有理解过的步骤/.test(await cap()));
+await step('把抽屉底板放到地面上');await step('把无缺口端板放到地面上');await p.click('#uOk');await p.waitForTimeout(400);let Ip=await W(()=>__man.insts());
+ck('steps that are understood but not yet confirmed are shown too, in grey, and named',Ip.length===2&&Ip.find(x=>x.key==='n:抽屉底板').pend===true&&Ip.find(x=>x.key==='n:无缺口端板').pend===false&&/灰色的来自还没确认的步骤（第 1 步）/.test(await cap())&&/第 1 步还没有确认：点开它/.test(await p.textContent('#chk')),await cap());
+await p.click('#addStep');const rm=await msg();ck('adding a step reminds of steps still waiting for confirmation',/提醒：第 1 步 AI 已经理解，但还没有点/.test(rm),rm);
+for(let k=0;k<3;k++){await p.click('.st[data-i="0"]');await p.click('#sDelStep');await p.waitForTimeout(200)}
 await step('把抽屉长板放到地面上');await p.click('#uOk');await p.waitForTimeout(400);let I0=await W(()=>__man.insts());
 ck('a step that only puts a part down already shows it in the assembly state, and is not reported as missing a join',(await ST()).view==='state'&&I0.length===1&&I0[0].key==='n:抽屉长板（凸条朝外）'&&/装配状态（到第 1 步）：抽屉长板/.test(await cap())&&/只是摆放/.test(await cap())&&!/没有写明谁装到谁上/.test(await p.textContent('#chk'))&&/摆放好/.test(await p.textContent('#uSay')),await cap());
 await p.click('#sDelStep');await p.waitForTimeout(300);
