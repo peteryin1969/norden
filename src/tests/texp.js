@@ -1,0 +1,13 @@
+/* experiment: for every pair of parts that touch in the finished product, give the solver only those two parts and see where the real position ranks.
+   node texp.js <product> */
+const {chromium}=require('playwright');const fs=require('fs');const prod=process.argv[2]||'norden';const d=process.cwd()+'/site/';
+(async()=>{const port=8910+Math.floor(Math.random()*60),srv=require('http').createServer((q,s)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u.endsWith('/'))u+='index.html';fs.readFile(d+u.slice(1),(e,c)=>{if(e){s.writeHead(404);s.end()}else{s.writeHead(200,{'content-type':u.endsWith('.js')?'text/javascript':u.endsWith('.json')?'application/json':'text/html;charset=utf8'});s.end(c)}})}).listen(port);
+const b=await chromium.launch({args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});const p=await b.newPage({viewport:{width:1280,height:900}});p.on('pageerror',e=>console.log('ERR',e.message));
+await p.goto('http://localhost:'+port+'/app/manual.html?all=1&src=../'+prod+'/model.json');await p.waitForFunction(()=>window.__man&&__man.state().ready,null,{timeout:120000});
+const lib=(await p.evaluate(()=>__man.lib())).filter(x=>x.has);console.log(prod,': '+lib.length+' kinds of parts with 3D, '+lib.filter(x=>x.body).length+' that can be placed; holes on '+lib.filter(x=>x.holes).length+', grooves on '+lib.filter(x=>x.slots).length);
+const R=[];const bodies=lib.filter(x=>x.body);for(const A of bodies)for(const B of bodies){if(A.key===B.key)continue;const r=await p.evaluate(([a,b])=>{try{return __man.trial(a,b)}catch(e){return{err:String(e.message||e)}}},[A.key,B.key]);if(!r||!r.adj){if(r&&r.err)console.log('  err',A.name,B.name,r.err);continue}R.push(Object.assign({a:A.name,b:B.name},r))}
+const grp=(f)=>R.filter(f),sum=L=>({pairs:L.length,first:L.filter(r=>r.rank===0).length,top3:L.filter(r=>r.rank>=0&&r.rank<3).length,found:L.filter(r=>r.rank>=0).length});
+const H=grp(r=>r.meet>=2),H1=grp(r=>r.meet===1),N=grp(r=>r.meet===0);
+console.log('  pairs that touch in the product:',R.length);console.log('  2 or more holes share an axis:',JSON.stringify(sum(H)));console.log('  exactly 1 hole shares an axis:',JSON.stringify(sum(H1)));console.log('  no hole in common (shape only):',JSON.stringify(sum(N)));
+R.filter(r=>r.rank!==0).slice(0,60).forEach(r=>console.log('   miss: '+r.a+' → '+r.b+' | holes in common '+r.meet+', real rank '+(r.rank<0?'not in '+r.nc:r.rank+1)+', first by '+(r.first?r.first.by+' n='+r.first.n+(r.first.slots?' slots='+r.first.slots:''):'-')));
+fs.writeFileSync('exp-'+prod+'.json',JSON.stringify(R));await b.close();srv.close()})();
