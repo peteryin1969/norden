@@ -262,7 +262,7 @@ const GEN=(()=>{const M=window.__MODEL;if(!M||M.format!=='assembly-model'||!M.st
     return{id:s.id,page:0,crop:[0,0,1,1],title:s.title||('第 '+(si+1)+' 步'),do:d.length?d:(auto?[auto]:[]),parts:c.map(x=>[x[0],x[1]]),warn:[],unsure:[],auto}});
   const QTY={};K.forEach(k=>{QTY[k.code]=k.parts.length});const say={};STEPS.forEach(s=>{say[s.id]=s.do.join('')||s.title});let h=0;for(const ch of String(M.product||''))h=(h*31+ch.charCodeAt(0))>>>0;
   const open=(A&&A.steps||[]).filter(s=>s.by==='ai'&&!s.ok).length,warn=(M.warn||[]).length;
-  return{M,A,parts,K,STEPS,QTY,CELLS:K.map(k=>({n:k.n,code:k.code,name:k.name})),name:M.product||'这件产品',key:h.toString(36)+'-'+STEPS.length,draft:open||warn?('这份装配助手还没有定稿（'+(open?open+' 步是 AI 排的、没有人确认':'')+(open&&warn?'；':'')+(warn?'编辑器里还有 '+warn+' 条检查提醒':'')+'），只能用于测试。'):'',
+  return{M,A,parts,K,STEPS,QTY,CELLS:K.map(k=>({n:k.n,code:k.code,name:k.name})),name:M.product||'这件产品',key:h.toString(36)+'-'+STEPS.length+(A&&A.built?'-'+Number(A.built).toString(36):''),/* a newly generated file starts at step 1; the same file opened again carries on where the person was */draft:open||warn?('这份装配助手还没有定稿（'+(open?open+' 步是 AI 排的、没有人确认':'')+(open&&warn?'；':'')+(warn?'编辑器里还有 '+warn+' 条检查提醒':'')+'），只能用于测试。'):'',
     PRODUCT:{name:M.product||'这件产品',steps:STEPS.length,say,loopEnd:'',loops:{}}}})();
 window.PRODUCT=Object.assign(GEN.PRODUCT,window.PRODUCT||{});
 const Anim=(()=>{const T3=window.THREE,M=GEN.M,P0=new ModelPlayer(T3,M),K=GEN.K,ORANGE=0xf07a22,byName=n=>K.find(k=>k.name===n),obj=p=>P0.node(0,p.node);
