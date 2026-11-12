@@ -42,10 +42,10 @@ const MM={
     u.title=t.replace(/【([^】·]+)(?:·[^】]+)?】/g,'$1').split(/[。；;，,！!]/)[0].slice(0,18);return u},
   /* one sentence that says what was understood, always built from the structure itself */
   restate(u,lib){const L=k=>MM.label(lib,k),out=[];(u.joins||[]).forEach(j=>{out.push((j.with?'用 '+(j.qty||1)+' 个 '+L(j.with)+' ':'')+'把 '+L(j.a)+(j.pa?' 的'+j.pa.name:'')+' 接到 '+L(j.b)+(j.pb?' 的'+j.pb.name:''))});
-    if(!out.length&&(u.parts||[]).length)out.push('用到 '+u.parts.map(p=>p[1]+' 个 '+L(p[0])).join('、'));const more=[];if(u.flip)more.push('先把整体'+u.flip);if(u.repeat>1)more.push('同样做 '+u.repeat+' 次');if(u.tool)more.push('用'+u.tool);(u.warn||[]).forEach(w=>more.push('注意：'+w));
+    if(!out.length&&(u.parts||[]).length)out.push((u.parts.length===1?'把 ':'用到 ')+u.parts.map(p=>p[1]+' 个 '+L(p[0])).join('、')+(u.parts.length===1?' 摆放好（这一步还没有和别的零件连接）':''));const more=[];if(u.flip)more.push('先把整体'+u.flip);if(u.repeat>1)more.push('同样做 '+u.repeat+' 次');if(u.tool)more.push('用'+u.tool);(u.warn||[]).forEach(w=>more.push('注意：'+w));
     return(out.join('；')||'还没有内容')+(more.length?'。'+more.join('；'):'')+'。'},
   /* the manual against the parts list */
-  check(steps,lib,placed){const used={},R={used,over:[],under:[],todo:0,noJoin:[],noPoint:[],ask:[]};steps.forEach((s,i)=>{if(!s.ok){R.todo++;return}const u=s.u;(u.parts||[]).forEach(([k,q])=>{used[k]=(used[k]||0)+q*(u.repeat||1)});if(!(u.joins||[]).length)R.noJoin.push(i+1);else if(u.joins.some(j=>!j.pa||!j.pb))R.noPoint.push(i+1)});
+  check(steps,lib,placed){const used={},R={used,over:[],under:[],todo:0,noJoin:[],noPoint:[],ask:[]};steps.forEach((s,i)=>{if(!s.ok){R.todo++;return}const u=s.u;(u.parts||[]).forEach(([k,q])=>{used[k]=(used[k]||0)+q*(u.repeat||1)});if(!(u.joins||[]).length){if((u.parts||[]).length!==1||(lib.find(x=>x.key===u.parts[0][0])||{}).hw)R.noJoin.push(i+1)}else if(u.joins.some(j=>!j.pa||!j.pb))R.noPoint.push(i+1)});
     /* a main part named again in a later step is the one already assembled: such parts are counted by how many stand in the assembly */
     if(placed)lib.forEach(it=>{if(!it.hw&&it.node!=null){if(placed[it.key])used[it.key]=placed[it.key];else delete used[it.key]}});
     lib.forEach(it=>{const n=used[it.key]||0;if(n>it.qty)R.over.push({key:it.key,name:it.name,used:n,qty:it.qty});else if(n<it.qty)R.under.push({key:it.key,name:it.name,used:n,qty:it.qty})});R.done=!R.todo&&!R.over.length&&!R.under.length&&steps.length>0;return R},

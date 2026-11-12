@@ -25,6 +25,9 @@ await p.click('#bMark');const sf0=await W(()=>__man.surf('n:抽屉底板')),cn0=
 ck('“加标记点” then a click on the surface puts a point there that can be grabbed like a hole',(M.marks['n:抽屉底板']||[]).length===1&&M.marks['n:抽屉底板'][0].name==='标记1'&&M.marks['n:抽屉底板'][0].p.length===3&&(await ST()).grab.pt==='标记1'&&/1 个标记点/.test(await cap())&&/点这里加一个标记点/.test(tp),JSON.stringify(M.marks['n:抽屉底板'][0]));
 /* 3. the state of the assembly follows the confirmed steps */
 await p.click('#vState');await p.waitForTimeout(200);ck('before anything is confirmed the state view says so',/还没有确认的步骤/.test(await cap()));
+await step('把抽屉长板放到地面上');await p.click('#uOk');await p.waitForTimeout(400);let I0=await W(()=>__man.insts());
+ck('a step that only puts a part down already shows it in the assembly state, and is not reported as missing a join',(await ST()).view==='state'&&I0.length===1&&I0[0].key==='n:抽屉长板（凸条朝外）'&&/装配状态（到第 1 步）：抽屉长板/.test(await cap())&&/只是摆放/.test(await cap())&&!/没有写明谁装到谁上/.test(await p.textContent('#chk'))&&/摆放好/.test(await p.textContent('#uSay')),await cap());
+await p.click('#sDelStep');await p.waitForTimeout(300);
 await step('用两颗木螺丝把垫块装到左桌板下面');const hL=lp.filter(x=>x.kind==='hole');await pick(0,'a','n:垫块','孔1');await pick(0,'b','n:左桌板',hL[0].name);await p.click('#uOk');await p.waitForTimeout(400);let I=await W(()=>__man.insts());
 const pa=await p.evaluate(()=>__man.instPoint('n:垫块','孔1').w),pb=await p.evaluate(n=>__man.instPoint('n:左桌板',n).w,hL[0].name);
 ck('after confirming a step the bench shows what is assembled so far, the part sitting exactly on the chosen points',(await ST()).view==='state'&&I.filter(x=>!x.fast).map(x=>x.key).sort().join()==='n:垫块,n:左桌板'&&d3(pa,pb)<.01&&/装配状态（到第 1 步）：/.test(await cap())&&/垫块/.test(await cap()),(await cap())+' gap '+d3(pa,pb).toFixed(3));
