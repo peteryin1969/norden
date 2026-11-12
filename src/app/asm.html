@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>从总装文件排步骤</title>
+<style>
+:root{--bg:#f3f4f1;--card:#fff;--ink:#1b2420;--mut:#5d6963;--line:#d9ddd7;--acc:#23835c;--warn:#a85b00;--bad:#b3261e;--soft:#eef4f0}
+@media(prefers-color-scheme:dark){:root{--bg:#141917;--card:#1d2421;--ink:#e8ece9;--mut:#9aa6a0;--line:#2f3a35;--acc:#4fc393;--warn:#e0a050;--bad:#f08a80;--soft:#22302a}}
+*{box-sizing:border-box}[hidden]{display:none!important}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+button,input,select,textarea{font:inherit;color:var(--ink)}button,.btn{padding:5px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);cursor:pointer;text-decoration:none;color:var(--ink);display:inline-block}button.on{background:var(--acc);border-color:var(--acc);color:#fff}button:disabled{opacity:.45;cursor:default}button.bad{color:var(--bad)}button.sm{padding:2px 7px;font-size:12px}
+input[type=text],select,textarea{padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--card);min-width:0}
+#top{display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--card);flex-wrap:wrap}#top b{font-size:16px}#top .sp{margin-left:auto}
+#wrap{display:grid;grid-template-columns:270px minmax(0,1fr) minmax(320px,44%);grid-template-rows:minmax(0,1fr);gap:10px;padding:10px;height:calc(100% - 50px);min-height:560px}
+@media(max-width:1020px){#wrap{grid-template-columns:1fr;grid-template-rows:none;height:auto}#bench{height:360px!important;flex:none!important}#benchCol{order:-1}}
+.col{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;overflow:auto;min-height:0}
+h2{font-size:14px;margin:0 0 6px}h3{font-size:13px;margin:12px 0 4px;color:var(--mut);font-weight:600}.mut{color:var(--mut);font-size:12px}
+.st{border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-bottom:6px;cursor:pointer}.st.on{border-color:var(--acc);background:var(--soft)}.st b{display:block}
+textarea{width:100%;min-height:70px;resize:vertical}.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.card{border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px}.note{border-left:3px solid var(--warn);padding:4px 8px;background:var(--soft);border-radius:0 6px 6px 0;margin:6px 0;font-size:13px}
+table{border-collapse:collapse;width:100%}td,th{padding:3px 4px;text-align:left;font-size:13px;vertical-align:middle}th{color:var(--mut);font-weight:500}td input{width:100%}
+#benchCol{display:flex;flex-direction:column;gap:8px}#bench{position:relative;flex:1;min-height:280px;background:#c3cfcc;border-radius:10px;overflow:hidden;touch-action:none;border:1px solid var(--line);cursor:grab}#bench canvas{display:block;width:100%;height:100%}
+#tip{position:absolute;pointer-events:none;background:rgba(27,36,32,.92);color:#fff;font-size:12px;padding:2px 7px;border-radius:6px;display:none;white-space:nowrap}#bcap{position:absolute;left:10px;top:8px;background:rgba(255,255,255,.9);color:#1b2420;padding:2px 8px;border-radius:6px;font-size:13px;pointer-events:none;max-width:calc(100% - 20px)}
+#msg{pointer-events:none;position:fixed;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(27,36,32,.93);color:#fff;padding:6px 14px;border-radius:8px;font-size:13px;max-width:92%;display:none;z-index:5}#msg.on{display:block}#err{color:var(--bad);padding:0 12px}
+.chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--acc);border-radius:16px;padding:2px 4px 2px 10px;background:var(--soft)}.chip button{padding:0 7px;border-radius:12px;line-height:20px}
+.num{display:inline-block;width:22px;height:22px;border-radius:50%;background:var(--acc);color:#fff;text-align:center;line-height:22px;font-size:13px;margin-right:6px}.kd{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center;margin:5px 0}
+#empty{max-width:640px;margin:40px auto;padding:0 16px}#empty ol{line-height:1.9;padding-left:20px}.lg{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 3px 0 8px;vertical-align:-1px}
+</style></head><body>
+<div id="top"><b>从总装文件排步骤</b><input type="text" id="pname" placeholder="产品名称" style="width:220px"><span class="mut" id="src"></span>
+  <span class="sp"></span><label class="btn" id="impL">导入三维文件<input type="file" id="imp" accept=".glb,.json,model/gltf-binary,application/json" hidden></label><button id="see">从头播放</button><button id="save" class="on">保存</button><a id="back" class="mut" href="index.html">返回</a></div>
+<div id="err"></div>
+<div id="empty" hidden><h2 style="font-size:18px">有装好状态的三维文件，就不用猜零件装在哪</h2>
+  <ol><li>请厂家从设计软件里把<b>总装文件</b>导出成 <b>.glb</b>，每个零件是单独的一块。</li><li>点右上角“导入三维文件”。文件只在你的浏览器里读取，不会上传。</li><li>在三维图上点零件，把它们分到每一步。零件的位置用文件里的，装入方向和动画由程序算出来，你可以改。</li><li>保存后得到平台的模型数据，可以直接播放。</li></ol>
+  <div class="row"><button id="demo">用示例试一下（EKET 小柜）</button><span class="mut">示例取自 IKEA 3D Assembly Dataset（© Inter IKEA Systems B.V.，CC BY-NC-SA 4.0），仅用于测试，从 GitHub 现取，约 15 MB。</span></div></div>
+<div id="wrap" hidden>
+  <div class="col"><h2>步骤</h2><div id="steps"></div><button id="addStep" class="on">＋ 加一步</button>
+    <h3>检查</h3><div id="chk"></div>
+    <h3>零件（按种类）</h3><div class="mut">名称和编号可以改；“加入”把这一种还没排的都放进当前步骤。</div><table id="kinds"></table></div>
+  <div class="col" id="ed"></div>
+  <div class="col" id="benchCol"><div class="row"><b>三维图</b><span class="mut"><span class="lg" style="background:#7fd3ab"></span>这一步装的<span class="lg" style="background:#f4f4f0;border:1px solid #999"></span>前面已装好<span class="lg" style="background:#8fa39b;opacity:.5"></span>还没轮到（半透明）</span></div>
+    <div id="bench"><div id="bcap"></div><div id="tip"></div></div>
+    <div class="row"><button id="play" class="on">▶ 播放这一步</button><input type="range" id="t" min="0" max="1000" value="1000" style="flex:1"><button id="reset">回到镜头</button></div>
+    <div class="mut">点零件：放进当前步骤，再点一次拿出来。拖动转视角，滚轮或双指缩放。</div></div>
+</div>
+<div id="msg"></div>
+<script src="vendor/three.min.js"></script><script src="mplay.js"></script><script src="masm.js"></script><script src="app.js"></script>
+<script>
+(async()=>{const $=id=>document.getElementById(id),A=MAsm,qs=new URLSearchParams(location.search),pid=qs.get('pid');
+const el=(t,a,...c)=>{const e=document.createElement(t);Object.entries(a||{}).forEach(([k,v])=>{if(v==null||v===false)return;if(k==='class')e.className=v;else if(k.startsWith('on'))e[k]=v;else if(k==='value')e.value=v;else if(k==='style')e.style.cssText=v;else e.setAttribute(k,v===true?'':v)});c.flat().forEach(x=>{if(x!=null&&x!==false)e.append(x)});return e};
+let msgT=0;const say=t=>{const m=$('msg');m.textContent=t;m.classList.add('on');clearTimeout(msgT);msgT=setTimeout(()=>m.classList.remove('on'),9000)};
+const dec=d=>typeof d==='string'?d:new TextDecoder().decode(d);
+let M=null,P=null,rc=[],cur=0,t=1,playing=false,chain=false,az=0,elv=0,zoom=1,dirty=false,hover=-1;const cache=new Map();
+const bench=$('bench'),ren=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});ren.setPixelRatio(Math.min(devicePixelRatio,2));bench.prepend(ren.domElement);const cam=new THREE.PerspectiveCamera(32,1.5,1,2000);
+const size=()=>{const w=bench.clientWidth,h=bench.clientHeight;if(!w||!h)return;ren.setSize(w,h,false);const as=w/h;cam.aspect=as;cam.fov=as<1.5?2*Math.atan(Math.tan(16*Math.PI/180)*1.5/as)*180/Math.PI:32;cam.updateProjectionMatrix()};addEventListener('resize',size);
+const PA=()=>M.asm.parts,S=()=>M.asm.steps,stepOf=i=>S().findIndex(s=>s.parts.includes(i));
+/* obstacles of a part: everything fitted in earlier steps, and the kinds chosen before it in its own step */
+function obst(si,i){const o=[];for(let k=0;k<si;k++)o.push(...S()[k].parts);const s=S()[si],ks=[];s.parts.forEach(j=>{if(!ks.includes(PA()[j].kind))ks.push(PA()[j].kind)});const my=ks.indexOf(PA()[i].kind);s.parts.forEach(j=>{if(ks.indexOf(PA()[j].kind)<my)o.push(j)});return o}
+function autos(from){for(let si=Math.max(0,from);si<S().length;si++){const s=S()[si];s.auto={};s.parts.forEach(i=>{const o=obst(si,i).sort((a,b)=>a-b),key=i+'|'+(s.pose||'up')+'|'+o.join(',');let r=cache.get(key);if(!r){r=A.autoDir(THREE,M,rc,i,o,s.pose||'up');cache.set(key,r)}s.auto[i]={d:r.d,...(r.base?{base:1}:{}),...(r.blocked?{blocked:1}:{}),ratio:r.ratio||0};
+      /* a small piece that sits in another small piece of the same step (a pin in its clip) goes in the same way as that one */
+      if(r.small&&!r.base){const P1=PA()[i],m=s.parts.find(j=>j!==i&&o.includes(j)&&s.auto[j]&&!s.auto[j].base&&PA()[j].kind!==P1.kind&&Math.max(...PA()[j].size)<Math.max(...M.asm.size)*.22&&[0,1,2].every(x=>Math.abs(P1.c[x]-PA()[j].c[x])<(P1.size[x]+PA()[j].size[x])/2+.2));if(m){const d0=s.auto[m].d,q=r.all[d0.join()];if(q!=null&&q<=.25&&d0.join()!==r.d.join())s.auto[i]={d:d0.slice(),ratio:q,mate:1}}}})}}
+function rebuild(from){if(from!=null)autos(from);S().forEach(s=>{if(s.tAuto!==false){s.title=A.autoTitle(M,s)||(s.pose&&s.pose!==prevPose(s)?'把它'+A.POSES[s.pose].replace(/（.*/,''):'');s.tAuto=true}});A.steps(M,THREE);P.setSteps(M.steps);cur=Math.max(0,Math.min(cur,S().length-1))}
+const prevPose=s=>{const i=S().indexOf(s);return i>0?(S()[i-1].pose||'up'):'up'};
+const ghost=new THREE.Color(0x8fa39b),green=new THREE.Color(A.GREEN);
+function paint(edit){const s=S()[cur],placed=new Set();for(let k=0;k<cur;k++)S()[k].parts.forEach(i=>placed.add(i));PA().forEach((p,i)=>{const o=P.node(0,p.node),ln=P.node(0,p.node+1),m=P.mats[p.mat],g=edit&&!placed.has(i)&&!s.parts.includes(i),tr=!!g;
+    if(edit){o.visible=true;m.color.copy(g?ghost:s.parts.includes(i)?green:new THREE.Color(p.col))}if(m.transparent!==tr){m.transparent=tr;m.needsUpdate=true}m.opacity=g?(i===hover?.55:.24):1;m.depthWrite=!g;ln.visible=!g;if(edit&&i===hover&&!g)m.color.offsetHSL(0,0,-.12)})}
+function draw(){if(!P||!M.steps.length)return;const id=M.steps[cur].id,edit=!playing&&t>=1;paint(false);const sc=P.pose(id,Math.min(1,t)),c=P.camera(id,Math.min(1,t));if(edit)paint(true);
+  if(c){const b=c.pos.clone().sub(c.target),r=b.length()*zoom,th=Math.atan2(b.x,b.z)+az,ph=Math.max(-1.2,Math.min(1.45,Math.asin(b.y/b.length())+elv));cam.position.set(Math.sin(th)*Math.cos(ph)*r,Math.sin(ph)*r,Math.cos(th)*Math.cos(ph)*r).add(c.target);cam.lookAt(c.target);cam.userData={target:c.target.clone(),dist:r}}ren.render(sc,cam)}
+let last=0;function loop(ts){requestAnimationFrame(loop);const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(playing&&P){t+=dt/4.2;if(t>=1.12){if(chain&&cur<S().length-1){cur++;t=0;az=elv=0;zoom=1;stepsUI();edUI()}else{t=1;setPlay(false)}}$('t').value=Math.round(Math.min(t,1)*1000)}if(P)draw()}
+const setPlay=v=>{playing=v;if(!v)chain=false;$('play').textContent=v?'⏸ 暂停':'▶ 播放这一步';$('play').classList.toggle('on',!v);cap()};
+const cap=()=>{if(!M)return;const s=S()[cur],n=s.parts.length;$('bcap').textContent='第 '+(cur+1)+' 步'+(s.title?' · '+s.title:'')+(playing?'':n?'（'+n+' 个零件）':'（还没有零件，点图上的零件放进来）')};
+const go=i=>{cur=i;t=1;az=elv=0;zoom=1;setPlay(false);stepsUI();edUI();$('t').value=1000};
+function playStep(){t=0;setPlay(true)}
+function toggle(i){const s=S()[cur],at=stepOf(i);let from=cur;if(at===cur)s.parts=s.parts.filter(x=>x!==i);else{if(at>=0){S()[at].parts=S()[at].parts.filter(x=>x!==i);from=Math.min(from,at);say('“'+A.kname(M,PA()[i].kind)+'”原来在第 '+(at+1)+' 步，已经挪到第 '+(cur+1)+' 步。')}s.parts.push(i)}dirty=true;rebuild(from);stepsUI();edUI();kindsUI();if(at!==cur)playStep()}
+function addKind(k){const s=S()[cur],L=PA().map((p,i)=>i).filter(i=>PA()[i].kind===k&&stepOf(i)<0);if(!L.length){say('这一种零件已经都排进步骤了。');return}s.parts.push(...L);dirty=true;rebuild(cur);stepsUI();edUI();kindsUI();playStep()}
+function dirWord(s,i){const a=s.auto&&s.auto[i];if(!a||a.base)return'直接放好（这一步的基础）';const w=new THREE.Vector3(...a.d).applyQuaternion(A.Q(THREE,s.pose||'up'));let best='U',bd=-9;Object.entries(A.WORLD).forEach(([k,v])=>{const d=w.dot(new THREE.Vector3(...v));if(d>bd){bd=d;best=k}});return A.DIRNAME[best]+(a.blocked?'（可能被挡住）':'')}
+function stepsUI(){const B=$('steps');B.innerHTML='';S().forEach((s,i)=>{B.append(el('div',{class:'st'+(i===cur?' on':''),'data-i':i,onclick:()=>go(i)},el('div',{class:'row'},el('b',{style:'flex:1'},'第 '+(i+1)+' 步　'+(s.title||'（未命名）')),el('button',{class:'sm',title:'上移',disabled:i===0,onclick:e=>{e.stopPropagation();move(i,-1)}},'↑'),el('button',{class:'sm',title:'下移',disabled:i===S().length-1,onclick:e=>{e.stopPropagation();move(i,1)}},'↓')),el('div',{class:'mut'},s.parts.length?s.parts.length+' 个零件':(s.pose||'up')!==prevPose(s)?'只翻转，不装零件':'没有零件')))});
+  const C=$('chk');C.innerHTML='';if(!M.warn.length)C.append(el('div',{class:'mut',id:'chkOk'},'所有零件都排进了步骤，没有发现问题。'));M.warn.forEach(w=>C.append(el('div',{class:'note'},w)));cap()}
+function move(i,d){const L=S(),j=i+d;[L[i],L[j]]=[L[j],L[i]];if(cur===i)cur=j;else if(cur===j)cur=i;dirty=true;rebuild(Math.min(i,j));stepsUI();edUI()}
+function kindsUI(){const T=$('kinds');T.innerHTML='';T.append(el('tr',{},el('th',{},'名称'),el('th',{style:'width:74px'},'编号'),el('th',{style:'width:44px'},'已排'),el('th',{})));Object.entries(M.asm.kinds).forEach(([k,K])=>{const all=PA().filter(p=>p.kind===k).length,done=PA().filter((p,i)=>p.kind===k&&stepOf(i)>=0).length;
+    T.append(el('tr',{'data-k':k},el('td',{},el('input',{type:'text',value:K.name,title:'文件里的名字：'+k,onchange:e=>{K.name=e.target.value.trim()||k;dirty=true;rebuild();stepsUI();edUI()}})),el('td',{},el('input',{type:'text',value:K.code||'',onchange:e=>{K.code=e.target.value.trim();dirty=true;rebuild()}})),el('td',{style:done<all?'color:var(--warn)':''},done+'/'+all),el('td',{},el('button',{class:'sm',disabled:done>=all,onclick:()=>addKind(k)},'加入'))))})}
+function edUI(){const E=$('ed');E.innerHTML='';const s=S()[cur];if(!s)return;const ks=[];s.parts.forEach(i=>{if(!ks.includes(PA()[i].kind))ks.push(PA()[i].kind)});
+  E.append(el('div',{class:'row'},el('h2',{style:'margin:0;flex:1'},'第 '+(cur+1)+' 步'),el('button',{class:'sm bad',id:'delStep',disabled:S().length<2,onclick:()=>{if(s.parts.length&&!confirm('删除这一步？里面的零件会变回“还没排”。'))return;S().splice(cur,1);dirty=true;cur=Math.max(0,cur-1);rebuild(0);stepsUI();edUI();kindsUI()}},'删除这一步')));
+  E.append(el('div',{class:'card'},el('div',{},el('span',{class:'num'},'1'),el('b',{},'这一步装哪些零件')),el('div',{class:'mut'},'在右边的三维图上点零件，或者在左下的零件表里点“加入”。'),
+    ks.length?el('div',{id:'kd'},...ks.map(k=>{const L=s.parts.filter(i=>PA()[i].kind===k),w=(s.dir||{})[k]||'';return el('div',{class:'kd','data-k':k},el('span',{class:'chip'},A.kname(M,k)+' × '+L.length,el('button',{title:'从这一步拿出去',onclick:()=>{s.parts=s.parts.filter(i=>PA()[i].kind!==k);dirty=true;rebuild(cur);stepsUI();edUI();kindsUI()}},'×')),
+      el('select',{title:'装入方向',onchange:e=>{s.dir=s.dir||{};if(e.target.value)s.dir[k]=e.target.value;else delete s.dir[k];dirty=true;rebuild();stepsUI();edUI();playStep()}},el('option',{value:'',selected:!w},'自动：'+dirWord(s,L[0])),...Object.entries(A.DIRNAME).map(([v,n])=>el('option',{value:v,selected:w===v},n+'装入'))))})):el('div',{class:'note',id:'noParts'},'这一步还没有零件。只翻转或只有说明的步骤可以不放零件。'),
+    ks.length>1?el('div',{class:'mut'},'同一步里有几种零件时，按上面的先后顺序依次装。'):null));
+  E.append(el('div',{class:'card'},el('div',{},el('span',{class:'num'},'2'),el('b',{},'这一步怎么摆着装')),el('div',{class:'row',style:'margin-top:4px'},el('select',{id:'pose',onchange:e=>{s.pose=e.target.value;for(let k=cur+1;k<S().length;k++)if((S()[k].pose||'up')===old)S()[k].pose=s.pose;else break;dirty=true;rebuild(cur);stepsUI();edUI();playStep()}},...Object.entries(A.POSES).map(([v,n])=>el('option',{value:v,selected:(s.pose||'up')===v},n))),el('span',{class:'mut'},'和上一步不一样时，这一步开头会先演示翻转。后面的步骤跟着改。'))));
+  const old=s.pose||'up';
+  E.append(el('div',{class:'card'},el('div',{},el('span',{class:'num'},'3'),el('b',{},'标题和讲解')),el('input',{type:'text',id:'ttl',value:s.title||'',placeholder:'这一步的标题',style:'width:100%;margin:4px 0',onchange:e=>{s.title=e.target.value.trim();s.tAuto=!s.title;dirty=true;rebuild();stepsUI()}}),
+    el('textarea',{id:'sayT',placeholder:'给装配的人看的话。尺寸、力度、安全提醒这类内容只有厂家知道，请照说明书或实际情况填写。',onchange:e=>{s.say=e.target.value;dirty=true;rebuild();stepsUI()}},s.say||'')));
+  E.append(el('div',{class:'card'},el('div',{},el('span',{class:'num'},'4'),el('b',{},'镜头')),el('div',{class:'row',style:'margin-top:4px'},el('button',{id:'camSet',onclick:()=>{const u=cam.userData;if(!u.target)return;const v=cam.position.clone().sub(u.target);s.cam={v:v.clone().normalize().toArray().map(x=>+x.toFixed(4)),dist:+v.length().toFixed(2)};az=elv=0;zoom=1;dirty=true;rebuild();edUI();say('这一步以后都从现在这个角度看。')}},'把现在的视角定为这一步的镜头'),s.cam?el('button',{id:'camAuto',onclick:()=>{delete s.cam;dirty=true;rebuild();edUI()}},'恢复自动镜头'):el('span',{class:'mut'},'现在是自动镜头'))))}
+/* pointer: drag turns, a click without moving picks a part */
+const ray=new THREE.Raycaster();function pick(e){const r=ren.domElement.getBoundingClientRect(),v=new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(v,cam);const objs=PA().map(p=>P.node(0,p.node)).filter(o=>o.visible),h=ray.intersectObjects(objs,false);if(!h.length)return-1;return PA().findIndex(p=>P.node(0,p.node)===h[0].object)}
+let drag=null;const pts=new Map();bench.addEventListener('pointerdown',e=>{bench.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);drag={x:e.clientX,y:e.clientY,az,elv,moved:false}});
+bench.addEventListener('pointermove',e=>{if(!P)return;if(pts.has(e.pointerId)){const o0=pts.get(e.pointerId);if(pts.size===2){const o=[...pts.entries()].find(x=>x[0]!==e.pointerId)[1],d0=Math.hypot(o0[0]-o[0],o0[1]-o[1]),d1=Math.hypot(e.clientX-o[0],e.clientY-o[1]);if(d0>0)zoom=Math.max(.3,Math.min(2.5,zoom*d0/d1));if(drag)drag.moved=true}else if(drag){if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>5)drag.moved=true;if(drag.moved){az=drag.az-(e.clientX-drag.x)*.008;elv=drag.elv+(e.clientY-drag.y)*.006}}pts.set(e.pointerId,[e.clientX,e.clientY]);return}
+  if(playing||t<1)return;const i=pick(e),tip=$('tip');hover=i;if(i<0){tip.style.display='none';return}const r=bench.getBoundingClientRect(),at=stepOf(i);tip.textContent=A.kname(M,PA()[i].kind)+(at<0?'（还没排）':at===cur?'（这一步，点一下拿出去）':'（第 '+(at+1)+' 步）');tip.style.display='block';tip.style.left=Math.min(r.width-150,e.clientX-r.left+12)+'px';tip.style.top=(e.clientY-r.top+12)+'px'});
+const up=e=>{const d=drag;pts.delete(e.pointerId);drag=null;if(d&&!d.moved&&P&&e.type==='pointerup'){if(playing||t<1){t=1;setPlay(false);return}const i=pick(e);if(i>=0)toggle(i)}};bench.addEventListener('pointerup',up);bench.addEventListener('pointercancel',up);bench.addEventListener('pointerleave',()=>{hover=-1;$('tip').style.display='none'});
+bench.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.3,Math.min(2.5,zoom*(e.deltaY>0?1.1:.9)))},{passive:false});
+$('play').onclick=()=>{if(playing)setPlay(false);else playStep()};$('t').oninput=e=>{setPlay(false);t=e.target.value/1000};$('reset').onclick=()=>{az=elv=0;zoom=1};
+$('see').onclick=()=>{if(!P)return;cur=0;az=elv=0;zoom=1;stepsUI();edUI();t=0;chain=true;playing=true;$('play').textContent='⏸ 暂停';$('play').classList.remove('on');cap()};
+$('addStep').onclick=()=>{const L=S(),p=L.length?(L[L.length-1].pose||'up'):'up';L.splice(cur+1,0,{title:'',tAuto:true,say:'',parts:[],pose:(L[cur]&&L[cur].pose)||p,dir:{},auto:{}});cur++;dirty=true;rebuild(cur);go(cur)};
+$('pname').onchange=e=>{if(M){M.product=e.target.value.trim()||'未命名产品';dirty=true}};
+const text=()=>JSON.stringify(M);
+$('save').onclick=async()=>{if(!M)return;rebuild();const js=text();if(pid&&typeof DB!=='undefined'){try{await DB.put(pid,'pkg/model/model.json',js);dirty=false;say('已保存到项目的 model/model.json（'+(js.length/1048576).toFixed(1)+' MB）。'+(M.warn.length?'注意：左边“检查”里还有 '+M.warn.length+' 条提醒。':''))}catch(e){say('保存失败：'+(e.message||e))}}
+  else{const a=el('a',{href:URL.createObjectURL(new Blob([js],{type:'application/json'})),download:'model.json'});document.body.append(a);a.click();a.remove();dirty=false;say('已下载 model.json。以后在这里“导入三维文件”选它，可以接着改；用模型播放页也能直接播放。')}};
+addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
+async function start(m,from){M=m;if(!M.asm||!M.asm.parts)throw new Error('这份模型数据不是从总装文件来的，不能在这里排步骤。请导入 .glb 总装文件。');if(!M.asm.steps.length)M.asm.steps.push({title:'',tAuto:true,say:'',parts:[],pose:'up',dir:{},auto:{}});
+  P=new ModelPlayer(THREE,M);await P.ready;cache.clear();const mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});rc=PA().map(p=>{const g=P.node(0,p.node).geometry;if(!g.boundingBox)g.computeBoundingBox();if(!g.boundingSphere)g.computeBoundingSphere();const o=new THREE.Mesh(g,mat);o.position.set(...p.c);o.updateMatrixWorld(true);return o});
+  $('empty').hidden=true;$('wrap').hidden=false;$('pname').value=M.product||'';$('src').textContent=(from||'')+' · '+PA().length+' 个零件 · '+M.asm.size.map(v=>v.toFixed(1)).join(' × ')+' 厘米'+(M.asm.copyright?' · '+M.asm.copyright:'');cur=0;rebuild();size();go(0);kindsUI()}
+async function importBuf(buf,name){$('err').textContent='';try{const head=new Uint8Array(buf,0,4);if(head[0]===0x7b||/\.json$/i.test(name)){await start(JSON.parse(new TextDecoder().decode(buf)),name)}else{say('正在读取三维文件…');await new Promise(r=>setTimeout(r,30));const G=A.parseGLB(buf,THREE);await start(A.base(G,name.replace(/\.glb$/i,'').replace(/_/g,' '),name),name);dirty=true;say('读到 '+G.parts.length+' 个零件。现在在图上点零件，把它们分到每一步。')}}catch(e){$('err').textContent='打不开这个文件：'+(e.message||e)}}
+$('imp').onchange=async e=>{const f=e.target.files[0];if(!f)return;if(dirty&&!confirm('现在排的步骤还没保存，确定换一个文件？'))return;await importBuf(await f.arrayBuffer(),f.name);e.target.value=''};
+const DEMO='https://raw.githubusercontent.com/IKEA/IKEA3DAssemblyDataset/main/Dataset/EKET_70332124_35x25x35/glTF_glb/EKET_70332124_35x25x35.glb';
+$('demo').onclick=()=>{location.search='?'+(pid?'pid='+encodeURIComponent(pid)+'&':'')+'glb='+encodeURIComponent(DEMO)};
+if(pid)$('back').href='project.html?id='+encodeURIComponent(pid);else $('save').textContent='下载 model.json';
+window.__asm={state:()=>({ready:!!P,cur,t,playing,steps:M?S().length:0,parts:M?PA().length:0,warn:M?M.warn.slice():[],dirty}),asm:()=>JSON.parse(JSON.stringify(M.asm,(k,v)=>k==='parts'&&Array.isArray(v)&&v.length&&typeof v[0]==='object'?v.map(p=>({kind:p.kind,src:p.src,c:p.c,size:p.size})):v)),model:()=>M,toggle,addKind,go,stop:()=>{t=1;setPlay(false);draw()},
+  at:i=>{draw();const o=P.node(0,PA()[i].node),v=new THREE.Vector3().setFromMatrixPosition(o.matrixWorld).project(cam),r=ren.domElement.getBoundingClientRect();return{x:r.left+(v.x+1)/2*r.width,y:r.top+(1-v.y)/2*r.height}},pickAt:(x,y)=>pick({clientX:x,clientY:y}),dirWord:(si,i)=>dirWord(S()[si],i),text};
+requestAnimationFrame(loop);
+try{const glb=qs.get('glb'),src=qs.get('src');let done=false;
+  if(pid&&typeof DB!=='undefined'&&!glb){const f=await DB.file(pid,'pkg/model/model.json');if(f){const m=JSON.parse(dec(f.data));if(m.asm&&m.asm.parts){await start(m,'项目里的 model/model.json');done=true}}}
+  if(!done&&glb){say('正在下载三维文件…');const r=await fetch(glb);if(!r.ok)throw new Error('下载失败（'+r.status+'）');await importBuf(await r.arrayBuffer(),decodeURIComponent(glb.split('/').pop()));done=!!P}
+  if(!done&&src){const r=await fetch(src);if(!r.ok)throw new Error('读取 '+src+' 失败（'+r.status+'）');await start(JSON.parse(await r.text()),src);done=true}
+  if(!done)$('empty').hidden=false}catch(e){$('err').textContent=e.message||String(e);$('empty').hidden=false}
+})();
+</script></body></html>

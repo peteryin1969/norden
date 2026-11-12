@@ -1,0 +1,62 @@
+/* editor that starts from an assembled 3D file: parts are clicked into steps, positions are the file's, the way in is found */
+const {chromium}=require('playwright');const fs=require('fs');const d=process.cwd()+'/site/';
+(async()=>{const srv=require('http').createServer((q,s)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u.endsWith('/'))u+='index.html';fs.readFile(d+u.slice(1),(e,c)=>{if(e){s.writeHead(404);s.end()}else{s.writeHead(200,{'content-type':u.endsWith('.html')?'text/html;charset=utf8':u.endsWith('.js')?'text/javascript':'application/octet-stream'});s.end(c)}})}).listen(8906);
+const b=await chromium.launch({args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});const R=[],ck=(n,ok,x)=>{R.push(ok===true);console.log(ok===true?'ok  ':'FAIL',n,x==null?'':String(x).slice(0,400))};const er=[];
+const ctx=await b.newContext({viewport:{width:1360,height:900},acceptDownloads:true});const p=await ctx.newPage();p.on('pageerror',e=>er.push(e.message));p.on('dialog',d=>d.accept());
+await ctx.route('**/three.min.js',r=>r.fulfill({body:fs.readFileSync('tv/node_modules/three/build/three.min.js'),contentType:'text/javascript'}));await ctx.route('**fonts.g**',r=>r.abort());
+const ST=()=>p.evaluate(()=>__asm.state()),AS=()=>p.evaluate(()=>__asm.asm());
+await p.goto('http://localhost:8906/app/asm.html');await p.waitForTimeout(600);ck('with nothing to open, the page explains what file is needed and offers a sample',await p.isVisible('#empty')&&await p.isHidden('#wrap')&&/总装文件/.test(await p.textContent('#empty'))&&await p.isVisible('#demo'));
+await p.goto('http://localhost:8906/app/asm.html?glb='+encodeURIComponent('/exp/eket/eket.glb'));await p.waitForFunction(()=>window.__asm&&__asm.state().ready,null,{timeout:90000});await p.waitForTimeout(400);
+let a=await AS(),s=await ST();const K=Object.keys(a.kinds),idx=k=>a.parts.map((q,i)=>q.kind===k?i:-1).filter(i=>i>=0);
+ck('the file is read: 21 parts in 10 kinds, sizes in centimetres, one empty step to start',s.parts===21&&K.length===10&&s.steps===1&&Math.abs(a.size[1]-35)<.2&&idx('139434').length===4&&idx('side panel 35x25').length===2,K.join(' | ')+' size '+a.size);
+ck('the check list says every part still has to be placed',s.warn.length===2&&/21 个零件没有排进/.test(s.warn[0]),s.warn[0]);
+/* step 1: lying on its front; the top as the base, then one side — by clicking in the picture */
+await p.selectOption('#pose','front');await p.waitForTimeout(300);await p.evaluate(()=>__asm.stop());await p.waitForTimeout(150);
+const top=idx('top panel 35x25')[0],sides=idx('side panel 35x25').sort((x,y)=>a.parts[x].c[2]-a.parts[y].c[2]),back=idx('back panel 35x25')[0],bot=idx('bottom panel 35x25')[0];
+const clickPart=async i=>{await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>r())));const q=await p.evaluate(i=>__asm.at(i),i);await p.mouse.move(q.x,q.y);await p.mouse.down();await p.mouse.up();await p.waitForTimeout(250)};
+const settle=async()=>{await p.waitForTimeout(250);await p.evaluate(()=>__asm.stop());await p.waitForTimeout(120)};
+await p.mouse.move(700,400);const hitTop=await p.evaluate(i=>{const q=__asm.at(i);return __asm.pickAt(q.x,q.y)},top);await clickPart(top);await settle();a=await AS();
+ck('a click on a part in the picture puts it into the step; the first part is the base and just stands there',a.steps[0].parts.join()===String(top)&&a.steps[0].auto[top].base===1&&/基础/.test(await p.textContent('#kd')),'picked '+hitTop+' top '+top);
+await p.evaluate(i=>__asm.toggle(i),sides[0]);await settle();a=await AS();const d1=a.steps[0].auto[sides[0]];
+ck('the side panel gets a way in that nothing blocks, and the step is named after its parts',!d1.blocked&&d1.d.some(v=>v)&&/top panel.*side panel/.test((await ST()).warn.join()+a.steps[0].title),JSON.stringify(d1)+' '+a.steps[0].title+' · '+await p.evaluate(i=>__asm.dirWord(0,i),sides[0]));
+/* names can be changed and show everywhere */
+await p.fill('#kinds tr[data-k="top panel 35x25"] input','顶板');await p.keyboard.press('Tab');await p.fill('#kinds tr[data-k="side panel 35x25"] input','侧板');await p.keyboard.press('Tab');await p.waitForTimeout(200);a=await AS();
+ck('renaming a kind renames it in the step title and the parts list',a.steps[0].title==='装顶板、侧板'&&/顶板 × 1/.test(await p.textContent('#kd'))&&/1\/2/.test(await p.textContent('#kinds tr[data-k="side panel 35x25"]')),a.steps[0].title);
+const add=async L=>{await p.click('#addStep');await p.waitForTimeout(150);for(const i of L){await p.evaluate(i=>__asm.toggle(i),i);await settle()}};
+await add([sides[1]]);await add([back]);a=await AS();const db=a.steps[2].auto[back];
+ck('the back panel can only slide in along the grooves from the open side (the file\'s −y), not through the panels',db.d.join()==='0,-1,0'&&!db.blocked&&(await p.evaluate(i=>__asm.dirWord(2,i),back))==='从左边',JSON.stringify(db)+' '+await p.evaluate(i=>__asm.dirWord(2,i),back));
+await add([bot]);a=await AS();ck('new steps keep the way the cabinet lies; the bottom panel closes the box',a.steps[3].pose==='front'&&!a.steps[3].auto[bot].blocked,JSON.stringify(a.steps[3].auto[bot]));
+await p.click('#addStep');await p.waitForTimeout(150);await p.selectOption('#pose','up');await settle();a=await AS();let M=await p.evaluate(()=>{const m=__asm.model(),s=m.steps[4];return{root:Object.keys(s.nodes[m.asm.root]),title:s.title,parts:s.parts.length}});
+ck('a step with no parts but another position becomes a turning step',a.steps[4].pose==='up'&&M.root.join()==='p,q'&&M.parts===0&&/原样放/.test(M.title)&&/只翻转/.test(await p.textContent('#steps')),JSON.stringify(M));
+await p.click('#addStep');await p.waitForTimeout(150);await p.click('#kinds tr[data-k="139434"] button');await settle();await p.click('#kinds tr[data-k="139435"] button');await settle();a=await AS();const c6=a.steps[5];
+ck('“加入” puts all four of a kind into the step; the clips come in from behind, one kind after the other',c6.parts.length===8&&idx('139434').concat(idx('139435')).every(i=>c6.auto[i].d.join()==='-1,0,0'&&!c6.auto[i].blocked)&&(await p.$$eval('#kd .kd',L=>L.map(x=>x.dataset.k))).join()==='139434,139435',JSON.stringify(idx('139435').map(i=>c6.auto[i])));
+await p.click('#addStep');await p.waitForTimeout(150);await p.click('#kinds tr[data-k="141413"] button');await settle();await p.click('#addStep');await p.waitForTimeout(150);await p.click('#kinds tr[data-k="141414"] button');await settle();
+await p.click('#addStep');await p.waitForTimeout(150);await p.click('#kinds tr[data-k="152651"] button');await settle();await p.click('#kinds tr[data-k="152650"] button');await settle();a=await AS();s=await ST();
+const c9=a.steps[8];ck('the fittings inside the cabinet come in from the front, through the opening',idx('152651').concat(idx('152650')).every(i=>c9.auto[i].d.join()==='1,0,0'&&!c9.auto[i].blocked),JSON.stringify(idx('152651').concat(idx('152650')).map(i=>c9.auto[i])));
+ck('all 21 parts are placed in 9 steps and the check list is clear',s.steps===9&&s.warn.length===0&&await p.isVisible('#chkOk'),s.warn.join(' / '));
+/* a direction can be set by hand */
+await p.evaluate(()=>__asm.go(2));await p.selectOption('#kd .kd select','U');await settle();a=await AS();M=await p.evaluate(()=>{const m=__asm.model(),pa=m.asm.parts.find(q=>q.kind==='back panel 35x25'),k=m.steps[2].nodes[pa.node].p;return{from:k.slice(1,4),to:k.slice(5,8)}});
+ck('a way in chosen by hand replaces the automatic one (from above = out of the back when lying on the front)',a.steps[2].dir['back panel 35x25']==='U'&&M.from[0]<M.to[0]-3&&Math.abs(M.from[1]-M.to[1])<.01,JSON.stringify(M));
+await p.selectOption('#kd .kd select','');await settle();
+/* moving a part to another step, text, camera */
+await p.evaluate(()=>__asm.go(6));await p.evaluate(i=>__asm.toggle(i),idx('141414')[0]);await settle();a=await AS();ck('a part clicked while another step is open moves to that step',a.steps[6].parts.includes(idx('141414')[0])&&!a.steps[7].parts.includes(idx('141414')[0])&&/挪到第 7 步/.test(await p.textContent('#msg')));
+await p.evaluate(()=>__asm.go(7));await p.evaluate(i=>__asm.toggle(i),idx('141414')[0]);await settle();
+await p.fill('#sayT','把 141414 拧到两个 141413 上。');await p.keyboard.press('Tab');await p.fill('#ttl','装上 2 个调节旋钮');await p.keyboard.press('Tab');await p.waitForTimeout(150);
+const bb=await p.locator('#bench').boundingBox();await p.mouse.move(bb.x+bb.width/2,bb.y+bb.height-30);await p.mouse.down();await p.mouse.move(bb.x+bb.width/2+120,bb.y+bb.height-60,{steps:4});await p.mouse.up();await p.click('#camSet');await p.waitForTimeout(150);a=await AS();
+ck('title and text are kept; a dragged view can be fixed as the step\'s camera',a.steps[7].title==='装上 2 个调节旋钮'&&a.steps[7].tAuto===false&&/拧到/.test(a.steps[7].say)&&a.steps[7].cam&&a.steps[7].cam.v.length===3&&await p.isVisible('#camAuto')&&a.steps[7].parts.length===2);
+/* playing through, saving, opening again */
+await p.click('#see');await p.waitForTimeout(1200);s=await ST();ck('“从头播放” starts at step 1 and plays',s.playing&&s.cur===0&&s.t>0&&s.t<1);await p.mouse.click(bb.x+40,bb.y+bb.height-20);await p.waitForTimeout(200);
+const [dl]=await Promise.all([p.waitForEvent('download'),p.click('#save')]);const f=process.cwd()+'/site/exp/eket/asm-model.json';await dl.saveAs(f);const saved=JSON.parse(fs.readFileSync(f,'utf8'));
+ck('saving gives one model file: 9 steps of motion, the parts list of each step, and the editing data to carry on',saved.format==='assembly-model'&&saved.steps.length===9&&saved.asm.steps.length===9&&saved.steps[5].parts.map(x=>x.join('×')).join()==='139434×4,139435×4'&&saved.steps[7].say.includes('拧到')&&(await ST()).dirty===false,(fs.statSync(f).size/1e6).toFixed(2)+' MB '+JSON.stringify(saved.steps[0].parts));
+await p.goto('http://localhost:8906/app/asm.html?src='+encodeURIComponent('/exp/eket/asm-model.json'));await p.waitForFunction(()=>window.__asm&&__asm.state().ready,null,{timeout:60000});const a2=await AS();
+ck('the saved file opens again in the editor with everything in place',JSON.stringify(a2.steps)===JSON.stringify(a.steps)&&a2.kinds['top panel 35x25'].name==='顶板'&&(await ST()).warn.length===0);
+await p.goto('http://localhost:8906/app/model.html?src='+encodeURIComponent('/exp/eket/asm-model.json'));await p.waitForFunction(()=>window.__viewer&&__viewer.state().ready,null,{timeout:60000});await p.evaluate(()=>__viewer.set('6',.6));await p.waitForTimeout(300);
+ck('the ordinary model player plays the same file',(await p.evaluate(()=>__viewer.state())).steps===9&&/139434/.test(await p.textContent('#bill')));
+/* inside a project: the button on the project page opens it, saving goes into the project and is found again */
+await p.goto('http://localhost:8906/app/index.html');await p.waitForTimeout(800);const pid=await p.evaluate(async()=>{await DB.putProject({id:'asm-test',name:'总装试验'});return'asm-test'}).catch(e=>{console.log('DB',e.message);return null});
+if(pid){await p.goto('http://localhost:8906/app/asm.html?pid='+encodeURIComponent(pid)+'&glb='+encodeURIComponent('/exp/eket/eket.glb'));await p.waitForFunction(()=>window.__asm&&__asm.state().ready,null,{timeout:90000});await p.evaluate(()=>__asm.addKind('top panel 35x25'));await settle();await p.click('#save');await p.waitForTimeout(1500);
+  await p.goto('http://localhost:8906/app/asm.html?pid='+encodeURIComponent(pid));await p.waitForFunction(()=>window.__asm&&__asm.state().ready,null,{timeout:60000});const a3=await AS();ck('in a project the work is saved into the project and opens again from there',a3.steps[0].parts.length===1&&/项目里/.test(await p.textContent('#src'))&&/project\.html/.test(await p.getAttribute('#back','href')))}
+else console.log('note: project store not reachable from the test, project saving not checked');
+/* a file that is not a model */
+await p.goto('http://localhost:8906/app/asm.html?glb='+encodeURIComponent('/app/app.js'));await p.waitForTimeout(1200);ck('a wrong file is refused in plain words',/不是 GLB 文件/.test(await p.textContent('#err'))&&await p.isVisible('#empty'));
+console.log(R.every(x=>x)&&!er.length?'PASS':'FAIL',R.filter(x=>x).length+'/'+R.length,'err',er.slice(0,3));await b.close();srv.close()})();

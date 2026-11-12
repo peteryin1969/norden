@@ -46,6 +46,7 @@ function ModelPlayer(T3,M){const me=this;me.M=M;me.T3=T3;const N=M.samples,wait=
   me.camera=(id,t,cam)=>{const s=byId[id];if(!s||!s.cam.length)return null;const f=s.cam,[a,b,u]=seg(f,8,Math.max(0,Math.min(1,t))*N),g=k=>f[a*9+k]+(f[b*9+k]-f[a*9+k])*u;
     const pos=new T3.Vector3(g(1),g(2),g(3));const qr=qmix([f[a*9+4],f[a*9+5],f[a*9+6],f[a*9+7]],[f[b*9+4],f[b*9+5],f[b*9+6],f[b*9+7]],u),q=new T3.Quaternion(qr[0],qr[1],qr[2],qr[3]).normalize(),dist=g(8);
     if(cam){cam.position.copy(pos);cam.quaternion.copy(q)}return{pos,quat:q,dist,target:pos.clone().add(new T3.Vector3(0,0,-1).applyQuaternion(q).multiplyScalar(dist))}};
+  me.setSteps=S=>{M.steps=S;me.steps=S.map(s=>s.id);for(const k in byId)delete byId[k];S.forEach(s=>byId[s.id]=s)};
   me.sceneOf=id=>me.scenes[byId[id].scene].sc;me.node=(sc,i)=>me.scenes[sc].objs[i];
   me.ready=Promise.all(wait).then(()=>me)}
 root.ModelPlayer=ModelPlayer;if(typeof module!=='undefined')module.exports=ModelPlayer;
