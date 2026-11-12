@@ -1,3 +1,4 @@
+import json
 import shutil,os,re,json
 os.makedirs('site',exist_ok=True);shutil.rmtree('site');os.makedirs('site')
 shutil.copy('shim.js','site/shim.js');shutil.copytree('../tts/tts','site/tts');open('site/.nojekyll','w').close()
@@ -37,7 +38,13 @@ open('site/index.html','w',encoding='utf8').write(f'''<!doctype html><html lang=
 
 # data models (phase 1b): one model.json beside each assistant, played by app/model.html
 _dm=[(s,n) for s,n,d,a in P if os.path.exists('model-%s.json'%s)]
-for s,n in _dm:shutil.copy('model-%s.json'%s,'site/%s/model.json'%s)
+# names of the main parts, so that a manual can speak of them (the engine only knows them by internal names)
+_NM={'norden':{'gs:frameL':'左框架','gs:frameR':'右框架','gs:gateL':'左支撑腿','gs:gateR':'右支撑腿','gs:topC':'中间桌板','gs:leafL':'左桌板','gs:leafR':'右桌板'}}
+for s,n in _dm:
+    _m=json.load(open('model-%s.json'%s,encoding='utf8'))
+    for _p in _m['parts']:
+        if _p['id'] in _NM.get(s,{}):_p['name']=_NM[s][_p['id']]
+    json.dump(_m,open('site/%s/model.json'%s,'w',encoding='utf8'),ensure_ascii=False,separators=(',',':'))
 if _dm:
     _h=open('site/index.html',encoding='utf8').read();_b='<p style="max-width:720px;margin:18px auto 0;padding:0 16px;font-size:14px;color:var(--mut)">数据模型（脱离产品程序播放，测试用）：'+' · '.join('<a href="app/model.html?src=../%s/model.json">%s</a>'%(s,n) for s,n in _dm)+'</p>'
     assert '</body>' in _h;open('site/index.html','w',encoding='utf8').write(_h.replace('</body>',_b+'</body>'))

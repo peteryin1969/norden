@@ -72,7 +72,7 @@ function bakeModel(opt){opt=opt||{};const keepLook=typeof realLook!=='undefined'
   /* what the nodes mean: parts with code and name, groups, holes */
   const bid=o=>o&&o.userData&&o.userData._bid!=null?[o.userData._bsc,o.userData._bid]:null;
   if(typeof CP!=='undefined')CP.forEach((p,i)=>{const b=bid(p.m);if(!b)return;const r={id:'cp'+i,scene:b[0],node:b[1],steps:Object.keys(p.keys||{})};const c=p.code||(p.m.userData&&p.m.userData.code);if(c)r.code=String(c);if(p.lbl)r.name=p.lbl;if(p.G&&p.G.name)r.group=p.G.name;out.parts.push(r)});
-  if(typeof GS!=='undefined')GS.forEach(G=>{const b=bid(G.g);if(!b)return;out.parts.push({id:'gs:'+G.name,scene:b[0],node:b[1],kind:'group',steps:Object.keys(G.seq||{}).filter(k=>G.seq[k]!==null)})});
+  if(typeof GS!=='undefined')GS.forEach(G=>{const b=bid(G.g);if(!b)return;const r={id:'gs:'+G.name,scene:b[0],node:b[1],kind:'group',steps:Object.keys(G.seq||{}).filter(k=>G.seq[k]!==null)},nm=(window.PART_NAMES||{})['gs:'+G.name];if(nm)r.name=nm;out.parts.push(r)});
   if(typeof parts!=='undefined'&&Array.isArray(parts))parts.forEach((p,i)=>{const b=bid(p.m||p.g||p);if(!b)return;const r={id:'dp'+i,scene:b[0],node:b[1]};if(p.code)r.code=String(p.code);if(p.lbl)r.name=p.lbl;out.parts.push(r)});
   if(typeof MARKS!=='undefined')MARKS.forEach(h=>{const b=bid(h.d);if(b)out.holes.push({scene:b[0],node:b[1],steps:(h.steps||[]).slice()})});
   SC.forEach(X=>X.objs.forEach(o=>{delete o.userData._bid;delete o.userData._bsc}));
