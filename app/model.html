@@ -20,6 +20,7 @@ table{border-collapse:collapse;width:100%;font-size:13px}td,th{text-align:left;p
 </style></head><body><main>
 <h1 id="ttl">数据模型播放器</h1>
 <div class="mut" id="sub">这个页面只读取一份模型数据文件来播放，不含任何产品专用的程序。</div>
+<div class="row" style="margin-top:6px"><button id="toWork">在数据工坊里编辑这份数据</button></div>
 <div id="err"></div>
 <div class="grid">
   <div class="card">
@@ -59,6 +60,7 @@ $('file').onchange=async e=>{const f=e.target.files[0];if(f)load(await f.text(),
 let drag=null;const pts=new Map();view.addEventListener('pointerdown',e=>{view.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);drag=[e.clientX,e.clientY,az,el];view.style.cursor='grabbing'});
 view.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;const old=pts.get(e.pointerId);if(pts.size===2){const o=[...pts.entries()].find(x=>x[0]!==e.pointerId)[1],d0=Math.hypot(old[0]-o[0],old[1]-o[1]),d1=Math.hypot(e.clientX-o[0],e.clientY-o[1]);if(d0>0)zoom=Math.max(.3,Math.min(2.5,zoom*d0/d1))}else if(drag){az=drag[2]-(e.clientX-drag[0])*.008;el=drag[3]+(e.clientY-drag[1])*.006}pts.set(e.pointerId,[e.clientX,e.clientY])});
 const up=e=>{pts.delete(e.pointerId);drag=null;view.style.cursor='grab'};view.addEventListener('pointerup',up);view.addEventListener('pointercancel',up);view.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.3,Math.min(2.5,zoom*(e.deltaY>0?1.1:.9)))},{passive:false});
+$('toWork').onclick=()=>{location.href='workshop.html'+location.search};if(!q.get('pid')&&!q.get('src'))$('toWork').hidden=true;
 requestAnimationFrame(loop);window.__viewer={state:()=>({ready:!!P,cur,t,steps:P?P.steps.length:0}),set:(id,v)=>{setPlay(false);if(id!==cur)go(id);t=v;$('t').value=Math.round(v*1000);draw()}};
 const src=q.get('src'),pid=q.get('pid');
 try{if(pid&&typeof DB!=='undefined'){const f=await DB.file(pid,'pkg/model/model.json');if(!f)throw new Error('这个项目还没有生成数据模型。请在模型工坊里点“生成数据模型”。');const d=f.data;await load(typeof d==='string'?d:new TextDecoder().decode(d),'项目里的 model/model.json')}

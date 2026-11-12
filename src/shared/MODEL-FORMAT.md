@@ -33,3 +33,11 @@ Keys are the samples that straight interpolation needs to stay within 0.0002 cm 
 steps in which the part itself moves. **hole** — `{scene,node,steps}`.
 
 Not in the file: 2D labels and captions, the wood-grain look (a display style), tap-to-pick and the voice layer.
+
+## Edited files (medit.js, the data workshop)
+
+Parts added in the workshop are ordinary nodes with ordinary keyframes, plus on the part entry: `made:1`, `step` (the step it is
+fitted in), `approach` (offset it comes in from, in its parent's frame; `approachW` the same in world axes), `on` (node it is fixed
+onto), `size` for imported meshes, `from` (the part it was copied from). A deleted part keeps its entry with `removed:1` and is
+hidden everywhere. `log:[{at,text}]` records the edits. `step.parts` follows parts being added, removed, renumbered or moved to
+another step.

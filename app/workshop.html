@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>数据工坊</title>
+<style>
+:root{--bg:#f3f4f1;--card:#fff;--ink:#1b2420;--mut:#5d6963;--line:#d9ddd7;--acc:#23835c;--warn:#a85b00;--bad:#b3261e;--soft:#eef4f0}
+@media(prefers-color-scheme:dark){:root{--bg:#141917;--card:#1d2421;--ink:#e8ece9;--mut:#9aa6a0;--line:#2f3a35;--acc:#4fc393;--warn:#e0a050;--bad:#f08a80;--soft:#22302a}}
+*{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+button,input,select{font:inherit;color:var(--ink)}button{padding:5px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);cursor:pointer}button.on{background:var(--acc);border-color:var(--acc);color:#fff}button:disabled{opacity:.45;cursor:default}button.bad{color:var(--bad)}
+input[type=text],input[type=number],select{padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--card);min-width:0}
+#top{display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--card);flex-wrap:wrap}#top b{font-size:16px}#top .sp{margin-left:auto}
+#wrap{display:grid;grid-template-columns:270px minmax(0,1fr) 310px;gap:10px;padding:10px;height:calc(100% - 50px);min-height:560px}
+@media(max-width:980px){#wrap{grid-template-columns:1fr;height:auto}}
+.col{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;overflow:auto}
+h2{font-size:14px;margin:0 0 6px}h3{font-size:13px;margin:12px 0 4px;color:var(--mut);font-weight:600}.mut{color:var(--mut);font-size:12px}
+#mid{display:flex;flex-direction:column;gap:8px;min-width:0}#view{position:relative;flex:1;min-height:340px;background:#eef0ec;border-radius:10px;overflow:hidden;touch-action:none;border:1px solid var(--line)}#view canvas{display:block;width:100%;height:100%}
+#cap{position:absolute;left:10px;top:8px;background:rgba(255,255,255,.88);color:#1b2420;padding:2px 8px;border-radius:6px;font-size:13px;pointer-events:none}
+#msg{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);background:rgba(27,36,32,.9);color:#fff;padding:5px 12px;border-radius:8px;font-size:13px;max-width:90%;display:none}#msg.on{display:block}
+#steps{display:flex;gap:5px;overflow-x:auto;padding:2px 0}#steps button{flex:none;min-width:36px;padding:3px 7px}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.row input[type=range]{flex:1;min-width:100px}
+.item{border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-bottom:6px;cursor:pointer}.item.on{border-color:var(--acc);background:var(--soft)}.item b{display:block;font-weight:600}.item .row{margin-top:4px}
+.tabs{display:flex;gap:4px;margin-bottom:8px}.tabs button{flex:1;padding:4px}
+.f{display:grid;grid-template-columns:76px minmax(0,1fr);gap:5px 6px;align-items:center;margin-bottom:6px}.f3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.f3 input{width:100%}
+.note{border-left:3px solid var(--warn);padding:4px 8px;background:var(--soft);border-radius:0 6px 6px 0;margin:6px 0;font-size:13px}.chg{font-size:13px;padding:2px 0;border-bottom:1px dashed var(--line)}
+#err{color:var(--bad);padding:0 12px}
+</style></head><body>
+<div id="top"><b>数据工坊</b><span id="ttl" class="mut"></span>
+  <span class="sp"></span><button id="undo" title="撤销 Ctrl+Z">撤销</button><button id="redo">重做</button><button id="dl">下载 model.json</button><button id="save" class="on">保存到项目</button><a id="back" href="index.html" style="color:var(--mut)">返回</a></div>
+<div id="err"></div>
+<div id="wrap">
+  <div class="col" id="store">
+    <div class="tabs"><button data-tab="have" class="on">零件仓库</button><button data-tab="new">新建</button><button data-tab="imp">导入</button></div>
+    <div id="tab-have"><input type="text" id="find" placeholder="按名称或编号查找" style="width:100%;margin-bottom:6px"><div id="list"></div></div>
+    <div id="tab-new" hidden>
+      <h2>按尺寸新建</h2>
+      <div class="f"><span>类型</span><select id="nKind"><option value="board">板</option><option value="cyl">圆柱件（销、杆、管）</option></select>
+        <span>名称</span><input type="text" id="nName" value="新板">
+        <span>编号</span><input type="text" id="nCode" placeholder="可不填">
+        <span id="nL1">长</span><input type="number" id="nA" value="60" step="0.1" min="0.1">
+        <span id="nL2">宽</span><input type="number" id="nB" value="30" step="0.1" min="0.1">
+        <span id="nL3">厚</span><input type="number" id="nC" value="1.8" step="0.1" min="0.1">
+        <span>颜色</span><select id="nCol"><option value="14272677">木色</option><option value="16185078">白色</option><option value="11449518">灰色</option><option value="10133930">钢色</option><option value="2107434">深色</option></select></div>
+      <div class="mut">单位厘米。新零件放在当前步骤的画面中央，装在当前步骤。</div>
+      <div class="row" style="margin-top:8px"><button class="on" id="nAdd">放进模型</button></div>
+    </div>
+    <div id="tab-imp" hidden>
+      <h2>导入客户的模型文件</h2>
+      <div class="f"><span>文件</span><input type="file" id="iFile" accept=".obj,.stl">
+        <span>文件单位</span><select id="iUnit"><option value="0.1">毫米</option><option value="1">厘米</option><option value="100">米</option><option value="2.54">英寸</option></select>
+        <span>朝上的轴</span><select id="iUp"><option value="y">Y 轴</option><option value="z">Z 轴</option></select>
+        <span>名称</span><input type="text" id="iName" placeholder="默认用文件名">
+        <span>编号</span><input type="text" id="iCode" placeholder="可不填"></div>
+      <div class="mut">支持 OBJ 和 STL。文件只在本机读取，不会上传。导入的是外形，不含孔位信息。</div>
+      <div class="row" style="margin-top:8px"><button class="on" id="iAdd">导入并放进模型</button></div><div id="iInfo" class="mut" style="margin-top:6px"></div>
+    </div>
+  </div>
+  <div id="mid">
+    <div id="view"><div id="cap"></div><div id="msg"></div></div>
+    <div id="steps"></div>
+    <div class="row"><button id="play">▶ 播放</button><input type="range" id="t" min="0" max="1000" value="1000" aria-label="这一步的进度"><button id="mMove" class="on" title="拖动箭头移动选中的零件">移动</button><button id="mTurn" title="拖动圆环转动选中的零件">转动</button><button id="reset">原镜头</button></div>
+    <div class="mut">点零件选中；拖空白处转视角，滚轮缩放。选中后拖箭头或圆环，或在右边填数字。</div>
+  </div>
+  <div class="col" id="side">
+    <h2>选中的零件</h2><div id="insp"><div class="mut">还没有选中零件。在图上点一个，或在左边仓库里点“定位”。</div></div>
+    <h3>材料清单变动</h3><div id="bill"><div class="mut">还没有变动。</div></div>
+    <h3>修改记录</h3><div id="log"><div class="mut">还没有修改。</div></div>
+  </div>
+</div>
+<script src="vendor/three.min.js"></script><script src="vendor/TransformControls.js"></script><script src="mplay.js"></script><script src="medit.js"></script><script src="app.js"></script>
+<script>
+(async()=>{const $=id=>document.getElementById(id),ME=MEdit,qs=new URLSearchParams(location.search),pid=qs.get('pid'),src=qs.get('src'),view=$('view');
+const el=(t,a,...c)=>{const e=document.createElement(t);Object.entries(a||{}).forEach(([k,v])=>{if(v==null||v===false)return;if(k==='class')e.className=v;else if(k.startsWith('on'))e[k]=v;else if(k==='value')e.value=v;else e.setAttribute(k,v===true?'':v)});c.flat().forEach(x=>{if(x!=null&&x!==false)e.append(x)});return e};
+const dec=d=>typeof d==='string'?d:new TextDecoder().decode(d),say=(s,keep)=>{const m=$('msg');m.textContent=s;m.classList.add('on');clearTimeout(say.t);if(!keep)say.t=setTimeout(()=>m.classList.remove('on'),4500)};
+let M=null,P=null,cur=null,t=1,playing=false,az=0,elv=0,zoom=1,sel=null,box=null,dragging=false,hist=[],hi=-1,bill0=null,dirty=false,mode='translate',pickFor=null,from='';
+const ren=new THREE.WebGLRenderer({antialias:true,alpha:true});ren.setPixelRatio(Math.min(devicePixelRatio,2));view.prepend(ren.domElement);const cam=new THREE.PerspectiveCamera(32,1.5,1,900);
+const tc=new THREE.TransformControls(cam,ren.domElement);tc.setSize(.9);tc.setSpace('world');
+const size=()=>{const w=view.clientWidth,h=view.clientHeight;if(!w)return;ren.setSize(w,h,false);const as=w/h;cam.aspect=as;cam.fov=as<1.5?2*Math.atan(Math.tan(16*Math.PI/180)*1.5/as)*180/Math.PI:32;cam.updateProjectionMatrix()};addEventListener('resize',size);
+const step=()=>P.step(cur),nodesOf=sc=>M.scenes[sc].nodes,part=()=>sel&&ME.part(M,sel),objOf=p=>P.node(p.scene,p.node);
+const shown=o=>{for(let x=o;x;x=x.parent)if(!x.visible)return false;return true};
+function camNow(){const c=P.camera(cur,t);if(!c)return;const b=c.pos.clone().sub(c.target),r=b.length()*zoom,th=Math.atan2(b.x,b.z)+az,ph=Math.max(-.3,Math.min(1.4,Math.asin(b.y/b.length())+elv));cam.position.set(Math.sin(th)*Math.cos(ph)*r,Math.sin(ph)*r,Math.cos(th)*Math.cos(ph)*r).add(c.target);cam.lookAt(c.target);cam.updateMatrixWorld(true);return c}
+function mount(){const sc=P.sceneOf(cur),p=part();if(tc.parent!==sc)sc.add(tc);if(p&&p.scene===step().scene&&shown(objOf(p))){if(tc.object!==objOf(p))tc.attach(objOf(p));tc.visible=true;tc.enabled=true}else{if(tc.object)tc.detach();tc.visible=false}
+  if(!box){box=new THREE.BoxHelper(new THREE.Object3D(),0xd0452b)}if(box.parent!==sc)sc.add(box);if(p&&p.scene===step().scene&&shown(objOf(p))){box.setFromObject(objOf(p));box.visible=true}else box.visible=false}
+function draw(){if(!P||!cur)return;if(!dragging)P.pose(cur,t);camNow();mount();ren.render(P.sceneOf(cur),cam)}
+let last=0;const loop=ts=>{requestAnimationFrame(loop);const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(playing&&P&&cur){t+=dt/((step().dur||1)*4);if(t>=1){t=1;setPlay(false)}$('t').value=Math.round(t*1000);if(sel)pos2ui()}draw()};
+const setPlay=v=>{playing=v;$('play').textContent=v?'⏸ 暂停':'▶ 播放'};
+function rebuild(){if(tc.object)tc.detach();if(tc.parent)tc.parent.remove(tc);if(P)P.scenes.forEach(X=>X.sc.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.dispose())}));P=new ModelPlayer(THREE,M);box=null;ren.shadowMap.enabled=!!M.render.shadow;if(M.render.shadowType!=null)ren.shadowMap.type=M.render.shadowType}
+/* ---------- history ---------- */
+const snap=()=>JSON.stringify(M);
+function commit(note){hist=hist.slice(0,hi+1);hist.push(snap());if(hist.length>16)hist.shift();hi=hist.length-1;dirty=true;rebuild();refresh();if(note)say(note)}
+function travel(d){const n=hi+d;if(n<0||n>=hist.length)return;hi=n;M=JSON.parse(hist[hi]);if(sel&&(!ME.part(M,sel)||ME.part(M,sel).removed))sel=null;dirty=true;rebuild();refresh();say(d<0?'已撤销':'已重做')}
+/* ---------- steps ---------- */
+function go(id,keepT){cur=id;if(!keepT)t=1;$('t').value=Math.round(t*1000);const s=step();$('cap').textContent=s.label+(s.title?' · '+s.title:'');[...$('steps').children].forEach(b=>b.classList.toggle('on',b.dataset.s===id));const on=$('steps').querySelector('.on');if(on)on.scrollIntoView({block:'nearest',inline:'center'});insp()}
+function strip(){const S=$('steps');S.innerHTML='';P.steps.forEach(id=>S.append(el('button',{'data-s':id,title:P.step(id).title,onclick:()=>{setPlay(false);go(id)}},id)))}
+/* ---------- store ---------- */
+function list(){const L=$('list'),f=$('find').value.trim().toLowerCase(),g=new Map();L.innerHTML='';ME.live(M).filter(p=>p.kind!=='group').forEach(p=>{const k=(p.code||'')+'|'+(p.name||'');if(!g.has(k))g.set(k,[]);g.get(k).push(p)});
+  const rows=[...g.values()].filter(a=>!f||((a[0].name||'')+(a[0].code||'')).toLowerCase().includes(f)).sort((a,b)=>(b.some(p=>p.made)?1:0)-(a.some(p=>p.made)?1:0)||(a[0].name||a[0].code||'').localeCompare(b[0].name||b[0].code||'','zh'));
+  if(!rows.length)L.append(el('div',{class:'mut'},'没有找到。'));
+  rows.forEach(a=>{const p0=a[0],made=a.filter(p=>p.made).length,on=a.some(p=>p.id===sel);let n=0;
+    L.append(el('div',{class:'item'+(on?' on':''),'data-code':p0.code||'','data-name':p0.name||''},el('b',{},p0.name||p0.code||'未命名零件'),el('span',{class:'mut'},(p0.code?'编号 '+p0.code+' · ':'没有编号 · ')+a.length+' 个'+(made?'（其中新加 '+made+' 个）':'')),
+      el('div',{class:'row'},el('button',{class:'bLoc',onclick:e=>{e.stopPropagation();const i=Math.max(0,a.findIndex(p=>p.id===sel));const p=a[(sel&&a.some(x=>x.id===sel)?i+1:0)%a.length];select(p.id,true)}},'定位'),el('button',{class:'bTake',title:'从仓库再取一个同样的零件放进当前步骤',onclick:e=>{e.stopPropagation();take(p0)}},'再取一个'))))})}
+function select(id,jump){sel=id;const p=part();pickFor=null;if(p&&jump){const st=ME.stepOf(p);if(st&&P.step(st)&&(p.scene!==step().scene||!shown(objOf(p)))){go(st,false)}}if(p&&p.scene===step().scene){P.pose(cur,t);if(!shown(objOf(p))&&jump)say('这个零件在这一步还看不到，已选中；换到它安装的步骤就能看到。')}refresh()}
+/* ---------- world helpers ---------- */
+const wpos=o=>o.getWorldPosition(new THREE.Vector3()),wquat=o=>o.getWorldQuaternion(new THREE.Quaternion()),pquat=o=>o.parent&&o.parent.isObject3D&&!o.parent.isScene?wquat(o.parent):new THREE.Quaternion();
+function moveWorld(p,dw){const o=objOf(p);P.pose(cur,t);const d=dw.clone().applyQuaternion(pquat(o).invert());ME.shift(M,p,[d.x,d.y,d.z],null)}
+function turnWorld(p,R){const o=objOf(p);P.pose(cur,t);const pq=pquat(o),Rl=pq.clone().invert().multiply(R).multiply(pq);ME.shift(M,p,null,[Rl.x,Rl.y,Rl.z,Rl.w])}
+function setApproach(p,w,parentQ){p.approachW=[w.x,w.y,w.z];let pq=parentQ;if(!pq){P.pose(p.step,1);pq=pquat(objOf(p))}const l=w.clone().applyQuaternion(pq.clone().invert());p.approach=[l.x,l.y,l.z].map(v=>Math.round(v*1e4)/1e4);ME.retrack(M,p)}
+const centre=()=>{const c=P.camera(cur,1);return c?c.target.clone():new THREE.Vector3()};
+/* ---------- adding ---------- */
+function addShape(o){const c=centre();o.scene=step().scene;o.step=cur;o.pos=[c.x,Math.max(c.y,(o.lift||0)),c.z];const p=ME.addPart(M,o);sel=p.id;t=1;$('t').value=1000;commit('“'+p.name+'”已放进模型，装在 '+step().label+'。拖箭头把它移到位。');tab('have')}
+function take(src){const st=ME.stepOf(src)||cur,S=nodesOf(src.scene);if(src.scene!==step().scene){say('这个零件属于另一个场景的步骤，请先切到那一步再取。');return}P.pose(st,1);const ids=[src.node],set=new Set(ids);for(let j=src.node+1;j<S.length;j++)if(set.has(S[j].p)){ids.push(j);set.add(j)}
+  const poses=ids.map(j=>{const o=P.node(src.scene,j);return{x:[...o.position.toArray(),...o.quaternion.toArray(),...o.scale.toArray()],vis:o.visible}}),o=objOf(src),q=wquat(o),sc=o.scale;P.pose(cur,1);const c=centre();
+  const p=ME.clone(M,src,poses,[c.x,c.y,c.z,q.x,q.y,q.z,q.w,sc.x,sc.y,sc.z],cur);sel=p.id;t=1;$('t').value=1000;commit('已从仓库再取 1 个“'+p.name+'”，放在画面中央，装在 '+step().label+'。')}
+/* ---------- inspector ---------- */
+const num=(id,v,stp)=>el('input',{type:'number',id,value:v,step:stp||'0.1'});
+function pos2ui(){const p=part();if(!p||!$('pX'))return;const o=objOf(p);if(p.scene!==step().scene)return;const w=wpos(o);['pX','pY','pZ'].forEach((id,i)=>{if(document.activeElement!==$(id))$(id).value=(+w.getComponent(i).toFixed(2))})}
+function insp(){const I=$('insp');if(!M)return;const p=part();I.innerHTML='';if(!p){I.append(el('div',{class:'mut'},'还没有选中零件。在图上点一个，或在左边仓库里点“定位”。'));return}
+  const here=p.scene===step().scene;if(here)P.pose(cur,t);const o=here?objOf(p):null,vis=o&&shown(o),sz=p.kind!=='group'?ME.sizeOf(M,p):null,st=ME.stepOf(p);
+  I.append(el('div',{class:'mut',id:'iKind'},p.kind==='group'?'这是一整组零件，移动它会带动组里的所有零件。':p.made?'在工坊里加入的零件。':'原模型的零件'+(st?'，在 '+ME.label(M,st)+' 安装。':'。')));
+  const nm=el('input',{type:'text',id:'pName',value:p.name||'',onchange:e=>{p.name=e.target.value.trim()||p.name;commit()}}),cd=el('input',{type:'text',id:'pCode',value:p.code||'',placeholder:'没有编号',onchange:e=>{ME.setCode(M,p,e.target.value);commit('编号已改，材料清单已跟着调整。')}});
+  I.append(el('div',{class:'f'},el('span',{},'名称'),nm,p.kind!=='group'?el('span',{},'编号'):null,p.kind!=='group'?cd:null));
+  if(!vis){I.append(el('div',{class:'note',id:'pHidden'},here?'这个零件在这一步的这个时刻还没出现。':'这个零件不在这一步的场景里。',st?el('button',{style:'margin-left:6px',onclick:()=>{go(st)}},'去 '+ME.label(M,st)):null))}
+  else{const w=wpos(o),setP=()=>{const v=new THREE.Vector3(+$('pX').value,+$('pY').value,+$('pZ').value);if([v.x,v.y,v.z].some(isNaN))return;P.pose(cur,t);moveWorld(p,v.sub(wpos(objOf(p))));commit()};
+    I.append(el('h3',{},'位置（厘米，左右 / 高低 / 前后）'),el('div',{class:'f3'},...['pX','pY','pZ'].map((id,i)=>{const n=num(id,+w.getComponent(i).toFixed(2));n.onchange=setP;return n})));
+    const nud=(lab,v)=>el('button',{class:'nud',onclick:()=>{moveWorld(p,new THREE.Vector3(...v).multiplyScalar(+$('pStep').value||1));commit()}},lab);
+    I.append(el('div',{class:'row',style:'margin-top:5px'},el('select',{id:'pStep'},...[['0.1','0.1'],['0.5','0.5'],['1','1'],['5','5'],['10','10']].map(([v,l])=>{const op=el('option',{value:v},l+' 厘米');if(v==='1')op.selected=true;return op})),nud('左',[-1,0,0]),nud('右',[1,0,0]),nud('上',[0,1,0]),nud('下',[0,-1,0]),nud('前',[0,0,1]),nud('后',[0,0,-1])));
+    const rot=(lab,ax,s)=>el('button',{class:'rot',onclick:()=>{turnWorld(p,new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...ax),s*Math.PI/2));commit()}},lab);
+    I.append(el('h3',{},'转动 90 度'),el('div',{class:'row'},rot('平转 ↺',[0,1,0],1),rot('平转 ↻',[0,1,0],-1),rot('前后翻',[1,0,0],1),rot('左右翻',[0,0,1],1)))}
+  if(sz){const ap=()=>{const ok=sz.kind==='board'?ME.resize(M,p,{l:+$('sA').value,w:+$('sB').value,t:+$('sC').value}):ME.resize(M,p,{d:+$('sA').value,len:+$('sB').value});if(!ok){say('尺寸要大于 0。');insp();return}commit(p.made?'尺寸已改。':'尺寸已改。注意：这块板上的孔和相邻的零件没有跟着动，需要逐个核对。')};
+    I.append(el('h3',{},sz.kind==='board'?'尺寸（厘米，长 / 宽 / 厚）':'尺寸（厘米，直径 / 长）'),el('div',{class:'f3'},...(sz.kind==='board'?[['sA',sz.l],['sB',sz.w],['sC',sz.t]]:[['sA',sz.d],['sB',sz.len]]).map(([id,v])=>{const n=num(id,v);n.min='0.1';n.onchange=ap;return n})))}
+  if(p.made){const A=p.approachW||p.approach||[0,0,0],dist=Math.hypot(...A)||12,dir=A[1]>0?'up':A[1]<0?'down':A[0]<0?'left':A[0]>0?'right':A[2]>0?'front':A[2]<0?'back':'none',V={up:[0,1,0],down:[0,-1,0],left:[-1,0,0],right:[1,0,0],front:[0,0,1],back:[0,0,-1],none:[0,0,0]};
+    const setA=()=>{const d=$('aDir').value,k=Math.max(0,+$('aDist').value||0);setApproach(p,new THREE.Vector3(...V[d]).multiplyScalar(k));t=0;setTimeout(()=>{setPlay(true)},50);commit('已改，正在播放这一步让你看效果。')};
+    I.append(el('h3',{},'安装'),el('div',{class:'f'},el('span',{},'装在哪一步'),el('select',{id:'pInst',onchange:e=>{ME.setStep(M,p,e.target.value);commit('安装步骤已改，材料清单已跟着调整。');go(p.step)}},...M.steps.filter(s=>s.scene===p.scene).map(s=>{const op=el('option',{value:s.id},s.label);if(s.id===p.step)op.selected=true;return op})),
+      el('span',{},'从哪边装入'),el('select',{id:'aDir',onchange:setA},...[['up','从上面'],['down','从下面'],['left','从左边'],['right','从右边'],['front','从前面'],['back','从后面'],['none','直接出现']].map(([v,l])=>{const op=el('option',{value:v},l);if(v===dir)op.selected=true;return op})),
+      el('span',{},'移动距离'),el('input',{type:'number',id:'aDist',value:+dist.toFixed(1),step:'1',min:'0',onchange:setA})));
+    const par=nodesOf(p.scene)[p.node].p,pp=par>=0&&ME.live(M).find(x=>x.scene===p.scene&&x.node===par);
+    I.append(el('div',{class:'f'},el('span',{},'固定在'),el('span',{id:'pOn'},par<0?'没有固定（后面的步骤里它留在原地）':'“'+((pp&&(pp.name||pp.code))||'原模型的一组零件')+'”上，跟着它一起动')),
+      el('div',{class:'row'},el('button',{id:'pAttach',class:pickFor?'on':'',onclick:()=>{pickFor=pickFor?null:p.id;say(pickFor?'请在图上点它要固定到的那个零件。':'已取消。',!!pickFor);insp()}},pickFor?'取消':'固定到另一个零件上…')))}
+  I.append(el('div',{class:'row',style:'margin-top:12px'},el('button',{class:'bad',id:'pDel',onclick:()=>{const n=p.name||p.code||'零件';ME.remove(M,p);sel=null;commit('“'+n+'”已删除'+(p.code&&p.kind!=='group'?'，材料清单已减 1。':'。'))}},'删除这个零件')))}
+/* ---------- bill and log ---------- */
+function billUI(){const B=$('bill'),D=ME.billDiff(bill0,M);B.innerHTML='';if(!D.length){B.append(el('div',{class:'mut'},'还没有变动。'));}else{const T0={},T1=ME.totals(M);Object.values(bill0).forEach(s=>Object.entries(s).forEach(([c,n])=>{T0[c]=(T0[c]||0)+n}));
+    D.forEach(d=>B.append(el('div',{class:'chg'},d.label+'：'+d.code+' 由 '+d.from+' 个改为 '+d.to+' 个')));const codes=[...new Set(D.map(d=>d.code))];B.append(el('div',{class:'note',id:'billNote'},'整套合计：'+codes.map(c=>c+' '+(T0[c]||0)+' → '+(T1[c]||0)).join('；')+'。保存时会一起改项目里的步骤数据和材料清单；说明书上的数量需要客户相应更新。'))}
+  const L=$('log');L.innerHTML='';const G=(M.log||[]).slice(-8).reverse();if(!G.length)L.append(el('div',{class:'mut'},'还没有修改。'));G.forEach(g=>L.append(el('div',{class:'chg'},g.text)))}
+function refresh(){list();insp();billUI();$('undo').disabled=hi<=0;$('redo').disabled=hi>=hist.length-1;$('ttl').textContent=(M.product||'')+' · '+from+(dirty?' · 有未保存的修改':'');tc.setMode(mode);$('mMove').classList.toggle('on',mode==='translate');$('mTurn').classList.toggle('on',mode==='rotate')}
+function tab(n){['have','new','imp'].forEach(k=>{$('tab-'+k).hidden=k!==n});document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===n))}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>tab(b.dataset.tab));$('find').oninput=list;
+$('nKind').onchange=()=>{const c=$('nKind').value==='cyl';$('nL1').textContent=c?'直径':'长';$('nL2').textContent=c?'长':'宽';$('nL3').hidden=c;$('nC').hidden=c;$('nA').value=c?0.8:60;$('nB').value=c?3:30;if(/^新(板|圆柱件)$/.test($('nName').value))$('nName').value=c?'新圆柱件':'新板'};
+$('nAdd').onclick=()=>{const a=+$('nA').value,b=+$('nB').value,c=+$('nC').value,cyl=$('nKind').value==='cyl';if(!(a>0&&b>0&&(cyl||c>0))){say('尺寸要大于 0。');return}addShape({geom:cyl?ME.cyl(a,b):ME.board(a,b,c),kind:cyl?'cyl':'board',name:$('nName').value.trim()||(cyl?'新圆柱件':'新板'),code:$('nCode').value.trim(),color:+$('nCol').value,lift:cyl?b/2:c/2})};
+$('iAdd').onclick=async()=>{const f=$('iFile').files[0];if(!f){say('请先选择一个 OBJ 或 STL 文件。');return}let pos;try{pos=/\.stl$/i.test(f.name)?ME.parseSTL(await f.arrayBuffer()):ME.parseOBJ(await f.text())}catch(e){pos=null}
+  if(!pos||pos.length<9){$('iInfo').textContent='读不出三角面：请确认这是 OBJ 或 STL 文件。';return}if(pos.length/9>300000){$('iInfo').textContent='这个文件有 '+Math.round(pos.length/9)+' 个三角面，太大了（上限 30 万）。请先简化再导入。';return}
+  const m=ME.mesh(pos,+$('iUnit').value,$('iUp').value==='z');if(Math.max(...m.size)>600||Math.max(...m.size)<.05){$('iInfo').textContent='按所选单位，这个模型的外形是 '+m.size.join(' × ')+' 厘米，看起来不对。请换一个“文件单位”再试。';return}
+  $('iInfo').textContent='已导入：'+m.tris+' 个三角面，外形 '+m.size.join(' × ')+' 厘米。';addShape({geom:m.geom,kind:'mesh',edge:25,size:m.size,name:$('iName').value.trim()||f.name.replace(/\.[^.]+$/,''),code:$('iCode').value.trim(),color:14272677})};
+/* ---------- view input ---------- */
+$('play').onclick=()=>{if(!playing&&t>=1)t=0;setPlay(!playing)};$('t').oninput=e=>{setPlay(false);t=e.target.value/1000;if(sel)pos2ui()};$('reset').onclick=()=>{az=0;elv=0;zoom=1};
+$('mMove').onclick=()=>{mode='translate';refresh()};$('mTurn').onclick=()=>{mode='rotate';refresh()};
+tc.addEventListener('dragging-changed',e=>{dragging=e.value;if(dragging){setPlay(false);return}const p=part();if(!p)return;const o=objOf(p),np=o.position.clone(),nq=o.quaternion.clone();P.pose(cur,t);const dp=np.sub(o.position),Rl=nq.multiply(o.quaternion.clone().invert()),moved=dp.length()>1e-4,turned=Math.abs(Rl.w)<1-1e-7;if(!moved&&!turned)return;ME.shift(M,p,moved?[dp.x,dp.y,dp.z]:null,turned?[Rl.x,Rl.y,Rl.z,Rl.w]:null);commit()});
+const ray=new THREE.Raycaster();
+function pick(cx,cy){const r=ren.domElement.getBoundingClientRect(),v=new THREE.Vector2((cx-r.left)/r.width*2-1,-((cy-r.top)/r.height)*2+1);P.pose(cur,t);camNow();ray.setFromCamera(v,cam);const sc=P.sceneOf(cur),hits=ray.intersectObjects(sc.children,true).filter(h=>h.object.isMesh&&h.object.userData.node!=null&&shown(h.object));if(!hits.length)return null;
+  const N=nodesOf(step().scene),by=new Map();ME.live(M).filter(p=>p.scene===step().scene).forEach(p=>{if(!by.has(p.node)||p.kind!=='group')by.set(p.node,p)});
+  for(const h of hits){let i=h.object.userData.node,grp=null;if(N[i].t!=='M')continue;const big=h.object.geometry.boundingSphere&&h.object.geometry.boundingSphere.radius>150;if(big)continue;for(;i>=0;i=N[i].p){const p=by.get(i);if(p){if(p.kind!=='group')return p;grp=grp||p}}if(grp)return grp}return null}
+let drag=null,down=null;const pts=new Map();
+view.addEventListener('pointerdown',e=>{if(tc.axis&&tc.object)return;view.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);drag=[e.clientX,e.clientY,az,elv];down=[e.clientX,e.clientY]});
+view.addEventListener('pointermove',e=>{if(dragging||!pts.has(e.pointerId))return;const old=pts.get(e.pointerId);if(pts.size===2){const o=[...pts.entries()].find(x=>x[0]!==e.pointerId)[1],d0=Math.hypot(old[0]-o[0],old[1]-o[1]),d1=Math.hypot(e.clientX-o[0],e.clientY-o[1]);if(d0>0)zoom=Math.max(.2,Math.min(3,zoom*d0/d1))}else if(drag){az=drag[2]-(e.clientX-drag[0])*.008;elv=drag[3]+(e.clientY-drag[1])*.006}pts.set(e.pointerId,[e.clientX,e.clientY])});
+const up=e=>{const was=pts.has(e.pointerId);pts.delete(e.pointerId);drag=null;if(!was||!down||dragging)return;const still=Math.hypot(e.clientX-down[0],e.clientY-down[1])<5;down=null;if(!still||!P)return;const p=pick(e.clientX,e.clientY);
+  if(pickFor){const me=ME.part(M,pickFor);pickFor=null;if(!p||p.id===me.id){say('没有点到别的零件，已取消。');insp();return}P.pose(me.step,1);const po=objOf(p),mo=objOf(me),m=new THREE.Matrix4().copy(po.matrixWorld).invert().multiply(mo.matrixWorld),a=new THREE.Vector3(),b=new THREE.Quaternion(),c=new THREE.Vector3();m.decompose(a,b,c);
+    const pwq=wquat(po),aw=new THREE.Vector3(...(me.approachW||me.approach||[0,12,0]));if(!ME.attach(M,me,p.node,[a.x,a.y,a.z,b.x,b.y,b.z,b.w,c.x,c.y,c.z])){say('不能固定到这个零件上（它是在这个零件之后加入的）。');insp();return}setApproach(me,aw,pwq);ME.log(M,'“'+me.name+'”固定到“'+(p.name||p.code||'一组零件')+'”上');commit('已固定：以后的步骤里它会跟着“'+(p.name||p.code||'那组零件')+'”一起动。');return}
+  if(p)select(p.id);else{sel=null;refresh()}};view.addEventListener('pointerup',up);view.addEventListener('pointercancel',e=>{pts.delete(e.pointerId);drag=null});
+view.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.2,Math.min(3,zoom*(e.deltaY>0?1.1:.9)))},{passive:false});
+addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();travel(e.shiftKey?1:-1)}});
+$('undo').onclick=()=>travel(-1);$('redo').onclick=()=>travel(1);addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
+/* ---------- saving ---------- */
+const dl=()=>{const a=el('a',{href:URL.createObjectURL(new Blob([snap()],{type:'application/json'})),download:'model.json'});document.body.append(a);a.click();a.remove()};$('dl').onclick=dl;
+async function projectBill(D){const done=[];const sf=await DB.file(pid,'pkg/steps.draft.json');if(sf){const S=JSON.parse(dec(sf.data));D.forEach(d=>{const s=S.find(x=>String(x.id)===d.step);if(!s)return;s.parts=s.parts||[];const r=s.parts.find(p=>String(p[0])===d.code),dv=d.to-d.from;if(r){r[1]+=dv;if(r[1]<=0)s.parts.splice(s.parts.indexOf(r),1)}else if(dv>0)s.parts.push([d.code,dv])});await DB.put(pid,'pkg/steps.draft.json',JSON.stringify(S,null,1));done.push('步骤数据')}
+  const pf=await DB.file(pid,'pkg/package.json'),pk=pf&&JSON.parse(dec(pf.data)),pp=pk&&pk.files&&pk.files.parts,cf=pp&&await DB.file(pid,'pkg/'+pp);
+  if(cf){const rows=ME.csvParse(dec(cf.data)),H=rows[0]||[],ci=H.indexOf('code'),qi=H.indexOf('qty'),ni=H.indexOf('name');if(ci>=0&&qi>=0){const net={};D.forEach(d=>{net[d.code]=(net[d.code]||0)+d.to-d.from});Object.entries(net).forEach(([c,dv])=>{if(!dv)return;const r=rows.slice(1).find(x=>x[ci]===c);if(r)r[qi]=String(Math.max(0,(+r[qi]||0)+dv));else if(dv>0){const nr=H.map(()=>'');nr[ci]=c;nr[qi]=String(dv);if(ni>=0){const p=ME.live(M).find(x=>x.code===c);nr[ni]=(p&&p.name)||''}rows.push(nr)}});await DB.put(pid,'pkg/'+pp,ME.csvText(rows));done.push('材料清单 '+pp)}}return done}
+$('save').onclick=async()=>{if(!pid){dl();say('这份数据不是从项目里打开的，已改为下载 model.json。');return}const b=$('save');b.disabled=true;try{const D=ME.billDiff(bill0,M);await DB.put(pid,'pkg/model/model.json',snap());let extra=[];if(D.length)extra=await projectBill(D);bill0=ME.billMap(M);dirty=false;refresh();
+    say('已保存到项目的 model/model.json。'+(extra.length?'同时改了'+extra.join('和')+'（'+D.length+' 处数量），回到项目页会重新审核。':'')+'已发布的助手仍按原模型运行，修改后的效果请用“播放数据模型”查看。',true)}catch(e){say('保存失败：'+(e.message||e),true)}b.disabled=false};
+/* ---------- loading ---------- */
+async function load(text,where){try{M=JSON.parse(text);if(M.format!=='assembly-model')throw new Error('这不是模型数据文件')}catch(e){$('err').textContent='打不开这份数据：'+(e.message||e);return}from=where;bill0=ME.billMap(M);hist=[snap()];hi=0;dirty=false;sel=null;rebuild();cam.near=M.render.near||1;size();strip();go(P.steps[0]);refresh()}
+if(pid)$('back').href='project.html?id='+encodeURIComponent(pid);else $('save').textContent='下载 model.json';
+requestAnimationFrame(loop);
+window.__ws={M:()=>M,state:()=>({ready:!!P,cur,t,sel,dirty,hist:hist.length,hi}),set:(id,v)=>{setPlay(false);if(id!==cur)go(id,true);t=v;$('t').value=Math.round(v*1000);draw();insp()},select:id=>select(id,true),
+  axis:()=>tc.axis,screen:id=>{const p=ME.part(M,id);P.pose(cur,t);camNow();const o=objOf(p),b=new THREE.Box3().setFromObject(o),c=b.getCenter(new THREE.Vector3()).project(cam),r=ren.domElement.getBoundingClientRect();return{x:r.left+(c.x+1)/2*r.width,y:r.top+(1-c.y)/2*r.height,vis:shown(o)}},
+  world:id=>{const p=ME.part(M,id);P.pose(cur,t);return{p:wpos(objOf(p)).toArray(),vis:shown(objOf(p))}}};
+try{if(pid&&typeof DB!=='undefined'){const f=await DB.file(pid,'pkg/model/model.json');if(!f)throw new Error('这个项目还没有数据模型。请先在项目页的“模型编辑器”里点“生成数据模型”。');await load(dec(f.data),'项目里的 model/model.json');
+    /* names of numbered parts come from the client's parts list */
+    try{const pf=await DB.file(pid,'pkg/package.json'),pk=pf&&JSON.parse(dec(pf.data)),pp=pk&&pk.files&&pk.files.parts,cf=pp&&await DB.file(pid,'pkg/'+pp);if(cf){const rows=ME.csvParse(dec(cf.data)),H=rows[0]||[],ci=H.indexOf('code'),ni=H.indexOf('name'),nm={};if(ci>=0&&ni>=0)rows.slice(1).forEach(r=>{if(r[ni])nm[r[ci]]=r[ni]});let n=0;M.parts.forEach(p=>{if(p.code&&!p.name&&nm[p.code]){p.name=nm[p.code];n++}});if(n){hist=[snap()];hi=0;refresh()}}}catch(e){}}
+  else if(src){const r=await fetch(src);if(!r.ok)throw new Error('读取 '+src+' 失败（'+r.status+'）');await load(await r.text(),src)}
+  else $('err').textContent='没有指定要打开的数据。请从项目页的“数据工坊”进入。'}catch(e){$('err').textContent=e.message||String(e)}
+})();
+</script></body></html>

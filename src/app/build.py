@@ -15,7 +15,7 @@ page = lambda title, body: f'<!doctype html><html lang="zh"><head><meta charset=
 open(OUT + '/index.html', 'w', encoding='utf8').write(page('装配助手平台 · 工作台', open(H + '/index.body.html', encoding='utf8').read()))
 open(OUT + '/project.html', 'w', encoding='utf8').write(page('项目 · 装配助手平台', open(H + '/project.body.html', encoding='utf8').read()))
 open(OUT + '/portal.js', 'w', encoding='utf8').write('(function(){' + JS + '\n})();')
-shutil.copy(H + '/app.js', OUT + '/app.js'); shutil.copy(H + '/model.html', OUT + '/model.html'); shutil.copy(S + '/nord/mplay.js', OUT + '/mplay.js'); shutil.copy(S + '/nord/tv/node_modules/three/build/three.min.js', OUT + '/vendor/three.min.js'); shutil.copy(H + '/editor.js', OUT + '/editor.js'); shutil.copy(S + '/nord/tv/node_modules/three/examples/js/controls/TransformControls.js', OUT + '/vendor/TransformControls.js')
+shutil.copy(H + '/app.js', OUT + '/app.js'); shutil.copy(H + '/model.html', OUT + '/model.html'); shutil.copy(H + '/workshop.html', OUT + '/workshop.html'); shutil.copy(S + '/nord/medit.js', OUT + '/medit.js'); shutil.copy(S + '/nord/mplay.js', OUT + '/mplay.js'); shutil.copy(S + '/nord/tv/node_modules/three/build/three.min.js', OUT + '/vendor/three.min.js'); shutil.copy(H + '/editor.js', OUT + '/editor.js'); shutil.copy(S + '/nord/tv/node_modules/three/examples/js/controls/TransformControls.js', OUT + '/vendor/TransformControls.js')
 for f in ['engine.py', 'stage45.py', 'fixes.py']: shutil.copy(PL + '/engine/' + f, OUT + '/engine/' + f)
 N = H + '/npm/node_modules'
 for f in ['pyodide.js', 'pyodide.asm.js', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json']: shutil.copy(N + '/pyodide/' + f, OUT + '/vendor/pyodide/' + f)
