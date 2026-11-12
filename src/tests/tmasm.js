@@ -15,6 +15,12 @@ const r1=A.autoDir(T,M,rc,1,[0],'up');ck('a slanted fastener goes in along its o
 const r2=A.autoDir(T,M,rc,1,[0,2],'up');ck('with a wall 13 cm above the way in stays along the axis, and it says there is little room for hand or tool',r2.tight>0.2&&r2.axis===1&&!r2.blocked,JSON.stringify({d:r2.d,tight:r2.tight,ratio:r2.ratio}));
 M.asm.tool=6;const r3=A.autoDir(T,M,rc,1,[0,2],'up');ck('with a short tool (6 cm) the same place is fine',!r3.tight&&r3.axis===1,JSON.stringify({d:r3.d,tight:r3.tight}));M.asm.tool=20;
 const c1=A.pathCheck(T,M,rc,1,[0,2],[0,1,0],null);ck('a way chosen by hand gets the same reminder',c1.tight>.2&&!c1.blocked,JSON.stringify(c1));
+/* a way round: a peg comes down beside a ledge that overhangs half of its place; and a screw in a hole has no way round */
+{const gP=new T.BoxGeometry(2,2,2),gL=new T.BoxGeometry(6,2,6),gF=new T.BoxGeometry(30,2,30);const M2={asm:{size:[30,40,30],parts:[{c:[0,0,0],size:size(gF)},{c:[0,2,0],size:size(gP)},{c:[3.5,6,0],size:size(gL)}]}},r=[mesh(gF,[0,0,0]),mesh(gP,[0,2,0]),mesh(gL,[3.5,6,0])];
+ const d0=A.detour(T,M2,r,1,[0,2],[0,1,0]);ck('way round: under an overhanging ledge the peg comes down beside it and slides under, away from the ledge',d0&&d0.b&&d0.b.join()==='-1,0,0'&&d0.tb<=3&&d0.fine>.05,JSON.stringify(d0));
+ ck('way round: nothing in the way, nothing to do',A.detour(T,M2,r,1,[0],[0,1,0])===null);
+ const gH=new T.BoxGeometry(30,10,30),gS2=cyl(.4,6);const M3={asm:{size:[30,40,30],parts:[{c:[0,0,0],size:size(gH)},{c:[0,3,0],size:size(gS2)},{c:[0,12,0],size:size(gW)}]}},r3=[mesh(gH,[0,0,0]),mesh(gS2,[0,3,0]),mesh(gW,[0,12,0])];
+ const d3=A.detour(T,M3,r3,1,[0,2],[0,1,0]);ck('way round: when stepping aside does not help (a board right across the way) it says there is none',d3&&d3.none===1&&!d3.b,JSON.stringify(d3))}
 /* the AI's proposal is checked against the real parts */
 const MA={product:'柜',asm:{size:[30,40,30],kinds:{a:{name:'a'},b:{name:'b'}},parts:[{kind:'a',c:[0,0,0],size:[1,1,1]},{kind:'a',c:[1,0,0],size:[1,1,1]},{kind:'b',c:[2,0,0],size:[1,1,1]},{kind:'b',c:[3,0,0],size:[1,1,1]}]}};
 const pr=A.aiPrompt(MA,true),pr0=A.aiPrompt(MA,false);ck('prompt: lists every part with number, kind, size and place, and tells the AI not to invent facts',/#0　种类 a/.test(pr)&&/#3　种类 b/.test(pr)&&/不要编造尺寸、力度/.test(pr)&&/附上的 PDF/.test(pr)&&/没有说明书/.test(pr0)&&!/附上的 PDF/.test(pr0));
