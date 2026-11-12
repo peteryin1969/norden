@@ -40,18 +40,30 @@ function travel(part,d){const e=Math.abs(d[0])*part.size[0]+Math.abs(d[1])*part.
 /* points spread evenly over a part's surface (the same ones every time) */
 function samples(T3,geo,c,N){const P=geo.attributes.position,I=geo.index,n=I.count/3,ar=new Float64Array(n),a=new T3.Vector3(),b=new T3.Vector3(),e=new T3.Vector3();let tot=0;for(let k=0;k<n;k++){a.fromBufferAttribute(P,I.getX(k*3));b.fromBufferAttribute(P,I.getX(k*3+1));e.fromBufferAttribute(P,I.getX(k*3+2));tot+=ar[k]=b.sub(a).cross(e.sub(a)).length()/2}
   const O=[];let s=12345,acc=0,k=0;const rnd=()=>(s=(s*1103515245+12345)%2147483648)/2147483648;for(let q=0;q<N;q++){const tg=(q+.5)*tot/N;while(k<n-1&&acc+ar[k]<tg){acc+=ar[k];k++}a.fromBufferAttribute(P,I.getX(k*3));b.fromBufferAttribute(P,I.getX(k*3+1));e.fromBufferAttribute(P,I.getX(k*3+2));let u=rnd(),v=rnd();if(u+v>1){u=1-u;v=1-v}O.push(new T3.Vector3(a.x+(b.x-a.x)*u+(e.x-a.x)*v+c[0],a.y+(b.y-a.y)*u+(e.y-a.y)*v+c[1],a.z+(b.z-a.z)*u+(e.z-a.z)*v+c[2]))}return O}
+/* share of the points O that, going the way D for the length far, pass through more than 1 cm of the meshes in near */
+function ratioAlong(T3,O,near,D,far,off){const ray=new T3.Raycaster(),o2=new T3.Vector3();let deep=0;for(const o of O){o2.copy(o).addScaledVector(D,-.05);if(off)o2.add(off);ray.set(o2,D);ray.near=0;ray.far=far;const h=ray.intersectObjects(near,false);if(!h.length)continue;let ins=0;const ent=new Map();
+    for(const x of h){const f=x.face.normal.dot(D);if(f<-.05){if(!ent.has(x.object))ent.set(x.object,x.distance)}else if(f>.05&&ent.has(x.object)){ins+=x.distance-ent.get(x.object);ent.delete(x.object)}}ent.forEach(v=>ins+=far-v);if(ins>1)deep++}return deep/O.length}
+const isSmall=(M,p)=>Math.max(...p.size)<Math.max(...M.asm.size)*.22;
+function push(part,d){const e=Math.abs(d[0])*part.size[0]+Math.abs(d[1])*part.size[1]+Math.abs(d[2])*part.size[2];return Math.max(3,Math.min(10,e*.25))}
 /* which way a part can come in. For each of the six axis directions, the share of its surface points that would have to pass
    through more than 1 cm of a part already there. Free directions first (small snap-in hardware is allowed a little overlap);
    among them: from above for big parts, and leading away from the rest. rc[i] = a mesh of part i at its place. */
 function autoDir(T3,M,rc,i,obst,pose){const PA=M.asm.parts,p=PA[i];if(!obst.length)return{d:[0,0,0],base:1};const inv=Q(T3,pose).invert(),up=new T3.Vector3(0,1,0).applyQuaternion(inv),O=samples(T3,rc[i].geometry,p.c,180);
   const oc=new T3.Vector3();obst.forEach(j=>oc.add(new T3.Vector3(...PA[j].c)));oc.multiplyScalar(1/obst.length);const away=new T3.Vector3(...p.c).sub(oc);if(away.length()>1e-6)away.normalize();
-  const small=Math.max(...p.size)<Math.max(...M.asm.size)*.22,tol=small?.05:.005,near=obst.map(j=>rc[j]),ray=new T3.Raycaster(),o2=new T3.Vector3(),all={};let best=null;
-  [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]].forEach(d=>{const D=new T3.Vector3(...d),far=travel(p,d);let deep=0;for(const o of O){ray.set(o2.copy(o).addScaledVector(D,-.05),D);ray.near=0;ray.far=far;const h=ray.intersectObjects(near,false);if(!h.length)continue;let ins=0;const ent=new Map();
-      for(const x of h){const f=x.face.normal.dot(D);if(f<-.05){if(!ent.has(x.object))ent.set(x.object,x.distance)}else if(f>.05&&ent.has(x.object)){ins+=x.distance-ent.get(x.object);ent.delete(x.object)}}ent.forEach(v=>ins+=far-v);if(ins>1)deep++}
-    const ratio=deep/O.length,u=D.dot(up);all[d.join()]=+ratio.toFixed(3);const sc=(ratio<=tol?100:-ratio*100)+(small?.5:3)*u+1.5*D.dot(away)-(u<-.9?10:0);if(!best||sc>best.sc)best={d,sc,ratio}});
+  const small=isSmall(M,p),tol=small?.05:.005,near=obst.map(j=>rc[j]),all={};let best=null;
+  [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]].forEach(d=>{const D=new T3.Vector3(...d),ratio=ratioAlong(T3,O,near,D,travel(p,d)),u=D.dot(up);all[d.join()]=+ratio.toFixed(3);const sc=(ratio<=tol?100:-ratio*100)+(small?.5:3)*u+1.5*D.dot(away)-(u<-.9?10:0);if(!best||sc>best.sc)best={d,sc,ratio}});
   return{d:best.d,blocked:best.ratio>Math.max(tol,.1)?1:0,ratio:+best.ratio.toFixed(3),small:small?1:0,all}}
+/* a way in chosen by a person (one stretch, or two: first from A, then from B into place): does it pass through anything? */
+function pathCheck(T3,M,rc,i,obst,A,B){const p=M.asm.parts[i];if(!obst.length)return{ratio:0};const O=samples(T3,rc[i].geometry,p.c,180),near=obst.map(j=>rc[j]),z=v=>!v||(!v[0]&&!v[1]&&!v[2]);let r=0;
+  if(B&&!z(B)){const tb=push(p,B),vb=new T3.Vector3(...B);r=ratioAlong(T3,O,near,vb,tb);if(!z(A))r=Math.max(r,ratioAlong(T3,O,near,new T3.Vector3(...A),travel(p,A),vb.clone().multiplyScalar(tb)))}else if(!z(A))r=ratioAlong(T3,O,near,new T3.Vector3(...A),travel(p,A));
+  return{ratio:+r.toFixed(3),blocked:r>(isSmall(M,p)?.1:.03)?1:0}}
+/* one sentence about how the parts of a step go in -> {kinds:[key…], a, b, spin, say}. Rules only, no AI. */
+const SAYDIR=[['U',/从上|往下|向下|朝下|下推|下压|放下|按下|落下/],['D',/从下|往上|向上|朝上|上推|托上|抬上/],['L',/从左|往右|向右|朝右/],['R',/从右|往左|向左|朝左/],['F',/从前|往后|向后|朝后|往里|向里|朝里/],['B',/从后|往前|向前|朝前|往外|向外/],['auto',/按进|靠上|贴上|对准|扣上|插进|放进|装上|卡进|推进|靠近|对上/]];
+function parseSay(text,kinds){const x=String(text||'').replace(/\s+/g,'');if(!x)return null;const hit=kinds.filter(k=>k.name&&x.includes(k.name)),tg=(hit.length?hit:kinds),mv=[];x.split(/[，,。；;、]|然后|接着|之后|再/).forEach(c=>{if(!c)return;const m=SAYDIR.find(d=>d[1].test(c));if(m)mv.push(m[0])});
+  const spin=/拧|旋|转紧|转动|转进/.test(x),noSpin=/不用拧|不拧|不要转|不转/.test(x);if(!mv.length&&!spin&&!noSpin)return null;const o={kinds:tg.map(k=>k.key)};if(mv.length===1)o.a=mv[0];else if(mv.length>1){o.a=mv[0];o.b=mv[mv.length-1];if(o.b==='auto'){o.b=undefined}}if(spin&&!noSpin)o.spin=true;if(noSpin)o.spin=false;
+  const w=d=>d==='auto'?'按程序找到的方向靠上':DIRNAME[d];o.say='好：'+tg.map(k=>'“'+k.name+'”').join('、')+(o.a?(o.b?'先'+w(o.a)+'，再'+DIRNAME[o.b]+'推到位':w(o.a)+(o.a==='auto'?'':'装入')):'')+(o.spin?(o.a?'，':'')+'边进边拧':o.spin===false?(o.a?'，':'')+'不拧':'')+'。';return o}
 /* M.asm.steps -> M.steps (motion, tint, camera). Deterministic: uses the directions kept in each step. */
-function steps(M,T3){const A=M.asm,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+v.toFixed(4),placed=new Set(),out=[];let prev='up';M.warn=[];M.parts=PA.map((p,i)=>({id:'cp'+i,scene:0,node:p.node,name:kname(M,p.kind),...(A.kinds[p.kind]&&A.kinds[p.kind].code?{code:A.kinds[p.kind].code}:{}),src:p.src,size:p.size,steps:[]}));
+function steps(M,T3){const A=M.asm,A_=A,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+v.toFixed(4),placed=new Set(),out=[];let prev=(A.steps[0]&&A.steps[0].pose)||'up';/* the first step simply starts the way it lies */M.warn=[];M.parts=PA.map((p,i)=>({id:'cp'+i,scene:0,node:p.node,name:kname(M,p.kind),...(A.kinds[p.kind]&&A.kinds[p.kind].code?{code:A.kinds[p.kind].code}:{}),src:p.src,size:p.size,steps:[]}));
   const H=q=>{const e=new T3.Matrix4().makeRotationFromQuaternion(q).elements;return Math.abs(e[1])*SZ[0]/2+Math.abs(e[5])*SZ[1]/2+Math.abs(e[9])*SZ[2]/2};
   A.steps.forEach((s,si)=>{const id=String(si+1),pose=s.pose||'up',q1=Q(T3,pose),q0=Q(T3,prev),turn=pose!==prev,mine=(s.parts||[]).filter(i=>PA[i]&&!placed.has(i)),tEnd=turn?(mine.length?44:104):0,h1=H(q1);
     const st={id,title:s.title||'',label:'第 '+id+' 步',say:s.say||'',scene:0,dur:1.6,parts:[],nodes:{},mats:{},cam:[]};
@@ -60,10 +72,16 @@ function steps(M,T3){const A=M.asm,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+v.toF
     PA.forEach((p,i)=>{if(!placed.has(i)&&!mine.includes(i))st.nodes[p.node]={v:[0,0]}});
     const kinds=[];mine.forEach(i=>{if(!kinds.includes(PA[i].kind))kinds.push(PA[i].kind)});const a0=tEnd?tEnd+6:6,L=(110-a0)/Math.max(1,kinds.length),inv=q1.clone().invert(),box=new T3.Box3(),aW=new T3.Vector3(),cnt={};
     const grow=(c,sz)=>{box.expandByPoint(new T3.Vector3(c[0]-sz[0]/2,c[1]-sz[1]/2,c[2]-sz[2]/2));box.expandByPoint(new T3.Vector3(c[0]+sz[0]/2,c[1]+sz[1]/2,c[2]+sz[2]/2))};placed.forEach(i=>grow(PA[i].c,PA[i].size));
-    mine.forEach(i=>{const p=PA[i],k=kinds.indexOf(p.kind),a=Math.round(a0+k*L),b=Math.round(a0+(k+1)*L-(kinds.length>1?2:0)),w=s.dir&&s.dir[p.kind];let d=w&&WORLD[w]?new T3.Vector3(...WORLD[w]).applyQuaternion(inv).toArray():((s.auto&&s.auto[i]&&s.auto[i].d)||[0,0,0]);
-      grow(p.c,p.size);const key=(A.kinds[p.kind]&&A.kinds[p.kind].code)||kname(M,p.kind);cnt[key]=(cnt[key]||0)+1;M.parts[i].steps.push(id);
-      if(!d[0]&&!d[1]&&!d[2]){st.nodes[p.node]=tEnd?{v:[0,0,a,1]}:{v:[0,1]};st.mats[p.mat]={c:[0,GREEN,100,p.col]}}
-      else{const t=travel(p,d),from=p.c.map((v,x)=>r4(v+d[x]*t));grow(from,p.size);st.nodes[p.node]={p:[a,...from,b,...p.c.map(r4)],v:a>0?[0,0,a,1]:[0,1]};st.mats[p.mat]={c:[0,GREEN,Math.min(119,b+6),p.col]};aW.add(new T3.Vector3(...d).applyQuaternion(q1));if(!w&&s.auto&&s.auto[i]&&s.auto[i].blocked)M.warn.push('第 '+id+' 步：“'+kname(M,p.kind)+'”没有找到不被挡住的装入方向，请指定方向或把它放到别的步骤。')}
+    const loc=w=>new T3.Vector3(...WORLD[w]).applyQuaternion(inv).toArray().map(v=>Math.abs(v)<1e-9?0:+v.toFixed(6)),zero=v=>!v[0]&&!v[1]&&!v[2];
+    mine.forEach(i=>{const p=PA[i],k=kinds.indexOf(p.kind),a=Math.round(a0+k*L),b=Math.round(a0+(k+1)*L-(kinds.length>1?2:0)),mv=(s.move&&s.move[p.kind])||(s.dir&&s.dir[p.kind]?{a:s.dir[p.kind]}:{}),au=(s.auto&&s.auto[i]&&s.auto[i].d)||[0,0,0],byHand=!!((mv.a&&WORLD[mv.a])||(mv.b&&WORLD[mv.b]));
+      let A=mv.a&&WORLD[mv.a]?loc(mv.a):au,B=mv.b&&WORLD[mv.b]?loc(mv.b):null;if(B&&zero(A)){A=B;B=null}if(B&&A.join()===B.join())B=null;
+      grow(p.c,p.size);const key=(A_.kinds[p.kind]&&A_.kinds[p.kind].code)||kname(M,p.kind);cnt[key]=(cnt[key]||0)+1;M.parts[i].steps.push(id);
+      if(zero(A)){st.nodes[p.node]=tEnd?{v:[0,0,a,1]}:{v:[0,1]};st.mats[p.mat]={c:[0,GREEN,100,p.col]}}
+      else{const ta=travel(p,A),tb=B?push(p,B):0,mid=B?p.c.map((v,x)=>r4(v+B[x]*tb)):null,from=(mid||p.c).map((v,x)=>r4(v+A[x]*ta)),m=B?Math.round(a+(b-a)*.62):a,keys=[a,...from];if(B)keys.push(m,...mid);keys.push(b,...p.c.map(r4));grow(from,p.size);
+        const nd={p:keys,v:a>0?[0,0,a,1]:[0,1]};if(mv.spin){const ax=new T3.Vector3(...(B||A)).normalize(),qk=[],n=12,q=new T3.Quaternion();for(let j=0;j<=n;j++){q.setFromAxisAngle(ax,-(1-j/n)*Math.PI*4);qk.push(r4(m+(b-m)*j/n),r4(q.x),r4(q.y),r4(q.z),r4(q.w))}nd.q=qk}
+        st.nodes[p.node]=nd;st.mats[p.mat]={c:[0,GREEN,Math.min(119,b+6),p.col]};aW.add(new T3.Vector3(...A).applyQuaternion(q1));
+        if(byHand){if(s.man&&s.man[i]&&s.man[i].blocked)M.warn.push('第 '+id+' 步：按你指定的装法，“'+kname(M,p.kind)+'”在路上会穿过别的零件，请换个方向或分两段。')}
+        else if(s.auto&&s.auto[i]&&s.auto[i].blocked)M.warn.push('第 '+id+' 步：“'+kname(M,p.kind)+'”没有找到不被挡住的装入方向，请指定方向或把它放到别的步骤。')}
       placed.add(i)});
     st.parts=Object.entries(cnt);if(box.isEmpty())grow([0,0,0],SZ);
     const tg=box.getCenter(new T3.Vector3()).applyQuaternion(q1).add(new T3.Vector3(0,h1,0)),rad=box.getSize(new T3.Vector3()).length()/2;let v,dist=Math.max(45,rad*2.9);
@@ -73,5 +91,5 @@ function steps(M,T3){const A=M.asm,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+v.toF
   const left=PA.map((p,i)=>i).filter(i=>!placed.has(i));if(left.length){const c={};left.forEach(i=>{const n=kname(M,PA[i].kind);c[n]=(c[n]||0)+1});M.warn.unshift('还有 '+left.length+' 个零件没有排进任何一步：'+Object.entries(c).map(([n,v])=>n+(v>1?' ×'+v:'')).join('、')+'。')}
   M.steps=out;return M}
 const autoTitle=(M,s)=>{const PA=M.asm.parts,c=[];(s.parts||[]).forEach(i=>{const n=kname(M,PA[i].kind);if(!c.includes(n))c.push(n)});return c.length?'装'+c.slice(0,3).join('、')+(c.length>3?'等':''):(s.pose&&s.pose!=='up'?'':'')};
-root.MAsm={KEY,parseGLB,base,steps,autoDir,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
+root.MAsm={KEY,parseGLB,base,steps,autoDir,pathCheck,parseSay,push,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
 })(typeof window!=='undefined'?window:globalThis);
