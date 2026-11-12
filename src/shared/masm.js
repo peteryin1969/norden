@@ -98,8 +98,26 @@ function steps(M,T3){const A=M.asm,A_=A,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+
     if(s.cam&&s.cam.v){v=new T3.Vector3(...s.cam.v).normalize();dist=s.cam.dist||dist}else{if(aW.length()>1e-6)aW.normalize();const ah=new T3.Vector3(aW.x,0,aW.z);if(ah.length()>.35){ah.normalize();v=ah.clone().add(new T3.Vector3(0,.55,0)).add(new T3.Vector3(-ah.z,0,ah.x).multiplyScalar(.7))}else v=new T3.Vector3(.5,aW.y<-.5?.12:.6,1);v.normalize()}
     const pos=tg.clone().addScaledVector(v,dist),cq=new T3.Quaternion().setFromRotationMatrix(new T3.Matrix4().lookAt(pos,tg,new T3.Vector3(0,1,0)));st.cam=[0,r4(pos.x),r4(pos.y),r4(pos.z),r4(cq.x),r4(cq.y),r4(cq.z),r4(cq.w),r4(dist)];
     if(!mine.length&&!turn&&!(s.say||'').trim())M.warn.push('第 '+id+' 步既没有零件，也没有说明。');out.push(st);prev=pose});
+  const un=A.steps.map((s,i)=>s.by==='ai'&&!s.ok?i+1:0).filter(Boolean);if(un.length)M.warn.push('有 '+un.length+' 步是 AI 排的，还没有人确认：第 '+un.join('、')+' 步。请逐步对照说明书核对后点“确认这一步”。');
   const left=PA.map((p,i)=>i).filter(i=>!placed.has(i));if(left.length){const c={};left.forEach(i=>{const n=kname(M,PA[i].kind);c[n]=(c[n]||0)+1});M.warn.unshift('还有 '+left.length+' 个零件没有排进任何一步：'+Object.entries(c).map(([n,v])=>n+(v>1?' ×'+v:'')).join('、')+'。')}
   M.steps=out;return M}
+/* what is sent to the AI: every part with its number, kind, size and place; the manual goes along as a PDF when there is one */
+function aiPrompt(M,hasManual){const A=M.asm,f=v=>(+v).toFixed(1),L=A.parts.map((p,i)=>'#'+i+'　种类 '+p.kind+(A.kinds[p.kind]&&A.kinds[p.kind].name!==p.kind?'（'+A.kinds[p.kind].name+'）':'')+'　尺寸 '+p.size.map(f).join('×')+'　中心 ('+p.c.map(f).join(', ')+')').join('\n');
+  return'你在帮一家厂商把一件产品的装配步骤排出来。零件的位置已经有了（取自装好状态的三维文件），你只需要决定：哪些零件在第几步装、这一步产品怎么摆、标题和讲解。\n\n'+
+  '产品：'+(M.product||'')+'。整体尺寸 '+A.size.map(f).join('×')+' 厘米。坐标单位厘米，y 向上，原点在产品中心。\n全部零件（编号、种类、长宽高、中心位置）：\n'+L+'\n\n'+
+  (hasManual?'附上的 PDF 是这件产品的安装说明书。请严格按说明书的步骤顺序来排，一步对应说明书的一步。\n':'这次没有说明书。请按常理排一个合理的顺序（先大件后小件、先里后外），并在 notes 里说明这是没有说明书时的推测。\n')+
+  '规则：\n1. 每个零件编号最多出现一次。说明书里没有出现、你拿不准的零件不要硬排，写进 notes。\n2. title 不超过 14 个字。say 只写说明书图上表达出来的内容；不要编造尺寸、力度、工具型号和安全要求；说明书图上有的警告可以如实转述。\n'+
+  '3. pose 表示这一步产品怎么摆（相对三维文件原样）：up 原样；front 让 +x 那一面朝下；back 让 −x 那一面朝下；left 让 −z 那一面朝下；right 让 +z 那一面朝下；over 上下颠倒。拿不准就用 up。\n'+
+  '4. move 可以不写。只在说明书明确画出时才写：某种零件 {"b":"U"} 表示先靠上、再从上往下推到位；{"spin":true} 表示拧进去。键是零件的种类。\n5. page 是这一步在说明书里的页码，没有说明书就不写。\n6. kinds 里可以给零件种类起一个描述性的中文名（不是厂家的正式名称），键是种类。\n\n'+
+  '只输出一个 JSON，不要别的文字：{"steps":[{"title":"","say":"","pose":"up","parts":[0,1],"move":{},"page":1}],"kinds":{},"notes":[]}'}
+/* the AI's answer is taken as a proposal only: checked against the real parts, nothing is trusted that the file does not have */
+function aiApply(M,o){const A=M.asm,n=A.parts.length,used=new Set(),notes=[],steps=[];if(!o||!Array.isArray(o.steps))throw new Error('AI 的回答里没有步骤。');let prev='up',dup=0,bad=0;
+  o.steps.forEach(s=>{if(!s||typeof s!=='object')return;const parts=[];(Array.isArray(s.parts)?s.parts:[]).forEach(v=>{const i=typeof v==='string'?parseInt(v.replace('#',''),10):v;if(!Number.isInteger(i)||i<0||i>=n){bad++;return}if(used.has(i)){dup++;return}used.add(i);parts.push(i)});
+    const pose=POSES[s.pose]?s.pose:prev,move={};if(s.move&&typeof s.move==='object')Object.entries(s.move).forEach(([k,m])=>{if(!m||typeof m!=='object'||!parts.some(i=>A.parts[i].kind===k))return;const r={};if(m.a==='U'||m.a==='D')r.a=m.a;if(m.b==='U'||m.b==='D')r.b=m.b;if(m.spin===true)r.spin=true;if(Object.keys(r).length)move[k]=r});
+    const title=String(s.title||'').trim().slice(0,30),say=String(s.say||'').trim().slice(0,500);if(!parts.length&&!say&&pose===prev)return;const st={title,tAuto:!title,say,parts,pose,move,auto:{},by:'ai',ok:false};if(Number.isInteger(s.page)&&s.page>0)st.page=s.page;steps.push(st);prev=pose});
+  if(!steps.length)throw new Error('AI 的回答里没有可用的步骤。');if(dup)notes.push('AI 把 '+dup+' 个零件排了不止一次，只保留了第一次。');if(bad)notes.push('AI 提到了 '+bad+' 个不存在的零件编号，已经忽略。');
+  const left=n-used.size;if(left)notes.push('AI 没有排进去的零件有 '+left+' 个，采用后会在“检查”里列出来。');const kinds={};if(o.kinds&&typeof o.kinds==='object')Object.entries(o.kinds).forEach(([k,v])=>{if(A.kinds[k]&&typeof v==='string'&&v.trim())kinds[k]=v.trim().slice(0,24)});
+  (Array.isArray(o.notes)?o.notes:[]).forEach(x=>{if(typeof x==='string'&&x.trim())notes.push('AI 说：'+x.trim().slice(0,300))});return{steps,kinds,notes}}
 const autoTitle=(M,s)=>{const PA=M.asm.parts,c=[];(s.parts||[]).forEach(i=>{const n=kname(M,PA[i].kind);if(!c.includes(n))c.push(n)});return c.length?'装'+c.slice(0,3).join('、')+(c.length>3?'等':''):(s.pose&&s.pose!=='up'?'':'')};
-root.MAsm={KEY,parseGLB,base,steps,autoDir,axisOf,pathCheck,parseSay,push,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
+root.MAsm={KEY,parseGLB,base,aiPrompt,aiApply,steps,autoDir,axisOf,pathCheck,parseSay,push,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
 })(typeof window!=='undefined'?window:globalThis);
