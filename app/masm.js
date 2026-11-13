@@ -48,9 +48,11 @@ function rescale(M,k){const A=M.asm,r=v=>+(v*k).toFixed(3),dec=s=>{if(typeof Buf
   A.parts.forEach(p=>{p.c=p.c.map(r);p.size=p.size.map(r)});A.size=A.size.map(r);A.steps.forEach(s=>{if(s.cam&&s.cam.dist)s.cam.dist=r(s.cam.dist);s.auto={};s.det={};s.man={}});A.rv=0;return M}
 const kname=(M,k)=>{const K=M.asm.kinds[k]||{};return K.name||k};
 function travel(part,d){const e=Math.abs(d[0])*part.size[0]+Math.abs(d[1])*part.size[1]+Math.abs(d[2])*part.size[2];return Math.max(6,Math.min(60,e*1.1+4))}
-/* points spread evenly over a part's surface (the same ones every time) */
-function samples(T3,geo,c,N){const P=geo.attributes.position,I=geo.index,n=I.count/3,ar=new Float64Array(n),a=new T3.Vector3(),b=new T3.Vector3(),e=new T3.Vector3();let tot=0;for(let k=0;k<n;k++){a.fromBufferAttribute(P,I.getX(k*3));b.fromBufferAttribute(P,I.getX(k*3+1));e.fromBufferAttribute(P,I.getX(k*3+2));tot+=ar[k]=b.sub(a).cross(e.sub(a)).length()/2}
-  const O=[];let s=12345,acc=0,k=0;const rnd=()=>(s=(s*1103515245+12345)%2147483648)/2147483648;for(let q=0;q<N;q++){const tg=(q+.5)*tot/N;while(k<n-1&&acc+ar[k]<tg){acc+=ar[k];k++}a.fromBufferAttribute(P,I.getX(k*3));b.fromBufferAttribute(P,I.getX(k*3+1));e.fromBufferAttribute(P,I.getX(k*3+2));let u=rnd(),v=rnd();if(u+v>1){u=1-u;v=1-v}O.push(new T3.Vector3(a.x+(b.x-a.x)*u+(e.x-a.x)*v+c[0],a.y+(b.y-a.y)*u+(e.y-a.y)*v+c[1],a.z+(b.z-a.z)*u+(e.z-a.z)*v+c[2]))}return O}
+/* points spread evenly over a part's surface (the same ones every time), set a little way in under the surface: parts drawn as a
+   tight or pressed fit overlap by a hair in the file, and a point exactly on the surface would count that hair as a wall */
+const INSET={v:.05};
+function samples(T3,geo,c,N,inset){if(inset===undefined)inset=INSET.v;const P=geo.attributes.position,I=geo.index,n=I.count/3,ar=new Float64Array(n),a=new T3.Vector3(),b=new T3.Vector3(),e=new T3.Vector3();let tot=0;for(let k=0;k<n;k++){a.fromBufferAttribute(P,I.getX(k*3));b.fromBufferAttribute(P,I.getX(k*3+1));e.fromBufferAttribute(P,I.getX(k*3+2));tot+=ar[k]=b.sub(a).cross(e.sub(a)).length()/2}
+  const O=[];let s=12345,acc=0,k=0;const rnd=()=>(s=(s*1103515245+12345)%2147483648)/2147483648;for(let q=0;q<N;q++){const tg=(q+.5)*tot/N;while(k<n-1&&acc+ar[k]<tg){acc+=ar[k];k++}a.fromBufferAttribute(P,I.getX(k*3));b.fromBufferAttribute(P,I.getX(k*3+1));e.fromBufferAttribute(P,I.getX(k*3+2));let u=rnd(),v=rnd();if(u+v>1){u=1-u;v=1-v}const px=a.x+(b.x-a.x)*u+(e.x-a.x)*v,py=a.y+(b.y-a.y)*u+(e.y-a.y)*v,pz=a.z+(b.z-a.z)*u+(e.z-a.z)*v;let nx=0,ny=0,nz=0;if(inset){const e1x=b.x-a.x,e1y=b.y-a.y,e1z=b.z-a.z,e2x=e.x-a.x,e2y=e.y-a.y,e2z=e.z-a.z;nx=e1y*e2z-e1z*e2y;ny=e1z*e2x-e1x*e2z;nz=e1x*e2y-e1y*e2x;const l=Math.hypot(nx,ny,nz)||1;nx*=inset/l;ny*=inset/l;nz*=inset/l}O.push(new T3.Vector3(px-nx+c[0],py-ny+c[1],pz-nz+c[2]))}return O}
 /* triangles of a mesh in world coordinates, with each one's box, kept on the mesh (parts only ever sit at a position, unturned) */
 function tris(T3,mesh){const u=mesh.userData;if(u.tri)return u.tri;const g=mesh.geometry,P=g.attributes.position,I=g.index,n=I?I.count/3:P.count/3,ox=mesh.position.x,oy=mesh.position.y,oz=mesh.position.z,V=new Float32Array(n*9),B=new Float32Array(n*6),N=new Float32Array(n*3);
   for(let k=0;k<n;k++){for(let c=0;c<3;c++){const v=I?I.getX(k*3+c):k*3+c;V[k*9+c*3]=P.getX(v)+ox;V[k*9+c*3+1]=P.getY(v)+oy;V[k*9+c*3+2]=P.getZ(v)+oz}
@@ -99,6 +101,21 @@ function detour(T3,M,rc,i,obst,A){const p=M.asm.parts[i];if(!obst.length||(!A[0]
 function pathCheck(T3,M,rc,i,obst,A,B,tb0){const p=M.asm.parts[i];if(!obst.length)return{ratio:0};const O=samples(T3,rc[i].geometry,p.c,180),near=obst.map(j=>rc[j]),z=v=>!v||(!v[0]&&!v[1]&&!v[2]);let r=0;
   if(B&&!z(B)){const tb=tb0||push(p,B),vb=new T3.Vector3(...B);r=ratioAlong(T3,O,near,vb,tb);if(!z(A))r=Math.max(r,ratioAlong(T3,O,near,new T3.Vector3(...A),travel(p,A),vb.clone().multiplyScalar(tb)))}else if(!z(A))r=ratioAlong(T3,O,near,new T3.Vector3(...A),travel(p,A));
   const last=B&&!z(B)?B:A,reach=isSmall(M,p)&&!z(last)?ratioAlong(T3,O,near,new T3.Vector3(...last),M.asm.tool||20):0;return{ratio:+r.toFixed(3),blocked:r>(isSmall(M,p)?.1:.03)?1:0,...(reach>.2?{tight:+reach.toFixed(2)}:{})}}
+/* which of the parts already there stand in a part's way along d: the worst three, with the share of the part each one blocks */
+function blockers(T3,M,rc,i,obst,d){const p=M.asm.parts[i],O=samples(T3,rc[i].geometry,p.c,180),D=new T3.Vector3(...d),far=travel(p,d),out=[];obst.forEach(j=>{const r=ratioAlong(T3,O,[rc[j]],D,far);if(r>.02)out.push([j,+r.toFixed(2)])});return out.sort((a,b)=>b[1]-a[1]).slice(0,3)}
+/* an assembly order found by taking the finished product apart: in each round every part that has a straight way out, clear of all
+   that is still there, comes off. Fitting them in the reverse order cannot collide. What never comes off is locked together.
+   planStart gives the state, planRound takes one round off and says whether there may be more. */
+function planStart(M){return{rem:new Set(M.asm.parts.map((p,i)=>i)),layers:[],done:false}}
+function planRound(T3,M,rc,st){const D=[[0,1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1],[0,-1,0]],out=[];if(st.rem.size<=1){st.done=true;return false}
+  for(const i of st.rem){const p=M.asm.parts[i],o=[...st.rem].filter(j=>j!==i),near=o.map(j=>rc[j]),O=samples(T3,rc[i].geometry,p.c,180),tol=isSmall(M,p)?.05:.02;let best=null;for(const d of D){const r=ratioAlong(T3,O,near,new T3.Vector3(...d),travel(p,d));if(!best||r<best.r)best={i,d,r};if(r===0)break}if(best.r<=tol)out.push(best)}
+  if(!out.length||out.length===st.rem.size){st.done=true;if(out.length&&out.length===st.rem.size){const vl=x=>{const s=M.asm.parts[x.i].size;return s[0]*s[1]*s[2]};out.sort((a,b)=>vl(a)-vl(b));const keep=out.pop();st.layers.push(out);out.forEach(x=>st.rem.delete(x.i))}return false}
+  st.layers.push(out);out.forEach(x=>st.rem.delete(x.i));return true}
+/* the rounds turned into steps: what is locked together (or the last part left) is the base; each round, taken backwards, is one big
+   step, with a sub-step for each kind of part, big parts first */
+function planSteps(M,st){const A=M.asm,vol=i=>A.parts[i].size[0]*A.parts[i].size[1]*A.parts[i].size[2],steps=[],base=[...st.rem].sort((a,b)=>vol(b)-vol(a));
+  steps.push({title:'',tAuto:true,say:'',parts:base,pose:'up',move:{},auto:{},...(base.length>1?{fixed:true}:{}),by:'plan'});
+  st.layers.slice().reverse().forEach(L=>{const ks=[];L.map(x=>x.i).sort((a,b)=>vol(b)-vol(a)).forEach(i=>{const k=A.parts[i].kind;let g=ks.find(x=>x.k===k);if(!g)ks.push(g={k,parts:[]});g.parts.push(i)});ks.forEach((g,n)=>steps.push({title:'',tAuto:true,say:'',parts:g.parts,pose:'up',move:{},auto:{},...(n>0?{sub:true}:{}),by:'plan'}))});return steps}
 /* one sentence about how the parts of a step go in -> {kinds:[key…], a, b, spin, say}. Rules only, no AI. */
 const SAYDIR=[['U',/从上|往下|向下|朝下|下推|下压|放下|按下|落下/],['D',/从下|往上|向上|朝上|上推|托上|抬上/],['L',/从左|往右|向右|朝右/],['R',/从右|往左|向左|朝左/],['F',/从前|往后|向后|朝后|往里|向里|朝里/],['B',/从后|往前|向前|朝前|往外|向外/],['auto',/按进|靠上|贴上|对准|扣上|插进|放进|装上|卡进|推进|靠近|对上/]];
 function parseSay(text,kinds){const x=String(text||'').replace(/\s+/g,'');if(!x)return null;const hit=kinds.filter(k=>k.name&&x.includes(k.name)),tg=(hit.length?hit:kinds),mv=[];x.split(/[，,。；;、]|然后|接着|之后|再/).forEach(c=>{if(!c)return;const m=SAYDIR.find(d=>d[1].test(c));if(m)mv.push(m[0])});
@@ -128,12 +145,13 @@ function steps(M,T3){const A=M.asm,A_=A,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+
         if(dt&&dt.none&&dt.fine>.3&&mv.b!=='none'&&!(mv.b&&WORLD[mv.b])&&!(s.auto&&s.auto[i]&&s.auto[i].blocked)&&!(s.man&&s.man[i]&&s.man[i].blocked)){const w='第 '+lab+' 步：“'+kname(M,p.kind)+'”进去的途中会擦到别的零件，程序没有找到能绕开的走法。可以换个方向，或者自己分两段。';if(!M.warn.includes(w))M.warn.push(w)}
         if(byHand){if(s.man&&s.man[i]&&s.man[i].blocked)M.warn.push('第 '+lab+' 步：按你指定的装法，“'+kname(M,p.kind)+'”在路上会穿过别的零件，请换个方向或分两段。')}
         else if(s.auto&&s.auto[i]&&s.auto[i].under&&!s.auto[i].blocked){const w='第 '+lab+' 步：按现在的摆法，“'+kname(M,p.kind)+'”只能从正下方装入，手够不着。请换一个摆法（比如把产品立起来），或者调整步骤顺序。';if(!M.warn.includes(w))M.warn.push(w)}
-        else if(s.auto&&s.auto[i]&&s.auto[i].blocked)M.warn.push('第 '+lab+' 步：“'+kname(M,p.kind)+'”没有找到不被挡住的装入方向，请指定方向或把它放到别的步骤。')}
+        else if(s.auto&&s.auto[i]&&s.auto[i].blocked){const by=(s.auto[i].by||[]).map(([j])=>{const q=A_.steps.findIndex(x=>x.parts.includes(j));return'“'+kname(M,PA[j].kind)+'”（第 '+LB[q]+' 步）'}).filter((x,k,L)=>L.indexOf(x)===k),w='第 '+lab+' 步：“'+kname(M,p.kind)+'”没有找到不被挡住的装入方向'+(by.length?'，挡住它的是'+by.join('、')+'。可以让它排在这些零件之前装，或者把它们编成一个组件':'')+'。';if(!M.warn.includes(w))M.warn.push(w)}}
       placed.add(i)});
     st.parts=Object.entries(cnt);if(box.isEmpty())grow([0,0,0],SZ);
     const tg=box.getCenter(new T3.Vector3()).applyQuaternion(q1).add(new T3.Vector3(0,h1,0)),rad=box.getSize(new T3.Vector3()).length()/2;let v,dist=Math.max(45,rad*2.9);
     if(s.cam&&s.cam.v){v=new T3.Vector3(...s.cam.v).normalize();dist=s.cam.dist||dist}else{if(aW.length()>1e-6)aW.normalize();const ah=new T3.Vector3(aW.x,0,aW.z);if(ah.length()>.35){ah.normalize();v=ah.clone().add(new T3.Vector3(0,.55,0)).add(new T3.Vector3(-ah.z,0,ah.x).multiplyScalar(.7))}else v=new T3.Vector3(.5,aW.y<-.5?.12:.6,1);v.normalize()}
     const pos=tg.clone().addScaledVector(v,dist),cq=new T3.Quaternion().setFromRotationMatrix(new T3.Matrix4().lookAt(pos,tg,new T3.Vector3(0,1,0)));st.cam=[0,r4(pos.x),r4(pos.y),r4(pos.z),r4(cq.x),r4(cq.y),r4(cq.z),r4(cq.w),r4(dist)];
+    if(s.fixed&&mine.length>1){M.warn.push('第 '+lab+' 步：这 '+mine.length+' 个零件互相套住或包住，沿直线怎么也拆不开，所以作为一个整体直接放好，没有演示它们之间怎么装。实际装配时它们需要先组成组件，或者要转着装。')}
     if(!mine.length&&!turn&&!(s.say||'').trim())M.warn.push('第 '+lab+' 步既没有零件，也没有说明。');out.push(st);prev=pose});
   const un=A.steps.map((s,i)=>s.by==='ai'&&!s.ok?LB[i]:0).filter(Boolean);if(un.length)M.warn.push('有 '+un.length+' 步是 AI 排的，还没有人确认：第 '+un.join('、')+' 步。请逐步对照说明书核对后点“确认这一步”。');
   const left=PA.map((p,i)=>i).filter(i=>!placed.has(i));if(left.length){const c={};left.forEach(i=>{const n=kname(M,PA[i].kind);c[n]=(c[n]||0)+1});M.warn.unshift('还有 '+left.length+' 个零件没有排进任何一步：'+Object.entries(c).map(([n,v])=>n+(v>1?' ×'+v:'')).join('、')+'。')}
@@ -157,5 +175,5 @@ function aiApply(M,o){const A=M.asm,n=A.parts.length,used=new Set(),notes=[],ste
   const left=n-used.size;if(left)notes.push('AI 没有排进去的零件有 '+left+' 个，采用后会在“检查”里列出来。');const kinds={};if(o.kinds&&typeof o.kinds==='object')Object.entries(o.kinds).forEach(([k,v])=>{if(A.kinds[k]&&typeof v==='string'&&v.trim())kinds[k]=v.trim().slice(0,24)});
   (Array.isArray(o.notes)?o.notes:[]).forEach(x=>{if(typeof x==='string'&&x.trim())notes.push('AI 说：'+x.trim().slice(0,300))});return{steps,kinds,notes}}
 const autoTitle=(M,s)=>{const PA=M.asm.parts,c=[];(s.parts||[]).forEach(i=>{const n=kname(M,PA[i].kind);if(!c.includes(n))c.push(n)});return c.length?'装'+c.slice(0,3).join('、')+(c.length>3?'等':''):(s.pose&&s.pose!=='up'?'':'')};
-root.MAsm={RULES:2,UNITS,guessUnit,rescale,labels,KEY,parseGLB,base,aiPrompt,aiApply,steps,autoDir,detour,axisOf,pathCheck,parseSay,push,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
+root.MAsm={INSET,RULES:3,blockers,planStart,planRound,planSteps,UNITS,guessUnit,rescale,labels,KEY,parseGLB,base,aiPrompt,aiApply,steps,autoDir,detour,axisOf,pathCheck,parseSay,push,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
 })(typeof window!=='undefined'?window:globalThis);
