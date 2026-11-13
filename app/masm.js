@@ -112,13 +112,14 @@ function steps(M,T3){const A=M.asm,A_=A,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+
   const left=PA.map((p,i)=>i).filter(i=>!placed.has(i));if(left.length){const c={};left.forEach(i=>{const n=kname(M,PA[i].kind);c[n]=(c[n]||0)+1});M.warn.unshift('还有 '+left.length+' 个零件没有排进任何一步：'+Object.entries(c).map(([n,v])=>n+(v>1?' ×'+v:'')).join('、')+'。')}
   M.steps=out;return M}
 /* what is sent to the AI: every part with its number, kind, size and place; the manual goes along as a PDF when there is one */
-function aiPrompt(M,hasManual){const A=M.asm,f=v=>(+v).toFixed(1),L=A.parts.map((p,i)=>'#'+i+'　种类 '+p.kind+(A.kinds[p.kind]&&A.kinds[p.kind].name!==p.kind?'（'+A.kinds[p.kind].name+'）':'')+'　尺寸 '+p.size.map(f).join('×')+'　中心 ('+p.c.map(f).join(', ')+')').join('\n');
+function aiPrompt(M,hasManual,extra){const A=M.asm,f=v=>(+v).toFixed(1),L=A.parts.map((p,i)=>'#'+i+'　种类 '+p.kind+(A.kinds[p.kind]&&A.kinds[p.kind].name!==p.kind?'（'+A.kinds[p.kind].name+'）':'')+'　尺寸 '+p.size.map(f).join('×')+'　中心 ('+p.c.map(f).join(', ')+')').join('\n');
   return'你在帮一家厂商把一件产品的装配步骤排出来。零件的位置已经有了（取自装好状态的三维文件），你只需要决定：哪些零件在第几步装、这一步产品怎么摆、标题和讲解。\n\n'+
   '产品：'+(M.product||'')+'。整体尺寸 '+A.size.map(f).join('×')+' 厘米。坐标单位厘米，y 向上，原点在产品中心。\n全部零件（编号、种类、长宽高、中心位置）：\n'+L+'\n\n'+
   (hasManual?'附上的 PDF 是这件产品的安装说明书。请严格按说明书的步骤顺序来排，一步对应说明书的一步。\n':'这次没有说明书。请按常理排一个合理的顺序（先大件后小件、先里后外），并在 notes 里说明这是没有说明书时的推测。\n')+
   '规则：\n1. 每个零件编号最多出现一次。说明书里没有出现、你拿不准的零件不要硬排，写进 notes。\n2. title 不超过 14 个字。say 只写说明书图上表达出来的内容；不要编造尺寸、力度、工具型号和安全要求；说明书图上有的警告可以如实转述。\n'+
   '3. pose 表示这一步产品怎么摆（相对三维文件原样）：up 原样；front 让 +x 那一面朝下；back 让 −x 那一面朝下；left 让 −z 那一面朝下；right 让 +z 那一面朝下；over 上下颠倒。拿不准就用 up。\n'+
   '4. move 可以不写。只在说明书明确画出时才写：某种零件 {"b":"U"} 表示先靠上、再从上往下推到位；{"spin":true} 表示拧进去。键是零件的种类。\n5. page 是这一步在说明书里的页码，没有说明书就不写。\n6. kinds 里可以给零件种类起一个描述性的中文名（不是厂家的正式名称），键是种类。\n\n'+
+  (extra?'厂商这次的额外要求（在不违反上面规则的前提下尽量满足；和规则冲突时以规则为准，并在 notes 里说明哪一条没有照做）：\n'+extra+'\n\n':'')+
   '只输出一个 JSON，不要别的文字：{"steps":[{"title":"","say":"","pose":"up","parts":[0,1],"move":{},"page":1}],"kinds":{},"notes":[]}'}
 /* the AI's answer is taken as a proposal only: checked against the real parts, nothing is trusted that the file does not have */
 function aiApply(M,o){const A=M.asm,n=A.parts.length,used=new Set(),notes=[],steps=[];if(!o||!Array.isArray(o.steps))throw new Error('AI 的回答里没有步骤。');let prev='up',dup=0,bad=0;
