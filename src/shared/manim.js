@@ -9,11 +9,11 @@ const GEN=(()=>{const M=window.__MODEL;if(!M||M.format!=='assembly-model'||!M.st
   const seen={};K.forEach((k,i)=>{k.n=i+1;if(seen[k.code]){k.code=k.code+'-'+k.n}seen[k.code]=1;if(K.some(x=>x!==k&&x.name===k.name))k.name=k.name+' '+k.n});
   const sent=x=>String(x||'').split(/(?<=[。！？!?\n])/).map(v=>v.trim()).filter(Boolean);
   const STEPS=M.steps.map((s,si)=>{const c=[];K.forEach(k=>{const n=k.parts.filter(p=>p.step===s.id).length;if(n)c.push([k.code,n,k.name])});const auto=c.length?'这一步用到：'+c.map(x=>x[2]+' '+x[1]+' 个').join('，')+'。':'';const d=sent(s.say);
-    return{id:s.id,page:0,crop:[0,0,1,1],title:s.title||('第 '+(si+1)+' 步'),do:d.length?d:(auto?[auto]:[]),parts:c.map(x=>[x[0],x[1]]),warn:[],unsure:[],auto}});
+    return{id:s.id,page:0,crop:[0,0,1,1],label:s.label||('第 '+(si+1)+' 步'),title:s.title||s.label||('第 '+(si+1)+' 步'),do:d.length?d:(auto?[auto]:[]),parts:c.map(x=>[x[0],x[1]]),warn:[],unsure:[],auto}});
   const QTY={};K.forEach(k=>{QTY[k.code]=k.parts.length});const say={};STEPS.forEach(s=>{say[s.id]=s.do.join('')||s.title});let h=0;for(const ch of String(M.product||''))h=(h*31+ch.charCodeAt(0))>>>0;
   const open=(A&&A.steps||[]).filter(s=>s.by==='ai'&&!s.ok).length,warn=(M.warn||[]).length;
   return{M,A,parts,K,STEPS,QTY,CELLS:K.map(k=>({n:k.n,code:k.code,name:k.name})),name:M.product||'这件产品',key:h.toString(36)+'-'+STEPS.length+(A&&A.built?'-'+Number(A.built).toString(36):''),/* a newly generated file starts at step 1; the same file opened again carries on where the person was */draft:open||warn?('这份装配助手还没有定稿（'+(open?open+' 步是 AI 排的、没有人确认':'')+(open&&warn?'；':'')+(warn?'编辑器里还有 '+warn+' 条检查提醒':'')+'），只能用于测试。'):'',
-    PRODUCT:{name:M.product||'这件产品',steps:STEPS.length,say,loopEnd:'',loops:{}}}})();
+    big:M.steps.filter((s,i)=>!s.sub||i===0).length,PRODUCT:{name:M.product||'这件产品',steps:M.steps.filter((s,i)=>!s.sub||i===0).length,say,loopEnd:'',loops:{}}}})();
 window.PRODUCT=Object.assign(GEN.PRODUCT,window.PRODUCT||{});
 const Anim=(()=>{const T3=window.THREE,M=GEN.M,P0=new ModelPlayer(T3,M),K=GEN.K,ORANGE=0xf07a22,byName=n=>K.find(k=>k.name===n),obj=p=>P0.node(0,p.node);
   const ren=new T3.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});ren.setPixelRatio(Math.min(2,window.devicePixelRatio||1));const cam=new T3.PerspectiveCamera(32,1.4,1,3000);

@@ -23,7 +23,7 @@ rep("const OPENNAME={'1':'五金袋'};","const OPENNAME={[STEPS[0].id]:'包装'}
 rep("const KEY='norden-v1';","const KEY='asm-'+GEN.key;")
 rex(r"function path\(\)\{.*?return p\}","function path(){return STEPS.map(s=>({id:s.id}))}")
 rex(r"function go\(d\)\{const c0=P\[st\.pos\];let n=st\.pos\+d;.*?if\(n<0\|\|n>=P\.length\)return;","function go(d){let n=st.pos+d;if(n<0||n>=P.length)return;")
-rep("$('meta').textContent='说明书第 '+s.page+' 页'+(c.d?' · 这样做 6 个抽屉':'');","$('meta').textContent='共 '+STEPS.length+' 步';")
+rep("$('meta').textContent='说明书第 '+s.page+' 页'+(c.d?' · 这样做 6 个抽屉':'');","$('meta').textContent='共 '+GEN.big+' 步';")
 rep("$('img').src='img/s'+s.id+'.png';","$('img').src=IMG.step(s.id);")
 rep("$('img').alt='说明书第 '+s.page+' 页，'+s.title;","$('img').alt='这一步的示意图，'+s.title;")
 rep("i.src='img/c/'+n+'.png'","i.src=IMG.cell(n)")
@@ -65,6 +65,6 @@ code=h[h.index('/* Conversational voice mode'):h.index('window.VoiceReady=true;'
 pre='<script>/*@THREE@*/</script>\n<script>/*@MPLAY@*/</script>\n<script>window.__MODEL=/*@MODEL@*/null;window.PRODUCT={ver:"%s"}</script>\n<script>%s</script>\n<script>if(location.origin==="https://peteryin1969.github.io")window.NORDEN_TTS="https://peteryin1969.github.io/norden/tts/";else delete window.NORDEN_TTS;</script>\n'%(ver,shim.replace('</script','<\\/script'))
 i=h.index('<script>');h=h[:i]+pre+h[i:]
 # 5. fill the page's own words once the data is there
-rep("render();renderParts();","document.getElementById('gName').textContent=GEN.name+' 组装助手';document.title=GEN.name+' 组装助手';document.getElementById('gSub').textContent='共 '+STEPS.length+' 步 · '+GEN.parts.filter(p=>p.step).length+' 个零件';if(GEN.draft){const d=document.getElementById('gDraft');d.hidden=false;d.textContent=GEN.draft}document.getElementById('gSrc').textContent=(GEN.A&&GEN.A.copyright?'三维数据：'+GEN.A.copyright+'。':'')+'画面由三维数据自动生成。';\nrender();renderParts();")
+rep("render();renderParts();","document.getElementById('gName').textContent=GEN.name+' 组装助手';document.title=GEN.name+' 组装助手';document.getElementById('gSub').textContent='共 '+GEN.big+' 步 · '+GEN.parts.filter(p=>p.step).length+' 个零件';if(GEN.draft){const d=document.getElementById('gDraft');d.hidden=false;d.textContent=GEN.draft}document.getElementById('gSrc').textContent=(GEN.A&&GEN.A.copyright?'三维数据：'+GEN.A.copyright+'。':'')+'画面由三维数据自动生成。';\nrender();renderParts();")
 assert h.count('/*@MANIM@*/')==1;h=h.replace('/*@MANIM@*/',open(D+'/manim.js',encoding='utf8').read())
 os.makedirs(out+'/app',exist_ok=True);open(out+'/app/assist-full.html','w',encoding='utf8').write(h);print('assist-full.html',len(h)//1024,'KB')

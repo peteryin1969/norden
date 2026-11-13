@@ -40,9 +40,23 @@ function travel(part,d){const e=Math.abs(d[0])*part.size[0]+Math.abs(d[1])*part.
 /* points spread evenly over a part's surface (the same ones every time) */
 function samples(T3,geo,c,N){const P=geo.attributes.position,I=geo.index,n=I.count/3,ar=new Float64Array(n),a=new T3.Vector3(),b=new T3.Vector3(),e=new T3.Vector3();let tot=0;for(let k=0;k<n;k++){a.fromBufferAttribute(P,I.getX(k*3));b.fromBufferAttribute(P,I.getX(k*3+1));e.fromBufferAttribute(P,I.getX(k*3+2));tot+=ar[k]=b.sub(a).cross(e.sub(a)).length()/2}
   const O=[];let s=12345,acc=0,k=0;const rnd=()=>(s=(s*1103515245+12345)%2147483648)/2147483648;for(let q=0;q<N;q++){const tg=(q+.5)*tot/N;while(k<n-1&&acc+ar[k]<tg){acc+=ar[k];k++}a.fromBufferAttribute(P,I.getX(k*3));b.fromBufferAttribute(P,I.getX(k*3+1));e.fromBufferAttribute(P,I.getX(k*3+2));let u=rnd(),v=rnd();if(u+v>1){u=1-u;v=1-v}O.push(new T3.Vector3(a.x+(b.x-a.x)*u+(e.x-a.x)*v+c[0],a.y+(b.y-a.y)*u+(e.y-a.y)*v+c[1],a.z+(b.z-a.z)*u+(e.z-a.z)*v+c[2]))}return O}
-/* share of the points O that, going the way D for the length far, pass through more than 1 cm of the meshes in near */
-function ratioAlong(T3,O,near,D,far,off,thick){if(thick==null)thick=1;const ray=new T3.Raycaster(),o2=new T3.Vector3();let deep=0,any=0;for(const o of O){o2.copy(o).addScaledVector(D,-.05);if(off)o2.add(off);ray.set(o2,D);ray.near=0;ray.far=far;const h=ray.intersectObjects(near,false);if(!h.length)continue;let ins=0;const ent=new Map();
-    for(const x of h){const f=x.face.normal.dot(D);if(f<-.05){if(!ent.has(x.object))ent.set(x.object,x.distance)}else if(f>.05&&ent.has(x.object)){ins+=x.distance-ent.get(x.object);ent.delete(x.object)}}ent.forEach(v=>ins+=far-v);if(ins>thick)deep++;if(ins>.05)any++}
+/* triangles of a mesh in world coordinates, with each one's box, kept on the mesh (parts only ever sit at a position, unturned) */
+function tris(T3,mesh){const u=mesh.userData;if(u.tri)return u.tri;const g=mesh.geometry,P=g.attributes.position,I=g.index,n=I?I.count/3:P.count/3,ox=mesh.position.x,oy=mesh.position.y,oz=mesh.position.z,V=new Float32Array(n*9),B=new Float32Array(n*6),N=new Float32Array(n*3);
+  for(let k=0;k<n;k++){for(let c=0;c<3;c++){const v=I?I.getX(k*3+c):k*3+c;V[k*9+c*3]=P.getX(v)+ox;V[k*9+c*3+1]=P.getY(v)+oy;V[k*9+c*3+2]=P.getZ(v)+oz}
+    const a=k*9,e1x=V[a+3]-V[a],e1y=V[a+4]-V[a+1],e1z=V[a+5]-V[a+2],e2x=V[a+6]-V[a],e2y=V[a+7]-V[a+1],e2z=V[a+8]-V[a+2];let nx=e1y*e2z-e1z*e2y,ny=e1z*e2x-e1x*e2z,nz=e1x*e2y-e1y*e2x;const l=Math.hypot(nx,ny,nz)||1;N[k*3]=nx/l;N[k*3+1]=ny/l;N[k*3+2]=nz/l;
+    for(let c=0;c<3;c++){B[k*6+c]=Math.min(V[a+c],V[a+3+c],V[a+6+c]);B[k*6+3+c]=Math.max(V[a+c],V[a+3+c],V[a+6+c])}}
+  const bb=[1e9,1e9,1e9,-1e9,-1e9,-1e9];for(let k=0;k<n;k++)for(let c=0;c<3;c++){if(B[k*6+c]<bb[c])bb[c]=B[k*6+c];if(B[k*6+3+c]>bb[3+c])bb[3+c]=B[k*6+3+c]}return u.tri={n,V,B,N,bb}}
+/* share of the points O that, going the way D for the length far, pass through more than `thick` cm of the meshes in near.
+   Only the triangles inside the box swept by the points are looked at, which is what keeps this fast on detailed parts. */
+function ratioAlong(T3,O,near,D,far,off,thick){if(thick==null)thick=1;const dx=D.x,dy=D.y,dz=D.z,ox=off?off.x:0,oy=off?off.y:0,oz=off?off.z:0,sw=[1e9,1e9,1e9,-1e9,-1e9,-1e9],S=new Float32Array(O.length*3);
+  O.forEach((o,q)=>{const x=o.x-dx*.05+ox,y=o.y-dy*.05+oy,z=o.z-dz*.05+oz;S[q*3]=x;S[q*3+1]=y;S[q*3+2]=z;const e=[x,y,z,x+dx*far,y+dy*far,z+dz*far];for(let c=0;c<3;c++){const lo=Math.min(e[c],e[3+c]),hi=Math.max(e[c],e[3+c]);if(lo<sw[c])sw[c]=lo;if(hi>sw[3+c])sw[3+c]=hi}});for(let c=0;c<3;c++){sw[c]-=.01;sw[3+c]+=.01}
+  const C=[];near.forEach(m=>{const tr=tris(T3,m),b=tr.bb;if(b[0]>sw[3]||b[3]<sw[0]||b[1]>sw[4]||b[4]<sw[1]||b[2]>sw[5]||b[5]<sw[2])return;const L=[],B=tr.B;for(let k=0;k<tr.n;k++){const a=k*6;if(B[a]>sw[3]||B[a+3]<sw[0]||B[a+1]>sw[4]||B[a+4]<sw[1]||B[a+2]>sw[5]||B[a+5]<sw[2])continue;L.push(k)}if(L.length)C.push({tr,L,f:L.map(k=>tr.N[k*3]*dx+tr.N[k*3+1]*dy+tr.N[k*3+2]*dz)})});
+  if(!C.length)return 0;let deep=0,any=0;const H=[];
+  for(let q=0;q<O.length;q++){const px=S[q*3],py=S[q*3+1],pz=S[q*3+2];let ins=0;
+    for(const c of C){const V=c.tr.V;H.length=0;for(let j=0;j<c.L.length;j++){const f=c.f[j];if(f>-.05&&f<.05)continue;const a=c.L[j]*9,e1x=V[a+3]-V[a],e1y=V[a+4]-V[a+1],e1z=V[a+5]-V[a+2],e2x=V[a+6]-V[a],e2y=V[a+7]-V[a+1],e2z=V[a+8]-V[a+2],hx=dy*e2z-dz*e2y,hy=dz*e2x-dx*e2z,hz=dx*e2y-dy*e2x,det=e1x*hx+e1y*hy+e1z*hz;if(det>-1e-9&&det<1e-9)continue;
+        const inv=1/det,sx=px-V[a],sy=py-V[a+1],sz=pz-V[a+2],u=(sx*hx+sy*hy+sz*hz)*inv;if(u<0||u>1)continue;const qx=sy*e1z-sz*e1y,qy=sz*e1x-sx*e1z,qz=sx*e1y-sy*e1x,v=(dx*qx+dy*qy+dz*qz)*inv;if(v<0||u+v>1)continue;const tt=(e2x*qx+e2y*qy+e2z*qz)*inv;if(tt<0||tt>far)continue;H.push(tt,f)}
+      if(!H.length)continue;const idx=[];for(let k=0;k<H.length;k+=2)idx.push(k);idx.sort((x,y)=>H[x]-H[y]);let ent=-1;for(const k of idx){if(H[k+1]<0){if(ent<0)ent=H[k]}else if(ent>=0){ins+=H[k]-ent;ent=-1}}if(ent>=0)ins+=far-ent}
+    if(ins>thick)deep++;if(ins>.05)any++}
   /* a thin sheet (a back panel of 3 mm) is thinner than what is forgiven for snap fits, but a part cannot go through it: when most of the part would cross something, however thin, the way is closed */
   return any/O.length>=.7?Math.max(deep,any)/O.length:deep/O.length}
 /* the axis a part is round about (a screw, a dowel, a knob, a washer), from the spread of its surface points; null if it has none */
@@ -79,11 +93,13 @@ const SAYDIR=[['U',/从上|往下|向下|朝下|下推|下压|放下|按下|落�
 function parseSay(text,kinds){const x=String(text||'').replace(/\s+/g,'');if(!x)return null;const hit=kinds.filter(k=>k.name&&x.includes(k.name)),tg=(hit.length?hit:kinds),mv=[];x.split(/[，,。；;、]|然后|接着|之后|再/).forEach(c=>{if(!c)return;const m=SAYDIR.find(d=>d[1].test(c));if(m)mv.push(m[0])});
   const spin=/拧|旋|转紧|转动|转进/.test(x),noSpin=/不用拧|不拧|不要转|不转/.test(x);if(!mv.length&&!spin&&!noSpin)return null;const o={kinds:tg.map(k=>k.key)};if(mv.length===1)o.a=mv[0];else if(mv.length>1){o.a=mv[0];o.b=mv[mv.length-1];if(o.b==='auto'){o.b=undefined}}if(spin&&!noSpin)o.spin=true;if(noSpin)o.spin=false;
   const w=d=>d==='auto'?'按程序找到的方向靠上':DIRNAME[d];o.say='好：'+tg.map(k=>'“'+k.name+'”').join('、')+(o.a?(o.b?'先'+w(o.a)+'，再'+DIRNAME[o.b]+'推到位':w(o.a)+(o.a==='auto'?'':'装入')):'')+(o.spin?(o.a?'，':'')+'边进边拧':o.spin===false?(o.a?'，':'')+'不拧':'')+'。';return o}
+/* how the steps are numbered for people: a step marked sub carries on the big step before it (7-1, 7-2 …) */
+function labels(A){const S=A.steps,out=[];let b=0,k=0;S.forEach((s,i)=>{if(i>0&&s.sub)k++;else{b++;k=1}const grp=k>1||(S[i+1]&&S[i+1].sub);out.push(grp?b+'-'+k:String(b))});return out}
 /* M.asm.steps -> M.steps (motion, tint, camera). Deterministic: uses the directions kept in each step. */
-function steps(M,T3){const A=M.asm,A_=A,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+v.toFixed(4),placed=new Set(),out=[];let prev=(A.steps[0]&&A.steps[0].pose)||'up';/* the first step simply starts the way it lies */M.warn=[];M.parts=PA.map((p,i)=>({id:'cp'+i,scene:0,node:p.node,name:kname(M,p.kind),...(A.kinds[p.kind]&&A.kinds[p.kind].code?{code:A.kinds[p.kind].code}:{}),src:p.src,size:p.size,steps:[]}));
+function steps(M,T3){const A=M.asm,A_=A,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+v.toFixed(4),placed=new Set(),out=[],LB=labels(A);let prev=(A.steps[0]&&A.steps[0].pose)||'up';/* the first step simply starts the way it lies */M.warn=[];M.parts=PA.map((p,i)=>({id:'cp'+i,scene:0,node:p.node,name:kname(M,p.kind),...(A.kinds[p.kind]&&A.kinds[p.kind].code?{code:A.kinds[p.kind].code}:{}),src:p.src,size:p.size,steps:[]}));
   const H=q=>{const e=new T3.Matrix4().makeRotationFromQuaternion(q).elements;return Math.abs(e[1])*SZ[0]/2+Math.abs(e[5])*SZ[1]/2+Math.abs(e[9])*SZ[2]/2};
   A.steps.forEach((s,si)=>{const id=String(si+1),pose=s.pose||'up',q1=Q(T3,pose),q0=Q(T3,prev),turn=pose!==prev,mine=(s.parts||[]).filter(i=>PA[i]&&!placed.has(i)),tEnd=turn?(mine.length?44:104):0,h1=H(q1);
-    const st={id,title:s.title||'',label:'第 '+id+' 步',say:s.say||'',scene:0,dur:1.6,parts:[],nodes:{},mats:{},cam:[]};
+    const lab=LB[si],st={id,title:s.title||'',label:'第 '+lab+' 步',...(s.sub&&si>0?{sub:1}:{}),say:s.say||'',scene:0,dur:1.6,parts:[],nodes:{},mats:{},cam:[]};
     if(turn){const pk=[],qk=[],a=4;for(let k=0;k<=10;k++){const f=k/10,e=f*f*(3-2*f),q=q0.clone().slerp(q1,e),x=Math.round(a+(tEnd-a)*f);pk.push(x,0,r4(H(q)+Math.sin(Math.PI*f)*2),0);qk.push(x,r4(q.x),r4(q.y),r4(q.z),r4(q.w))}st.nodes[A.root]={p:pk,q:qk}}
     else if(pose!=='up')st.nodes[A.root]={p:[0,0,r4(h1),0],q:[0,r4(q1.x),r4(q1.y),r4(q1.z),r4(q1.w)]};
     PA.forEach((p,i)=>{if(!placed.has(i)&&!mine.includes(i))st.nodes[p.node]={v:[0,0]}});
@@ -97,18 +113,18 @@ function steps(M,T3){const A=M.asm,A_=A,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+
       else{const ta=travel(p,A),tb=B?(tbA||push(p,B)):0,mid=B?p.c.map((v,x)=>r4(v+B[x]*tb)):null,from=(mid||p.c).map((v,x)=>r4(v+A[x]*ta)),m=B?Math.round(a+(b-a)*.62):a,keys=[a,...from];if(B)keys.push(m,...mid);keys.push(b,...p.c.map(r4));grow(from,p.size);
         const nd={p:keys,v:a>0?[0,0,a,1]:[0,1]};if(mv.spin){const ax=new T3.Vector3(...(B||A)).normalize(),qk=[],n=12,q=new T3.Quaternion();for(let j=0;j<=n;j++){q.setFromAxisAngle(ax,-(1-j/n)*Math.PI*4);qk.push(r4(m+(b-m)*j/n),r4(q.x),r4(q.y),r4(q.z),r4(q.w))}nd.q=qk}
         st.nodes[p.node]=nd;st.mats[p.mat]={c:[0,GREEN,Math.min(119,b+6),p.col]};aW.add(new T3.Vector3(...A).applyQuaternion(q1));
-        const tight=byHand?(s.man&&s.man[i]&&s.man[i].tight):(s.auto&&s.auto[i]&&s.auto[i].tight);if(tight){const w='第 '+id+' 步：“'+kname(M,p.kind)+'”装入方向外侧 '+(A_.tool||20)+' 厘米内有别的零件，手或工具可能伸不进去。请确认，或换个方向、调整步骤顺序。';if(!M.warn.includes(w))M.warn.push(w)}
-        if(dt&&dt.none&&dt.fine>.3&&mv.b!=='none'&&!(mv.b&&WORLD[mv.b])&&!(s.auto&&s.auto[i]&&s.auto[i].blocked)&&!(s.man&&s.man[i]&&s.man[i].blocked)){const w='第 '+id+' 步：“'+kname(M,p.kind)+'”进去的途中会擦到别的零件，程序没有找到能绕开的走法。可以换个方向，或者自己分两段。';if(!M.warn.includes(w))M.warn.push(w)}
-        if(byHand){if(s.man&&s.man[i]&&s.man[i].blocked)M.warn.push('第 '+id+' 步：按你指定的装法，“'+kname(M,p.kind)+'”在路上会穿过别的零件，请换个方向或分两段。')}
-        else if(s.auto&&s.auto[i]&&s.auto[i].under&&!s.auto[i].blocked){const w='第 '+id+' 步：按现在的摆法，“'+kname(M,p.kind)+'”只能从正下方装入，手够不着。请换一个摆法（比如把产品立起来），或者调整步骤顺序。';if(!M.warn.includes(w))M.warn.push(w)}
-        else if(s.auto&&s.auto[i]&&s.auto[i].blocked)M.warn.push('第 '+id+' 步：“'+kname(M,p.kind)+'”没有找到不被挡住的装入方向，请指定方向或把它放到别的步骤。')}
+        const tight=byHand?(s.man&&s.man[i]&&s.man[i].tight):(s.auto&&s.auto[i]&&s.auto[i].tight);if(tight){const w='第 '+lab+' 步：“'+kname(M,p.kind)+'”装入方向外侧 '+(A_.tool||20)+' 厘米内有别的零件，手或工具可能伸不进去。请确认，或换个方向、调整步骤顺序。';if(!M.warn.includes(w))M.warn.push(w)}
+        if(dt&&dt.none&&dt.fine>.3&&mv.b!=='none'&&!(mv.b&&WORLD[mv.b])&&!(s.auto&&s.auto[i]&&s.auto[i].blocked)&&!(s.man&&s.man[i]&&s.man[i].blocked)){const w='第 '+lab+' 步：“'+kname(M,p.kind)+'”进去的途中会擦到别的零件，程序没有找到能绕开的走法。可以换个方向，或者自己分两段。';if(!M.warn.includes(w))M.warn.push(w)}
+        if(byHand){if(s.man&&s.man[i]&&s.man[i].blocked)M.warn.push('第 '+lab+' 步：按你指定的装法，“'+kname(M,p.kind)+'”在路上会穿过别的零件，请换个方向或分两段。')}
+        else if(s.auto&&s.auto[i]&&s.auto[i].under&&!s.auto[i].blocked){const w='第 '+lab+' 步：按现在的摆法，“'+kname(M,p.kind)+'”只能从正下方装入，手够不着。请换一个摆法（比如把产品立起来），或者调整步骤顺序。';if(!M.warn.includes(w))M.warn.push(w)}
+        else if(s.auto&&s.auto[i]&&s.auto[i].blocked)M.warn.push('第 '+lab+' 步：“'+kname(M,p.kind)+'”没有找到不被挡住的装入方向，请指定方向或把它放到别的步骤。')}
       placed.add(i)});
     st.parts=Object.entries(cnt);if(box.isEmpty())grow([0,0,0],SZ);
     const tg=box.getCenter(new T3.Vector3()).applyQuaternion(q1).add(new T3.Vector3(0,h1,0)),rad=box.getSize(new T3.Vector3()).length()/2;let v,dist=Math.max(45,rad*2.9);
     if(s.cam&&s.cam.v){v=new T3.Vector3(...s.cam.v).normalize();dist=s.cam.dist||dist}else{if(aW.length()>1e-6)aW.normalize();const ah=new T3.Vector3(aW.x,0,aW.z);if(ah.length()>.35){ah.normalize();v=ah.clone().add(new T3.Vector3(0,.55,0)).add(new T3.Vector3(-ah.z,0,ah.x).multiplyScalar(.7))}else v=new T3.Vector3(.5,aW.y<-.5?.12:.6,1);v.normalize()}
     const pos=tg.clone().addScaledVector(v,dist),cq=new T3.Quaternion().setFromRotationMatrix(new T3.Matrix4().lookAt(pos,tg,new T3.Vector3(0,1,0)));st.cam=[0,r4(pos.x),r4(pos.y),r4(pos.z),r4(cq.x),r4(cq.y),r4(cq.z),r4(cq.w),r4(dist)];
-    if(!mine.length&&!turn&&!(s.say||'').trim())M.warn.push('第 '+id+' 步既没有零件，也没有说明。');out.push(st);prev=pose});
-  const un=A.steps.map((s,i)=>s.by==='ai'&&!s.ok?i+1:0).filter(Boolean);if(un.length)M.warn.push('有 '+un.length+' 步是 AI 排的，还没有人确认：第 '+un.join('、')+' 步。请逐步对照说明书核对后点“确认这一步”。');
+    if(!mine.length&&!turn&&!(s.say||'').trim())M.warn.push('第 '+lab+' 步既没有零件，也没有说明。');out.push(st);prev=pose});
+  const un=A.steps.map((s,i)=>s.by==='ai'&&!s.ok?LB[i]:0).filter(Boolean);if(un.length)M.warn.push('有 '+un.length+' 步是 AI 排的，还没有人确认：第 '+un.join('、')+' 步。请逐步对照说明书核对后点“确认这一步”。');
   const left=PA.map((p,i)=>i).filter(i=>!placed.has(i));if(left.length){const c={};left.forEach(i=>{const n=kname(M,PA[i].kind);c[n]=(c[n]||0)+1});M.warn.unshift('还有 '+left.length+' 个零件没有排进任何一步：'+Object.entries(c).map(([n,v])=>n+(v>1?' ×'+v:'')).join('、')+'。')}
   M.steps=out;return M}
 /* what is sent to the AI: every part with its number, kind, size and place; the manual goes along as a PDF when there is one */
@@ -130,5 +146,5 @@ function aiApply(M,o){const A=M.asm,n=A.parts.length,used=new Set(),notes=[],ste
   const left=n-used.size;if(left)notes.push('AI 没有排进去的零件有 '+left+' 个，采用后会在“检查”里列出来。');const kinds={};if(o.kinds&&typeof o.kinds==='object')Object.entries(o.kinds).forEach(([k,v])=>{if(A.kinds[k]&&typeof v==='string'&&v.trim())kinds[k]=v.trim().slice(0,24)});
   (Array.isArray(o.notes)?o.notes:[]).forEach(x=>{if(typeof x==='string'&&x.trim())notes.push('AI 说：'+x.trim().slice(0,300))});return{steps,kinds,notes}}
 const autoTitle=(M,s)=>{const PA=M.asm.parts,c=[];(s.parts||[]).forEach(i=>{const n=kname(M,PA[i].kind);if(!c.includes(n))c.push(n)});return c.length?'装'+c.slice(0,3).join('、')+(c.length>3?'等':''):(s.pose&&s.pose!=='up'?'':'')};
-root.MAsm={RULES:2,KEY,parseGLB,base,aiPrompt,aiApply,steps,autoDir,detour,axisOf,pathCheck,parseSay,push,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
+root.MAsm={RULES:2,labels,KEY,parseGLB,base,aiPrompt,aiApply,steps,autoDir,detour,axisOf,pathCheck,parseSay,push,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
 })(typeof window!=='undefined'?window:globalThis);
