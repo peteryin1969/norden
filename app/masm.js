@@ -72,6 +72,9 @@ function ratioAlong(T3,O,near,D,far,off,thick){if(thick==null)thick=1;const dx=D
     if(ins>thick)deep++;if(ins>.05)any++}
   /* a thin sheet (a back panel of 3 mm) is thinner than what is forgiven for snap fits, but a part cannot go through it: when most of the part would cross something, however thin, the way is closed */
   return any/O.length>=.7?Math.max(deep,any)/O.length:deep/O.length}
+/* how far a part (its points O) has to go along d to be clear of everything in near. A way in only counts as free when the part can
+   come all the way from outside; a hand's width of free room inside a housing is not a way in. */
+function clearFar(T3,O,near,d){let hi=-1e9,lo=1e9;for(const m of near){const b=tris(T3,m).bb;for(let c=0;c<8;c++){const v=(c&1?b[3]:b[0])*d[0]+(c&2?b[4]:b[1])*d[1]+(c&4?b[5]:b[2])*d[2];if(v>hi)hi=v}}for(const o of O){const v=o.x*d[0]+o.y*d[1]+o.z*d[2];if(v<lo)lo=v}return Math.max(6,Math.min(150,hi-lo+1))}
 /* the axis a part is round about (a screw, a dowel, a knob, a washer), from the spread of its surface points; null if it has none */
 function axisOf(T3,geo){if(geo.userData&&geo.userData.axis!==undefined)return geo.userData.axis;const O=samples(T3,geo,[0,0,0],400),m=new T3.Vector3();O.forEach(o=>m.add(o));m.multiplyScalar(1/O.length);const C=[[0,0,0],[0,0,0],[0,0,0]];O.forEach(o=>{const d=[o.x-m.x,o.y-m.y,o.z-m.z];for(let a=0;a<3;a++)for(let b=0;b<3;b++)C[a][b]+=d[a]*d[b]/O.length});
   const V=[[1,0,0],[0,1,0],[0,0,1]];for(let it=0;it<40;it++){let p=0,q=1,mx=Math.abs(C[0][1]);if(Math.abs(C[0][2])>mx){mx=Math.abs(C[0][2]);p=0;q=2}if(Math.abs(C[1][2])>mx){mx=Math.abs(C[1][2]);p=1;q=2}if(mx<1e-10)break;const th=.5*Math.atan2(2*C[p][q],C[q][q]-C[p][p]),c=Math.cos(th),s=Math.sin(th);
@@ -90,7 +93,9 @@ function autoDir(T3,M,rc,i,obst,pose){const PA=M.asm.parts,p=PA[i];if(!obst.leng
   if(ax&&Math.max(...ax.map(Math.abs))<.99)dirs.push(ax,ax.map(v=>-v));/* a fastener that sits at an angle goes in along its own axis */
   dirs.forEach(d=>{const D=new T3.Vector3(...d),ratio=ratioAlong(T3,O,near,D,travel(p,d)),u=D.dot(up),along=ax&&Math.abs(D.dot(new T3.Vector3(...ax)))>.97,reach=small&&ratio<=tol?ratioAlong(T3,O,near,D,tool):0;all[d.join()]=+ratio.toFixed(3);
     const sc=(ratio<=tol?100:-ratio*100)+(small?.5:3)*u+1.5*D.dot(away)-(u<-.9?10:0)+(along?2.5:0)-(reach>.2?1:0);/* little room outside only tips the balance between otherwise equal ways; it is reported, not forbidden */if(!best||sc>best.sc)best={d,sc,ratio,reach,along,under:u<-.9}});
-  return{d:best.d,blocked:best.ratio>Math.max(tol,.1)?1:0,ratio:+best.ratio.toFixed(3),small:small?1:0,all,...(best.along?{axis:1}:{}),...(best.under?{under:1}:{}),...(best.reach>.2?{tight:+best.reach.toFixed(2)}:{})}}
+  /* room to move a little is not yet a way in: if neither this way nor any other leads clear out of everything that is there, the part is shut in */
+  let shut=0;if(best.ratio<=Math.max(tol,.1)){const out=d=>ratioAlong(T3,O,near,new T3.Vector3(...d),clearFar(T3,O,near,d))<=Math.max(tol,.1);if(!out(best.d)&&!dirs.some(d=>d!==best.d&&out(d)))shut=1}
+  return{...(shut?{shut:1}:{}),d:best.d,blocked:best.ratio>Math.max(tol,.1)?1:0,ratio:+best.ratio.toFixed(3),small:small?1:0,all,...(best.along?{axis:1}:{}),...(best.under?{under:1}:{}),...(best.reach>.2?{tight:+best.reach.toFixed(2)}:{})}}
 /* looking closer at a way in (A): does the part brush anything on the way (more than 3 mm of it)? If so, look for a way round:
    come in along A a little to one side, then slide the last bit (B) into place — the smallest sidestep that is clear on both stretches. */
 function detour(T3,M,rc,i,obst,A){const p=M.asm.parts[i];if(!obst.length||(!A[0]&&!A[1]&&!A[2]))return null;const O=samples(T3,rc[i].geometry,p.c,180),near=obst.map(j=>rc[j]),small=isSmall(M,p),tol=small?.05:.02,vA=new T3.Vector3(...A),ta=travel(p,A),fine=ratioAlong(T3,O,near,vA,ta,null,.3);
@@ -103,6 +108,49 @@ function pathCheck(T3,M,rc,i,obst,A,B,tb0){const p=M.asm.parts[i];if(!obst.lengt
   const last=B&&!z(B)?B:A,reach=isSmall(M,p)&&!z(last)?ratioAlong(T3,O,near,new T3.Vector3(...last),M.asm.tool||20):0;return{ratio:+r.toFixed(3),blocked:r>(isSmall(M,p)?.1:.03)?1:0,...(reach>.2?{tight:+reach.toFixed(2)}:{})}}
 /* which of the parts already there stand in a part's way along d: the worst three, with the share of the part each one blocks */
 function blockers(T3,M,rc,i,obst,d){const p=M.asm.parts[i],O=samples(T3,rc[i].geometry,p.c,180),D=new T3.Vector3(...d),far=travel(p,d),out=[];obst.forEach(j=>{const r=ratioAlong(T3,O,[rc[j]],D,far);if(r>.02)out.push([j,+r.toFixed(2)])});return out.sort((a,b)=>b[1]-a[1]).slice(0,3)}
+/* ---- ways in that need a turn ----
+   a part as a block of small cells, each knowing how deep inside the solid it lies (cm; 0 = outside). Sweeping along a line cannot say
+   whether a part fits while it is being turned; looking up where its points are, pose after pose, can. Inside is decided by counting
+   crossings along each of the three axes and taking the majority, so a crack in the mesh does not flip a whole column. */
+function vox(T3,mesh){const u=mesh.userData;if(u.vox)return u.vox;const tr=tris(T3,mesh),bb=tr.bb,dim=[bb[3]-bb[0],bb[4]-bb[1],bb[5]-bb[2]],h=(Math.max(...dim)/56)||1,n=dim.map(d=>Math.max(4,Math.min(56,Math.ceil(d/h)))),c=dim.map((d,a)=>(d||1e-6)/n[a]),N=n[0]*n[1]*n[2],votes=new Uint8Array(N),V=tr.V,J=[.5003,.5007,.5011];
+  for(let ax=0;ax<3;ax++){const b=(ax+1)%3,e=(ax+2)%3,cols=new Array(n[b]*n[e]),st=[1,n[0],n[0]*n[1]];
+    for(let k=0;k<tr.n;k++){const o=k*9,p0b=V[o+b],p0e=V[o+e],p1b=V[o+3+b],p1e=V[o+3+e],p2b=V[o+6+b],p2e=V[o+6+e],den=(p1b-p0b)*(p2e-p0e)-(p2b-p0b)*(p1e-p0e);if(den>-1e-12&&den<1e-12)continue;
+      const lb=Math.max(0,Math.floor((Math.min(p0b,p1b,p2b)-bb[b])/c[b]-1)),hb=Math.min(n[b]-1,Math.ceil((Math.max(p0b,p1b,p2b)-bb[b])/c[b])),le=Math.max(0,Math.floor((Math.min(p0e,p1e,p2e)-bb[e])/c[e]-1)),he=Math.min(n[e]-1,Math.ceil((Math.max(p0e,p1e,p2e)-bb[e])/c[e]));
+      for(let j=lb;j<=hb;j++){const yb=bb[b]+(j+J[b])*c[b];for(let m=le;m<=he;m++){const ye=bb[e]+(m+J[e])*c[e],w1=((yb-p0b)*(p2e-p0e)-(p2b-p0b)*(ye-p0e))/den,w2=((p1b-p0b)*(ye-p0e)-(yb-p0b)*(p1e-p0e))/den;if(w1<0||w2<0||w1+w2>1)continue;(cols[j+m*n[b]]||(cols[j+m*n[b]]=[])).push(V[o+ax]+(V[o+3+ax]-V[o+ax])*w1+(V[o+6+ax]-V[o+ax])*w2)}}}
+    for(let j=0;j<n[b];j++)for(let m=0;m<n[e];m++){const L=cols[j+m*n[b]];if(!L||L.length<2)continue;L.sort((x,y)=>x-y);for(let q=0;q+1<L.length;q+=2){const i0=Math.max(0,Math.ceil((L[q]-bb[ax])/c[ax]-J[ax])),i1=Math.min(n[ax]-1,Math.floor((L[q+1]-bb[ax])/c[ax]-J[ax]));for(let i=i0;i<=i1;i++)votes[i*st[ax]+j*st[b]+m*st[e]]++}}}
+  const d=new Float32Array(N),s1=n[0],s2=n[0]*n[1];for(let i=0;i<N;i++)d[i]=votes[i]>=2?1e6:0;
+  for(let z=0;z<n[2];z++)for(let y=0;y<n[1];y++)for(let x=0;x<n[0];x++){const i=x+s1*y+s2*z;if(!d[i])continue;const a=(x?d[i-1]:0)+c[0],b=(y?d[i-s1]:0)+c[1],e=(z?d[i-s2]:0)+c[2];d[i]=Math.min(d[i],a,b,e)}
+  for(let z=n[2]-1;z>=0;z--)for(let y=n[1]-1;y>=0;y--)for(let x=n[0]-1;x>=0;x--){const i=x+s1*y+s2*z;if(!d[i])continue;const a=(x<n[0]-1?d[i+1]:0)+c[0],b=(y<n[1]-1?d[i+s1]:0)+c[1],e=(z<n[2]-1?d[i+s2]:0)+c[2];d[i]=Math.min(d[i],a,b,e)}
+  const half=Math.min(...c)/2;for(let i=0;i<N;i++)if(d[i])d[i]=Math.max(1e-3,d[i]-half);return u.vox={o:[bb[0],bb[1],bb[2]],c,n,d}}
+/* of the points pts (a part in some pose): the share lying deeper than `thick` inside one of the meshes, and the share inside at all */
+function poseShare(T3,pts,near,thick){if(thick==null)thick=.3;const n=pts.length,lo=[1e9,1e9,1e9],hi=[-1e9,-1e9,-1e9];for(const p of pts){if(p.x<lo[0])lo[0]=p.x;if(p.y<lo[1])lo[1]=p.y;if(p.z<lo[2])lo[2]=p.z;if(p.x>hi[0])hi[0]=p.x;if(p.y>hi[1])hi[1]=p.y;if(p.z>hi[2])hi[2]=p.z}
+  const dep=new Float32Array(n);for(const m of near){const b=tris(T3,m).bb;if(b[0]>hi[0]||b[3]<lo[0]||b[1]>hi[1]||b[4]<lo[1]||b[2]>hi[2]||b[5]<lo[2])continue;const v=vox(T3,m),o=v.o,c=v.c,N=v.n,d=v.d;for(let q=0;q<n;q++){const p=pts[q],i=Math.floor((p.x-o[0])/c[0]),j=Math.floor((p.y-o[1])/c[1]),k=Math.floor((p.z-o[2])/c[2]);if(i<0||j<0||k<0||i>=N[0]||j>=N[1]||k>=N[2])continue;const x=d[i+N[0]*(j+N[1]*k)];if(x>dep[q])dep[q]=x}}
+  let deep=0,any=0;for(let q=0;q<n;q++){if(dep[q]>thick)deep++;if(dep[q]>0)any++}return{deep:deep/n,any:any/n}}
+/* a way in for a part that no straight way reaches. Looked for backwards, from its place outwards, simplest first:
+   1. back out a little one way (A), then leave another way (C) — a way round a corner;
+   2. turn on the spot about one of the axes, a little more each time, and try to leave after each turn;
+   3. back out a little, then turn, then leave.
+   Straight stretches are swept exactly (with the part's points as they are turned); turns are checked pose by pose. Played forwards:
+   come in along C, turned; straighten up; push home along A. -> {a,al,u,th,c,cl} or null. `budget` = ms after which it gives up. */
+function findPath(T3,M,rc,i,obst,budget){const PA=M.asm.parts,p=PA[i];if(!obst.length)return null;const t0=Date.now(),lim=budget||25000,small=isSmall(M,p),tol=small?.05:.02,O=samples(T3,rc[i].geometry,p.c,110),ctr=new T3.Vector3(...p.c),near=obst.map(j=>rc[j]);
+  let rmax=0;O.forEach(o=>{rmax=Math.max(rmax,o.distanceTo(ctr))});const D6=[[0,1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1],[0,-1,0]],ax=axisOf(T3,rc[i].geometry),AX=[[0,1,0],[1,0,0],[0,0,1]].filter(u=>!ax||Math.abs(u[0]*ax[0]+u[1]*ax[1]+u[2]*ax[2])<.97);/* turning a round part about its own axis changes nothing */
+  const shift=(pts,d,l)=>pts.map(o=>new T3.Vector3(o.x+d[0]*l,o.y+d[1]*l,o.z+d[2]*l)),turn=(pts,c,u,deg)=>{const q=new T3.Quaternion().setFromAxisAngle(new T3.Vector3(...u).normalize(),deg*Math.PI/180);return pts.map(o=>o.clone().sub(c).applyQuaternion(q).add(c))};
+  const sweep=(pts,d,far)=>ratioAlong(T3,pts,near,new T3.Vector3(...d),far),exit=(pts,d)=>clearFar(T3,pts,near,d);
+  /* the same seen from the small parts that stay: brought into the moving part's own frame, would they have to pass through it? s = how far
+     it has been backed out, q = how it is turned (or null) */
+  const vol=q=>q.size[0]*q.size[1]*q.size[2],sm=obst.filter(j=>vol(PA[j])<=vol(p)/PLANK.v),me=[rc[i]],OJ={},tj=j=>isSmall(M,PA[j])?.05:.02,inMe=(j,s,qi)=>(OJ[j]||(OJ[j]=samples(T3,rc[j].geometry,PA[j].c,60))).map(o=>{const v=o.clone().sub(ctr);if(s)v.sub(s);if(qi)v.applyQuaternion(qi);return v.add(ctr)});
+  const backLine=(s,q,d,far)=>{const qi=q?q.clone().invert():null,dir=new T3.Vector3(-d[0],-d[1],-d[2]);if(qi)dir.applyQuaternion(qi);for(const j of sm)if(ratioAlong(T3,inMe(j,s,qi),me,dir,far)>tj(j))return false;return true};
+  const backPose=(s,q)=>{const qi=q.clone().invert();for(const j of sm){const r=poseShare(T3,inMe(j,s,qi),me);if(r.deep>tj(j)||r.any>=.7)return false}return true};
+  /* leaving: any of the six ways, and when turned also the part's own (turned) axes */
+  const leave=(pts,q,skip,sh)=>{const L=D6.slice();if(q)for(const d of D6){const v=new T3.Vector3(...d).applyQuaternion(q);if(Math.max(Math.abs(v.x),Math.abs(v.y),Math.abs(v.z))<.99)L.push([+v.x.toFixed(5),+v.y.toFixed(5),+v.z.toFixed(5)])}for(const d of L){if(skip&&Math.abs(d[0]*skip[0]+d[1]*skip[1]+d[2]*skip[2])>.99)continue;const far=exit(pts,d);if(sweep(pts,d,far)<=tol&&backLine(sh,q,d,far))return{d,far:Math.min(far,70)}}return null};
+  /* 1. round a corner */
+  const alive=[];for(const dA of D6){for(const al of[2,4,8,15,25]){if(Date.now()-t0>lim)return null;/* the last push home has to be clean (3 mm), or two stretches would forgive what one straight way does not */if(ratioAlong(T3,O,near,new T3.Vector3(...dA),al,null,.3)>tol||!backLine(null,null,dA,al))break;alive.push([dA,al]);const pts=shift(O,dA,al),out=leave(pts,null,dA,new T3.Vector3(...dA).multiplyScalar(al));if(out)return{a:dA,al,th:0,c:out.d,cl:+out.far.toFixed(2)}}}
+  /* 2. and 3. with a turn */
+  const starts=[[null,0]].concat(alive.filter(x=>x[1]<=8));
+  for(const[dA,al]of starts){const sh=dA?new T3.Vector3(...dA).multiplyScalar(al):null,base=dA?shift(O,dA,al):O,c2=dA?ctr.clone().add(sh):ctr,qa=(u,deg)=>new T3.Quaternion().setFromAxisAngle(new T3.Vector3(...u).normalize(),deg*Math.PI/180);
+    for(const u of AX)for(const sg of[1,-1]){let prev=0;for(const th of[15,30,45,60,90]){if(Date.now()-t0>lim)return null;const n=Math.max(2,Math.min(40,Math.ceil((th-prev)*Math.PI/180*rmax/.25)));let ok=true;for(let k=1;k<=n&&ok;k++){const ang=sg*(prev+(th-prev)*k/n),s=poseShare(T3,turn(base,c2,u,ang),near);if(s.deep>tol||s.any>=.7||!backPose(sh,qa(u,ang)))ok=false}if(!ok)break;prev=th;
+        const q=new T3.Quaternion().setFromAxisAngle(new T3.Vector3(...u).normalize(),sg*th*Math.PI/180),out=leave(turn(base,c2,u,sg*th),q,null,sh);if(out)return{...(dA?{a:dA,al}:{}),u,th:sg*th,c:out.d,cl:+out.far.toFixed(2)}}}}
+  return null}
 /* an assembly order found by taking the finished product apart: in each round every part that has a straight way out, clear of all
    that is still there, comes off. Fitting them in the reverse order cannot collide. What never comes off is locked together.
    planStart gives the state, planRound takes one round off and says whether there may be more. */
@@ -113,7 +161,8 @@ const PLANK={v:8};
 function planBack(T3,M,rc,st,mesh,d,far,rest){const PA=M.asm.parts,vd=new T3.Vector3(-d[0],-d[1],-d[2]),O=st.O=st.O||{},bad=[],bs=mesh.geometry.boundingBox.getSize(new T3.Vector3()),bv=bs.x*bs.y*bs.z;for(const j of rest){const p=PA[j];if(p.size[0]*p.size[1]*p.size[2]>bv/PLANK.v)continue;const o=O[j]||(O[j]=samples(T3,rc[j].geometry,p.c,120));if(ratioAlong(T3,o,[mesh],vd,far)>(isSmall(M,p)?.05:.02))bad.push(j)}return bad}
 function planRound(T3,M,rc,st,flat){const D=[[0,1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1],[0,-1,0]],out=[];if(st.rem.size<=1){st.done=true;return false}
   for(const i of st.rem){const p=M.asm.parts[i],o=[...st.rem].filter(j=>j!==i),near=o.map(j=>rc[j]),O=samples(T3,rc[i].geometry,p.c,180),tol=isSmall(M,p)?.05:.02;for(const d of D){const far=travel(p,d),r=ratioAlong(T3,O,near,new T3.Vector3(...d),far);if(r<=tol&&!planBack(T3,M,rc,st,rc[i],d,far,o).length){out.push({i,d,r});break}}}
-  if(!out.length){const g=flat?null:planGroup(T3,M,rc,st);if(g){st.layers.push([g]);g.u.forEach(x=>st.rem.delete(x));return true}st.done=true;return false}
+  if(!out.length){const g=flat?null:planGroup(T3,M,rc,st);if(g){st.layers.push([g]);g.u.forEach(x=>st.rem.delete(x));return true}
+    if(st.rem.size<=14)for(const i of st.rem){const o=[...st.rem].filter(j=>j!==i).sort((a,b)=>a-b),pt=findPath(T3,M,rc,i,o,12000);if(pt){pt.k=o.join(',');st.layers.push([{i,d:pt.c,r:0,pt}]);st.rem.delete(i);return true}}st.done=true;return false}
   if(out.length===st.rem.size){st.done=true;const vl=x=>{const s=M.asm.parts[x.i].size;return s[0]*s[1]*s[2]};out.sort((a,b)=>vl(a)-vl(b));out.pop();st.layers.push(out);out.forEach(x=>st.rem.delete(x.i));return false}
   st.layers.push(out);out.forEach(x=>st.rem.delete(x.i));return true}
 /* several parts as one body: all their triangles in one mesh, standing as one more part at the end of the list */
@@ -132,11 +181,11 @@ function planGroup(T3,M,rc,st){const D=[[0,1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1
   if(best){const sub={rem:new Set(best.u),layers:[],done:false};let n=0;while(!sub.done&&n++<60)planRound(T3,M,rc,sub,true);best.sub=sub}return best}
 /* the rounds turned into steps: what is locked together (or the last part left) is the base; each round, taken backwards, is one big
    step, with a sub-step for each kind of part, big parts first. A component gets its own steps first, then one step that fits it. */
-function planSteps(M,st){const A=M.asm,vol=i=>A.parts[i].size[0]*A.parts[i].size[1]*A.parts[i].size[2],steps=[],mk=(parts,x)=>Object.assign({title:'',tAuto:true,say:'',parts,pose:'up',move:{},auto:{},by:'plan'},x||{});let gn=0;A.groups={};
+function planSteps(M,st){const A=M.asm,vol=i=>A.parts[i].size[0]*A.parts[i].size[1]*A.parts[i].size[2],steps=[],mk=(parts,x)=>Object.assign({title:'',tAuto:true,say:'',parts,pose:'up',move:{},auto:{},by:'plan'},x||{});let gn=0;A.groups={};const PT={},note=L=>L.forEach(x=>{if(x.pt)PT[x.i]=x.pt;if(x.sub)x.sub.layers.forEach(note)});st.layers.forEach(note);const withPt=s=>{s.parts.forEach(i=>{if(PT[i])(s.path=s.path||{})[i]=PT[i]});return s};
   const lay=(L,x)=>{const ks=[];L.slice().sort((a,b)=>vol(b)-vol(a)).forEach(i=>{const k=A.parts[i].kind;let g=ks.find(y=>y.k===k);if(!g)ks.push(g={k,parts:[]});g.parts.push(i)});ks.forEach((g,n)=>steps.push(mk(g.parts,Object.assign(n>0?{sub:true}:{},x||{}))))};
   const base=[...st.rem].sort((a,b)=>vol(b)-vol(a));steps.push(mk(base,base.length>1?{fixed:true}:{}));
   st.layers.slice().reverse().forEach(L=>{L.filter(x=>x.u).forEach(x=>{const id='g'+(++gn);A.groups[id]={name:'组件 '+String.fromCharCode(65+(gn-1)%26)+(gn>26?Math.ceil(gn/26):'')};const b=[...x.sub.rem].sort((a,b)=>vol(b)-vol(a));steps.push(mk(b,Object.assign({grp:id},b.length>1?{fixed:true}:{})));x.sub.layers.slice().reverse().forEach(l=>lay(l.map(y=>y.i),{grp:id}));steps.push(mk([],{unit:id}))});
-    const s=L.filter(x=>!x.u).map(x=>x.i);if(s.length)lay(s)});if(!gn)delete A.groups;return steps}
+    const s=L.filter(x=>!x.u).map(x=>x.i);if(s.length)lay(s)});if(!gn)delete A.groups;return steps.map(withPt)}
 /* one sentence about how the parts of a step go in -> {kinds:[key…], a, b, spin, say}. Rules only, no AI. */
 const SAYDIR=[['U',/从上|往下|向下|朝下|下推|下压|放下|按下|落下/],['D',/从下|往上|向上|朝上|上推|托上|抬上/],['L',/从左|往右|向右|朝右/],['R',/从右|往左|向左|朝左/],['F',/从前|往后|向后|朝后|往里|向里|朝里/],['B',/从后|往前|向前|朝前|往外|向外/],['auto',/按进|靠上|贴上|对准|扣上|插进|放进|装上|卡进|推进|靠近|对上/]];
 function parseSay(text,kinds){const x=String(text||'').replace(/\s+/g,'');if(!x)return null;const hit=kinds.filter(k=>k.name&&x.includes(k.name)),tg=(hit.length?hit:kinds),mv=[];x.split(/[，,。；;、]|然后|接着|之后|再/).forEach(c=>{if(!c)return;const m=SAYDIR.find(d=>d[1].test(c));if(m)mv.push(m[0])});
@@ -165,7 +214,12 @@ function steps(M,T3){const A=M.asm,A_=A,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+
     mine.forEach(i=>{const p=PA[i],sl=unit?'@':i,pp=unit?U:p,nm=unit?'组件“'+gn+'”':'“'+kname(M,p.kind)+'”',k=unit?0:kinds.indexOf(p.kind),a=Math.round(a0+k*L),b=Math.round(a0+(k+1)*L-(kinds.length>1?2:0)),mv=(s.move&&s.move[unit?'@':p.kind])||(s.dir&&s.dir[p.kind]?{a:s.dir[p.kind]}:{}),au=(s.auto&&s.auto[sl]&&s.auto[sl].d)||[0,0,0],byHand=!!((mv.a&&WORLD[mv.a])||(mv.b&&WORLD[mv.b]));
       const dt=s.det&&s.det[sl];let A=mv.a&&WORLD[mv.a]?loc(mv.a):au,B=mv.b&&WORLD[mv.b]?loc(mv.b):(mv.b!=='none'&&dt&&dt.b?dt.b:null),tbA=!(mv.b&&WORLD[mv.b])&&B?dt.tb:0;if(B&&zero(A)){A=B;B=null}if(B&&A.join()===B.join())B=null;
       grow(p.c,p.size);const key=unit?'组件“'+gn+'”':(A_.kinds[p.kind]&&A_.kinds[p.kind].code)||kname(M,p.kind);cnt[key]=unit?1:(cnt[key]||0)+1;M.parts[i].steps.push(id);
-      if(zero(A)){st.nodes[p.node]=tEnd?{v:[0,0,a,1]}:{v:[0,1]};st.mats[p.mat]={c:[0,GREEN,100,p.col]}}
+      const pt=!unit&&!byHand&&s.path&&s.path[i]&&s.path[i].c?s.path[i]:null;
+      if(pt){/* a way found with a corner or a turn: in along C (turned), straighten, home along A */const A1=pt.a||[0,0,0],al=pt.a?pt.al||0:0,hasR=!!pt.th,hasA=al>0,mid=p.c.map((v,x)=>r4(v+A1[x]*al)),from=mid.map((v,x)=>r4(v+pt.c[x]*pt.cl)),w=[.55,hasR?.25:0,hasA?.2:0],W=w[0]+w[1]+w[2],t1=hasR||hasA?Math.round(a+(b-a)*w[0]/W):b,t2=hasR&&hasA?Math.round(a+(b-a)*(w[0]+w[1])/W):b,keys=[a,...from,t1,...mid];
+        if(hasR&&hasA)keys.push(t2,...mid);if(hasR||hasA)keys.push(b,...p.c.map(r4));grow(from,p.size);const nd={p:keys,v:a>0?[0,0,a,1]:[0,1]};
+        if(hasR){const q=new T3.Quaternion().setFromAxisAngle(new T3.Vector3(...pt.u).normalize(),pt.th*Math.PI/180),Q4=[r4(q.x),r4(q.y),r4(q.z),r4(q.w)];nd.q=[a,...Q4,t1,...Q4,t2,0,0,0,1];if(hasA)nd.q.push(b,0,0,0,1);nd.tilt=1}
+        st.nodes[p.node]=nd;st.mats[p.mat]={c:[0,GREEN,Math.min(119,b+6),p.col]};aW.add(new T3.Vector3(...pt.c).applyQuaternion(q1))}
+      else if(zero(A)){st.nodes[p.node]=tEnd?{v:[0,0,a,1]}:{v:[0,1]};st.mats[p.mat]={c:[0,GREEN,100,p.col]}}
       else{const ta=travel(pp,A),tb=B?(tbA||push(pp,B)):0,mid=B?p.c.map((v,x)=>r4(v+B[x]*tb)):null,from=(mid||p.c).map((v,x)=>r4(v+A[x]*ta)),m=B?Math.round(a+(b-a)*.62):a,keys=[a,...from];if(B)keys.push(m,...mid);keys.push(b,...p.c.map(r4));grow(from,p.size);
         const nd={p:keys,v:a>0?[0,0,a,1]:[0,1]};if(mv.spin){const ax=new T3.Vector3(...(B||A)).normalize(),qk=[],n=12,q=new T3.Quaternion();for(let j=0;j<=n;j++){q.setFromAxisAngle(ax,-(1-j/n)*Math.PI*4);qk.push(r4(m+(b-m)*j/n),r4(q.x),r4(q.y),r4(q.z),r4(q.w))}nd.q=qk}
         st.nodes[p.node]=nd;st.mats[p.mat]={c:[0,GREEN,Math.min(119,b+6),p.col]};aW.add(new T3.Vector3(...A).applyQuaternion(q1));
@@ -173,6 +227,7 @@ function steps(M,T3){const A=M.asm,A_=A,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+
         if(dt&&dt.none&&dt.fine>.3&&mv.b!=='none'&&!(mv.b&&WORLD[mv.b])&&!(s.auto&&s.auto[sl]&&s.auto[sl].blocked)&&!(s.man&&s.man[sl]&&s.man[sl].blocked)){const w='第 '+lab+' 步：'+nm+'进去的途中会擦到别的零件，程序没有找到能绕开的走法。可以换个方向，或者自己分两段。';if(!M.warn.includes(w))M.warn.push(w)}
         if(byHand){if(s.man&&s.man[sl]&&s.man[sl].blocked)M.warn.push('第 '+lab+' 步：按你指定的装法，'+nm+'在路上会穿过别的零件，请换个方向或分两段。')}
         else if(s.auto&&s.auto[sl]&&s.auto[sl].under&&!s.auto[sl].blocked){const w='第 '+lab+' 步：按现在的摆法，'+nm+'只能从正下方装入，手够不着。请换一个摆法（比如把产品立起来），或者调整步骤顺序。';if(!M.warn.includes(w))M.warn.push(w)}
+        if(!byHand&&s.auto&&s.auto[sl]&&s.auto[sl].shut){const tried=!unit&&s.path&&s.path[i]&&s.path[i].none,w='第 '+lab+' 步：'+nm+'旁边有空位，但四周被围住，沿直线从外面进不来。'+(tried?'程序试过拐弯和转动，也没有找到从外面进来的路。如果实际上手能把它送到位，可以不管这一条；否则请调整步骤顺序。':'可以点“给进不去的零件找路”，让程序找一条拐弯或转着进去的路；或者调整步骤顺序。');if(!M.warn.includes(w))M.warn.push(w)}
         else if(s.auto&&s.auto[sl]&&s.auto[sl].blocked){const by=(s.auto[sl].by||[]).map(([j])=>{const q=A_.steps.findIndex(x=>x.parts.includes(j));return'“'+kname(M,PA[j].kind)+'”（第 '+LB[q]+' 步）'}).filter((x,k,L)=>L.indexOf(x)===k),w='第 '+lab+' 步：'+nm+'没有找到不被挡住的装入方向'+(by.length?'，挡住它的是'+by.join('、')+'。可以让它排在这些零件之前装，或者把它们编成一个组件':'')+'。';if(!M.warn.includes(w))M.warn.push(w)}}
       placed.add(i)});
     st.parts=Object.entries(cnt);if(box.isEmpty())grow([0,0,0],SZ);
@@ -204,5 +259,5 @@ function aiApply(M,o){const A=M.asm,n=A.parts.length,used=new Set(),notes=[],ste
   const left=n-used.size;if(left)notes.push('AI 没有排进去的零件有 '+left+' 个，采用后会在“检查”里列出来。');const kinds={};if(o.kinds&&typeof o.kinds==='object')Object.entries(o.kinds).forEach(([k,v])=>{if(A.kinds[k]&&typeof v==='string'&&v.trim())kinds[k]=v.trim().slice(0,24)});
   (Array.isArray(o.notes)?o.notes:[]).forEach(x=>{if(typeof x==='string'&&x.trim())notes.push('AI 说：'+x.trim().slice(0,300))});return{steps,kinds,notes}}
 const autoTitle=(M,s)=>{const PA=M.asm.parts,c=[];(s.parts||[]).forEach(i=>{const n=kname(M,PA[i].kind);if(!c.includes(n))c.push(n)});return c.length?'装'+c.slice(0,3).join('、')+(c.length>3?'等':''):(s.pose&&s.pose!=='up'?'':'')};
-root.MAsm={PLANK,INSET,RULES:3,ctx,gname,body,planGroup,blockers,planStart,planRound,planSteps,UNITS,guessUnit,rescale,labels,KEY,parseGLB,base,aiPrompt,aiApply,steps,autoDir,detour,axisOf,pathCheck,parseSay,push,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
+root.MAsm={vox,poseShare,findPath,PLANK,INSET,RULES:4,ctx,gname,body,planGroup,blockers,planStart,planRound,planSteps,UNITS,guessUnit,rescale,labels,KEY,parseGLB,base,aiPrompt,aiApply,steps,autoDir,detour,axisOf,pathCheck,parseSay,push,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
 })(typeof window!=='undefined'?window:globalThis);
