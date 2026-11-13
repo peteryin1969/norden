@@ -23,6 +23,6 @@ for name,(P,N,I) in meshes:
     acc+=[{'bufferView':vp,'componentType':5126,'count':len(P),'type':'VEC3','min':mn,'max':mx},{'bufferView':vn,'componentType':5126,'count':len(N),'type':'VEC3'},{'bufferView':vi,'componentType':5123,'count':len(I),'type':'SCALAR'}]
     ms.append({'name':name,'primitives':[{'attributes':{'POSITION':len(acc)-3,'NORMAL':len(acc)-2},'indices':len(acc)-1,'material':0}]});nodes.append({'name':name,'mesh':len(ms)-1})
 while len(buf)%4:buf+=b'\0'
-J={'asset':{'version':'2.0','generator':'test'},'scene':0,'scenes':[{'nodes':[len(nodes)]}],'nodes':nodes+[{'name':'Root','children':list(range(len(nodes)))}],'meshes':ms,'materials':[{'pbrMetallicRoughness':{'baseColorFactor':[.8,.8,.8,1]}}],'accessors':acc,'bufferViews':views,'buffers':[{'byteLength':len(buf)}]}
+J={'asset':{'version':'2.0','generator':'test'},'scene':0,'scenes':[{'nodes':[len(nodes)]}],'nodes':nodes+[{'name':'Root','children':[0,len(nodes)+1]},{'name':'ASM Inner','children':[1]}],'meshes':ms,'materials':[{'pbrMetallicRoughness':{'baseColorFactor':[.8,.8,.8,1]}}],'accessors':acc,'bufferViews':views,'buffers':[{'byteLength':len(buf)}]}
 js=json.dumps(J).encode();js+=b' '*((4-len(js)%4)%4)
 open(sys.argv[1],'wb').write(b'glTF'+struct.pack('<II',2,12+8+len(js)+8+len(buf))+struct.pack('<I',len(js))+b'JSON'+js+struct.pack('<I',len(buf))+b'BIN\0'+buf)
