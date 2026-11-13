@@ -202,16 +202,18 @@ async function planTree(T3,M,rc,tick){const A=M.asm,PA=A.parts,D=[[0,1,0],[1,0,0
   const root={name:'',parts:[],kids:[],map:{}};PA.forEach((p,i)=>{let n=root;(p.sub||[]).forEach(s=>{if(!n.map[s]){n.map[s]={name:s,parts:[],kids:[],map:{}};n.kids.push(n.map[s])}n=n.map[s]});n.parts.push(i)});
   const all=n=>n.all||(n.all=n.parts.concat(...n.kids.map(all))),mk=(parts,x)=>Object.assign({title:'',tAuto:true,say:'',parts,pose:'up',move:{},auto:{},by:'plan'},x||{});
   const item=x=>{if(typeof x==='number')return{parts:[x],mesh:rc[x],part:PA[x],one:x};const L=all(x);if(L.length===1)return{parts:L,mesh:rc[L[0]],part:PA[L[0]],one:L[0]};const B=body(T3,M,rc,L);return{parts:L,mesh:B.rc[B.i],part:B.M.asm.parts[B.i],node:x}};
-  A.groups={};let gN=0;
+  A.groups={};let gN=0;info.same=0;
+  /* what a sub-assembly is made of, however it is turned: its kinds of part, and how far each part lies from the middle of them all */
+  const SIG=new Map(),sigOf=X=>{const L=X.parts,m=[0,0,0];L.forEach(i=>{for(let c=0;c<3;c++)m[c]+=PA[i].c[c]/L.length});return L.map(i=>PA[i].kind+'@'+(Math.round(Math.hypot(PA[i].c[0]-m[0],PA[i].c[1]-m[1],PA[i].c[2]-m[2])*5)/5).toFixed(1)).sort().join('|')};
   async function level(n,gid){info.levels++;let items=n.parts.map(item).concat(n.kids.map(item));const layers=[],G=gid?{grp:gid}:{},nm=n.name||'总装';
     /* what stands lowest is the base of this level (the biggest, if several stand equally low); it stays to the end. And nothing is taken away
        while something else still hangs on it: backwards, every piece that is fitted then touches something that is already there. */
-    const low=y=>y.part.c[1]-y.part.size[1]/2,pickBase=L=>{const lo=Math.min(...L.map(low)),eps=Math.max(.5,A.size[1]*.03);return L.filter(y=>low(y)<=lo+eps).sort((a,b)=>vol(b.part)-vol(a.part))[0]};
+    const low=y=>y.part.c[1]-y.part.size[1]/2,pickBase=L0=>{/* a screw or a washer is never the base: only pieces of some size count */const vm=Math.max(...L0.map(y=>vol(y.part))),L=L0.filter(y=>vol(y.part)>=vm*.1),lo=Math.min(...L.map(low)),eps=Math.max(.5,A.size[1]*.03);return L.filter(y=>low(y)<=lo+eps).sort((a,b)=>vol(b.part)-vol(a.part))[0]};
     const TC=new Map(),touch=(X,Y)=>{let m=TC.get(X);if(!m)TC.set(X,m=new Map());let v=m.get(Y);if(v===undefined){v=X.parts.some(i=>Y.parts.some(j=>{const a=PA[i],b=PA[j];return Math.abs(a.c[0]-b.c[0])<=(a.size[0]+b.size[0])/2+.15&&Math.abs(a.c[1]-b.c[1])<=(a.size[1]+b.size[1])/2+.15&&Math.abs(a.c[2]-b.c[2])<=(a.size[2]+b.size[2])/2+.15}));m.set(Y,v)}return v};
     const holds=(L,base)=>{const seen=new Set([base]),q=[base];while(q.length){const X=q.pop();for(const Y of L)if(!seen.has(Y)&&(touch(X,Y)||touch(Y,X))){seen.add(Y);q.push(Y)}}return seen};
     for(let guard=0;guard<600&&items.length>1;guard++){await tick('正在排“'+nm+'”这一级：还剩 '+items.length+' 件没拆开…');const free=[],base=pickBase(items);
       for(const X of items){const obst=[].concat(...items.filter(y=>y!==X).map(y=>y.parts)),near=obst.map(j=>rc[j]),O=X.O||(X.O=samples(T3,X.mesh.geometry,X.part.c,X.node?260:180)),tol=X.node?.02:(isSmall(M,X.part)?.05:.02);X.bd=null;
-        for(const d of D){const far=X.node?clearFar(T3,O,near,d):travel(X.part,d),r=ratioAlong(T3,O,near,new T3.Vector3(...d),far);if(!X.bd||r<X.bd.r)X.bd={d,r,far};if(r<=tol&&!planBack(T3,M,rc,bk,X.mesh,d,far,obst).length){if(X!==base)free.push(X);break}}}
+        for(const d of D){const far=X.node?clearFar(T3,O,near,d):travel(X.part,d),r=ratioAlong(T3,O,near,new T3.Vector3(...d),far);if(!X.bd||r<X.bd.r)X.bd={d,r,far};if(r<=tol&&!planBack(T3,M,rc,bk,X.mesh,d,far,obst).length){if(X!==base){X.out={d,far,tol};free.push(X)}break}}}
       /* taking X away must not leave anything hanging that was held before */let out=[],cur=items.slice(),held=holds(cur,base);for(const X of free){const next=cur.filter(y=>y!==X),h=holds(next,base);let ok=true;for(const y of held)if(y!==X&&!h.has(y)){ok=false;break}if(ok){out.push(X);cur=next;held=h}}
       if(!out.length&&free.length){out=free;info.loose=(info.loose||0)+free.length}
       if(out.length){layers.push(out);items=items.filter(y=>!out.includes(y));continue}
@@ -220,11 +222,26 @@ async function planTree(T3,M,rc,tick){const A=M.asm,PA=A.parts,D=[[0,1,0],[1,0,0
         const B=bodies.slice().sort((a,b)=>(score.get(b)||0)-(score.get(a)||0)||vol(b.part)-vol(a.part))[0];/* equally in the way: the one that reaches round the others, i.e. the bigger one */info.opened.push(B.node.name);await tick('“'+B.node.name+'”作为一个整体装不进去，正在把它拆开重排…');items=items.filter(y=>y!==B).concat(B.node.parts.map(item),B.node.kids.map(item));continue}
       let got=false;if(items.length<=14)for(const X of items){if(X===base)continue;const o=[].concat(...items.filter(y=>y!==X).map(y=>y.parts)).sort((a,b)=>a-b),pt=findPath(T3,M,rc,X.one,o,12000);if(pt){pt.k=o.join(',');X.pt=pt;layers.push([X]);items=items.filter(y=>y!==X);got=true;info.paths++;break}}
       if(!got)break}
-    const steps=[],whole=async X=>{const id='g'+(++gN);A.groups[id]=Object.assign({name:X.node.name},gid?{in:gid}:{});info.groups++;const inner=await level(X.node,id);steps.push(...inner,mk([],{unit:id}))};
-    const lay=L=>{const ks=[];L.slice().sort((a,b)=>vol(b.part)-vol(a.part)).forEach(X=>{const k=PA[X.one].kind;let g=ks.find(y=>y.k===k);if(!g)ks.push(g={k,parts:[],path:{}});g.parts.push(X.one);if(X.pt)g.path[X.one]=X.pt});ks.forEach((g,q)=>steps.push(mk(g.parts,Object.assign(q>0?{sub:true}:{},G,Object.keys(g.path).length?{path:g.path}:{}))))};
+    /* a sub-assembly that stays whole becomes a component. One that is made of the same parts in the same arrangement as an earlier one
+       is not explained again: its parts are set down in one step that points to the first one. */
+    const steps=[],whole=async X=>{const id='g'+(++gN);A.groups[id]=Object.assign({name:X.node.name},gid?{in:gid}:{});info.groups++;const sg=sigOf(X),first=SIG.get(sg);
+      if(first){info.same++;steps.push(mk(X.parts.slice().sort((a,b)=>vol(PA[b])-vol(PA[a])),{grp:id,same:first}),mk([],{unit:id}));return}SIG.set(sg,id);const inner=await level(X.node,id);steps.push(...inner,mk([],{unit:id}))};
+    const lay=(L,sub0)=>{const ks=[];L.slice().sort((a,b)=>vol(b.part)-vol(a.part)).forEach(X=>{const k=PA[X.one].kind;let g=ks.find(y=>y.k===k);if(!g)ks.push(g={k,parts:[],path:{}});g.parts.push(X.one);if(X.pt)g.path[X.one]=X.pt});ks.forEach((g,q)=>steps.push(mk(g.parts,Object.assign(q>0||sub0?{sub:true}:{},G,Object.keys(g.path).length?{path:g.path}:{}))))};
+    /* the order in which things are fitted: the rounds backwards, and within a round the opposite of how the pieces came off */
+    let seq=[];layers.slice().reverse().forEach((L,r)=>L.slice().reverse().forEach(X=>{X.rd=r;seq.push(X)}));
+    /* small parts (screws, washers, caps) go with what they hold: each is moved up to right after the last bigger piece it touches, unless
+       something fitted in between would then have to pass through it */
+    {const small=X=>!X.node&&!X.pt&&isSmall(M,X.part),tch=(a,b)=>touch(a,b)||touch(b,a),AT=new Map(),ix=new Map(seq.map((X,k)=>[X,k]));
+      for(const F of seq.filter(small)){const i=ix.get(F);let t=items.some(B=>tch(F,B))?-1:-2;/* what it touches among the pieces fitted before it, or in its own round (it came off clear of those too) */for(let k=0;k<seq.length;k++){const Y=seq[k];if(Y!==F&&(k<i||Y.rd===F.rd)&&!small(Y)&&tch(F,Y))t=k}
+        if(t===-2){for(let k=i-1;k>=0;k--){const Y=seq[k];if(small(Y)&&AT.has(Y)&&tch(F,Y)){t=AT.get(Y);break}}}if(t===-2)continue;
+        for(let k=t+1;k<i;k++){const X=seq[k];if(small(X)||!X.out)continue;const O=X.O||(X.O=samples(T3,X.mesh.geometry,X.part.c,X.node?260:180));if(ratioAlong(T3,O,[rc[F.one]],new T3.Vector3(...X.out.d),X.out.far)>X.out.tol||planBack(T3,M,rc,bk,X.mesh,X.out.d,X.out.far,[F.one]).length)t=k}
+        AT.set(F,t)}
+      if(AT.size){const after=new Map();for(const[F,t]of AT){if(!after.has(t))after.set(t,[]);after.get(t).push(F)}const ns=[];(after.get(-1)||[]).forEach(F=>ns.push(Object.assign(F,{withBase:1})));seq.forEach((X,k)=>{if(AT.has(X))return;ns.push(X);(after.get(k)||[]).forEach(F=>ns.push(F))});info.moved=(info.moved||0)+AT.size;seq=ns}}
     if(items.length===1){if(items[0].node)await whole(items[0]);else steps.push(mk([items[0].one],G))}
     else{const ones=items.filter(y=>!y.node).sort((a,b)=>vol(b.part)-vol(a.part)).map(y=>y.one);if(ones.length){steps.push(mk(ones,Object.assign(ones.length>1?{fixed:true}:{},G)));if(ones.length>1)info.locked+=ones.length}for(const X of items)if(X.node)await whole(X)}
-    /* within a round the pieces came off one after another (what hung on something came off before it): fitted in the opposite order */for(const L of layers.slice().reverse()){let run=[];for(const X of L.slice().reverse()){if(X.node){if(run.length){lay(run);run=[]}await whole(X)}else run.push(X)}if(run.length)lay(run)}
+    /* a new big step starts with every sub-assembly and with every bigger part that follows small ones */
+    {let run=[],sub0=false;const flush=()=>{if(run.length){lay(run,sub0);run=[]}sub0=false};const wb=seq.filter(X=>X.withBase);if(wb.length&&items.length===1&&!items[0].node){run=wb;sub0=true;flush()}else if(wb.length){run=wb;flush()}
+      for(const X of seq){if(X.withBase)continue;if(X.node){flush();await whole(X)}else{if(!isSmall(M,X.part)&&run.some(y=>isSmall(M,y.part)))flush();run.push(X)}}flush()}
     return steps}
   const steps=await level(root,null);if(!gN)delete A.groups;info.steps=steps.length;return{steps,info}}
 /* one sentence about how the parts of a step go in -> {kinds:[key…], a, b, spin, say}. Rules only, no AI. */
