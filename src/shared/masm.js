@@ -40,6 +40,12 @@ function base(G,name,from){const I7=[0,0,0,1,1,1,1],r=v=>+v.toFixed(3),M={format
     N.push({p:M.asm.root,t:'M',g,m,n:p.src,x:[...p.c.map(r),...I7]});N.push({p:node,t:'L',g:g+1,m:LM,x:[0,0,0,...I7]});
     M.asm.parts.push({node,mat:m,kind:p.kind,src:p.src,c:p.c.map(r),size:p.size.map(r),col:p.col});if(!M.asm.kinds[p.kind])M.asm.kinds[p.kind]={name:p.kind,code:/^\d{5,9}$/.test(p.kind)?p.kind:''}});
   return M}
+/* a model that was read in the wrong unit is brought to size as it stands: shapes, places and sizes are scaled, the steps stay */
+const UNITS={m:1,cm:.01,mm:.001,inch:.0254};
+function guessUnit(big){return big>1000?(['mm','cm','inch'].find(x=>big*UNITS[x]>=20&&big*UNITS[x]<=400)||'mm'):'m'}
+function rescale(M,k){const A=M.asm,r=v=>+(v*k).toFixed(3),dec=s=>{if(typeof Buffer!=='undefined'){const b=Buffer.from(s,'base64');return new Float32Array(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength))}const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return new Float32Array(u.buffer)};
+  M.geoms.forEach(g=>{if(g.k==='raw'&&g.pos){const a=dec(g.pos);for(let i=0;i<a.length;i++)a[i]*=k;g.pos=b64(a)}});const N=M.scenes[0].nodes;[A.root,...A.parts.map(p=>p.node)].forEach(i=>{const x=N[i].x;x[0]=r(x[0]);x[1]=r(x[1]);x[2]=r(x[2])});
+  A.parts.forEach(p=>{p.c=p.c.map(r);p.size=p.size.map(r)});A.size=A.size.map(r);A.steps.forEach(s=>{if(s.cam&&s.cam.dist)s.cam.dist=r(s.cam.dist);s.auto={};s.det={};s.man={}});A.rv=0;return M}
 const kname=(M,k)=>{const K=M.asm.kinds[k]||{};return K.name||k};
 function travel(part,d){const e=Math.abs(d[0])*part.size[0]+Math.abs(d[1])*part.size[1]+Math.abs(d[2])*part.size[2];return Math.max(6,Math.min(60,e*1.1+4))}
 /* points spread evenly over a part's surface (the same ones every time) */
@@ -151,5 +157,5 @@ function aiApply(M,o){const A=M.asm,n=A.parts.length,used=new Set(),notes=[],ste
   const left=n-used.size;if(left)notes.push('AI 没有排进去的零件有 '+left+' 个，采用后会在“检查”里列出来。');const kinds={};if(o.kinds&&typeof o.kinds==='object')Object.entries(o.kinds).forEach(([k,v])=>{if(A.kinds[k]&&typeof v==='string'&&v.trim())kinds[k]=v.trim().slice(0,24)});
   (Array.isArray(o.notes)?o.notes:[]).forEach(x=>{if(typeof x==='string'&&x.trim())notes.push('AI 说：'+x.trim().slice(0,300))});return{steps,kinds,notes}}
 const autoTitle=(M,s)=>{const PA=M.asm.parts,c=[];(s.parts||[]).forEach(i=>{const n=kname(M,PA[i].kind);if(!c.includes(n))c.push(n)});return c.length?'装'+c.slice(0,3).join('、')+(c.length>3?'等':''):(s.pose&&s.pose!=='up'?'':'')};
-root.MAsm={RULES:2,labels,KEY,parseGLB,base,aiPrompt,aiApply,steps,autoDir,detour,axisOf,pathCheck,parseSay,push,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
+root.MAsm={RULES:2,UNITS,guessUnit,rescale,labels,KEY,parseGLB,base,aiPrompt,aiApply,steps,autoDir,detour,axisOf,pathCheck,parseSay,push,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
 })(typeof window!=='undefined'?window:globalThis);
