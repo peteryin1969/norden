@@ -9,7 +9,7 @@ function Q(T3,pose){const q=new T3.Quaternion(),X=new T3.Vector3(1,0,0),Z=new T3
 const b64=a=>{const u=new Uint8Array(a.buffer,a.byteOffset,a.byteLength);if(typeof Buffer!=='undefined')return Buffer.from(u).toString('base64');let s='';for(let i=0;i<u.length;i+=32768)s+=String.fromCharCode.apply(null,u.subarray(i,i+32768));return btoa(s)};
 const hex=c=>{const f=v=>Math.round(255*Math.pow(Math.max(0,Math.min(1,v)),1/2.2));return f(c[0])<<16|f(c[1])<<8|f(c[2])};
 /* GLB -> parts: vertices in centimetres about each part's own box centre, welded; the assembly's centre is the origin */
-function parseGLB(buf,T3){const dv=new DataView(buf);if(dv.byteLength<20||dv.getUint32(0,true)!==0x46546C67)throw new Error('这不是 GLB 文件。请导出为 .glb（二进制 glTF）。');
+function parseGLB(buf,T3,unit){const dv=new DataView(buf);if(dv.byteLength<20||dv.getUint32(0,true)!==0x46546C67)throw new Error('这不是 GLB 文件。请导出为 .glb（二进制 glTF）。');
   const jl=dv.getUint32(12,true),J=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,20,jl))),b0=20+jl+8;if(b0>dv.byteLength)throw new Error('这个 GLB 里没有几何数据。');
   const acc=i=>{const a=J.accessors[i],v=J.bufferViews[a.bufferView],n={SCALAR:1,VEC2:2,VEC3:3,VEC4:4}[a.type],C={5126:Float32Array,5123:Uint16Array,5125:Uint32Array,5121:Uint8Array}[a.componentType],sz=C.BYTES_PER_ELEMENT,off=b0+(v.byteOffset||0)+(a.byteOffset||0),st=v.byteStride||n*sz,out=new C(a.count*n);
     for(let k=0;k<a.count;k++)for(let c=0;c<n;c++){const p=off+k*st+c*sz;out[k*n+c]=C===Float32Array?dv.getFloat32(p,true):C===Uint16Array?dv.getUint16(p,true):C===Uint32Array?dv.getUint32(p,true):dv.getUint8(p)}return out};
@@ -20,15 +20,20 @@ function parseGLB(buf,T3){const dv=new DataView(buf);if(dv.byteLength<20||dv.get
       if(!col&&pr.material!==undefined){const m=J.materials[pr.material],f=m&&m.pbrMetallicRoughness&&m.pbrMetallicRoughness.baseColorFactor;if(f)col=hex(f)}
       for(let t=0;t+2<cnt;t+=3){const tri=I?[I[t],I[t+1],I[t+2]]:[t,t+1,t+2];if(flip)tri.reverse();const o=tri.map(k=>{if(loc[k]>=0)return loc[k];v.set(P[k*3],P[k*3+1],P[k*3+2]).applyMatrix4(W).multiplyScalar(100);const key=Math.round(v.x*500)+','+Math.round(v.y*500)+','+Math.round(v.z*500);let q=map.get(key);if(q===undefined){q=pos.length/3;pos.push(v.x,v.y,v.z);map.set(key,q);bb.expandByPoint(v)}return loc[k]=q});if(o[0]!==o[1]&&o[1]!==o[2]&&o[0]!==o[2])idx.push(o[0],o[1],o[2])}});
     if(!idx.length)return;const c=bb.getCenter(new T3.Vector3());for(let k=0;k<pos.length;k+=3){pos[k]-=c.x;pos[k+1]-=c.y;pos[k+2]-=c.z}const s=bb.getSize(new T3.Vector3());
-    parts.push({src:String(n.name||('part'+i)).replace(/​/g,''),c,size:[s.x,s.y,s.z],pos:new Float32Array(pos),idx:new Uint32Array(idx),col})});
+    parts.push({src:String(n.name||'').replace(/\u200b/g,'').trim(),mesh:n.mesh,c,size:[s.x,s.y,s.z],pos:new Float32Array(pos),idx:new Uint32Array(idx),col})});
   if(!parts.length)throw new Error('这个文件里没有找到零件的形状。');
   const all=new T3.Box3();parts.forEach(p=>{const h=new T3.Vector3(...p.size).multiplyScalar(.5);all.expandByPoint(p.c.clone().add(h)).expandByPoint(p.c.clone().sub(h))});const ctr=all.getCenter(new T3.Vector3()),S=all.getSize(new T3.Vector3());
-  parts.forEach(p=>{p.c.sub(ctr);p.c=[p.c.x,p.c.y,p.c.z];p.kind=KEY(p.src)});
+  /* glTF says metres, but files made from drawings in millimetres, centimetres or inches often keep their numbers. When the product
+     comes out more than 10 m big, the unit that gives a believable size (20 cm to 4 m) is taken; the person can set it by hand. */
+  const UN={m:1,cm:.01,mm:.001,inch:.0254},big0=Math.max(S.x,S.y,S.z);let u=UN[unit]?unit:'m';if(!UN[unit]&&big0>1000)u=['mm','cm','inch'].find(x=>big0*UN[x]>=20&&big0*UN[x]<=400)||'mm';
+  if(u!=='m'){const k=UN[u];parts.forEach(p=>{p.c.multiplyScalar(k);p.size=p.size.map(v=>v*k);for(let q=0;q<p.pos.length;q++)p.pos[q]*=k});ctr.multiplyScalar(k);S.multiplyScalar(k)}
+  /* parts without a name are told apart by their shape: the same mesh used again is the same kind of part */
+  const named=parts.filter(p=>p.src).length>=parts.length*.5,seen=new Map();parts.forEach(p=>{p.c.sub(ctr);p.c=[p.c.x,p.c.y,p.c.z];if(named&&p.src)p.kind=KEY(p.src);else{if(!seen.has(p.mesh))seen.set(p.mesh,seen.size+1);p.kind='零件 '+seen.get(p.mesh);if(!p.src)p.src=p.kind}});
   const big=Math.max(S.x,S.y,S.z);parts.forEach(p=>{const m=Math.max(...p.size),white=p.col==null||((p.col>>16&255)>225&&(p.col>>8&255)>225&&(p.col&255)>225);p.col=m<big*.22?(white?0xaeb4ba:p.col):(white?0xf4f4f0:p.col)});
-  return{parts,size:[S.x,S.y,S.z],gen:(J.asset&&J.asset.generator)||'',copyright:(J.asset&&J.asset.copyright)||''}}
+  return{parts,size:[S.x,S.y,S.z],unit:u,guessed:!UN[unit]&&u!=='m',named,gen:(J.asset&&J.asset.generator)||'',copyright:(J.asset&&J.asset.copyright)||''}}
 /* the model without steps; M.asm keeps what the editor needs to carry on later */
 function base(G,name,from){const I7=[0,0,0,1,1,1,1],r=v=>+v.toFixed(3),M={format:'assembly-model',version:1,unit:'cm',up:'y',product:name||'未命名产品',samples:120,render:{shadow:false,fov:32,near:1,far:2000},scenes:[{bg:0xc3cfcc,nodes:[]}],geoms:[],texs:[],mats:[],steps:[],parts:[],holes:[],warn:[],
-    asm:{v:1,from:from||'',copyright:G.copyright||'',size:G.size.map(r),parts:[],kinds:{},steps:[]}},N=M.scenes[0].nodes;
+    asm:{v:1,unit:G.unit||'m',from:from||'',copyright:G.copyright||'',size:G.size.map(r),parts:[],kinds:{},steps:[]}},N=M.scenes[0].nodes;
   N.push({p:-1,t:'H',c:0xffffff,c2:0x8a8f8c,i:.95,x:[0,1,0,...I7]});N.push({p:-1,t:'D',c:0xffffff,i:.55,x:[60,90,80,...I7]});N.push({p:-1,t:'D',c:0xffffff,i:.25,x:[-70,40,-60,...I7]});
   M.asm.root=N.length;N.push({p:-1,t:'G',n:'assembly',x:[0,G.size[1]/2,0,...I7]});const LM=M.mats.length;M.mats.push({k:'LineBasicMaterial',c:0x3a4144});
   G.parts.forEach((p,i)=>{const g=M.geoms.length;M.geoms.push({k:'raw',pos:b64(p.pos),idx:b64(p.idx),i32:1});M.geoms.push({k:'edges',g,a:32});const m=M.mats.length;M.mats.push({k:'MeshStandardMaterial',c:p.col,ro:.75,me:0,fs:1,sd:2});const node=N.length;
