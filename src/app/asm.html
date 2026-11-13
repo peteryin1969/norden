@@ -21,6 +21,7 @@ table{border-collapse:collapse;width:100%}td,th{padding:3px 4px;text-align:left;
 #msg{pointer-events:none;position:fixed;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(27,36,32,.93);color:#fff;padding:6px 14px;border-radius:8px;font-size:13px;max-width:92%;display:none;z-index:5}#msg.on{display:block}#err{color:var(--bad);padding:0 12px}
 .chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--acc);border-radius:16px;padding:2px 4px 2px 10px;background:var(--soft)}.chip button{padding:0 7px;border-radius:12px;line-height:20px}
 .num{display:inline-block;width:22px;height:22px;border-radius:50%;background:var(--acc);color:#fff;text-align:center;line-height:22px;font-size:13px;margin-right:6px}.kd{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0;padding-bottom:6px;border-bottom:1px dashed var(--line)}.kd select{max-width:100%}
+#benchCol.full{position:fixed;inset:0;z-index:6;border-radius:0;border:0;margin:0;order:0}#benchCol.full #bench{height:auto!important;flex:1!important;min-height:0}.fullOnly{display:none}#benchCol.full .fullOnly{display:inline-block}
 #busy{position:fixed;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;background:rgba(20,25,23,.28)}#busy .bx{background:var(--card);color:var(--ink);border-radius:14px;padding:16px 22px;display:flex;gap:12px;align-items:center;box-shadow:0 6px 30px rgba(0,0,0,.25);max-width:80%}#busy .hg{font-size:30px;display:inline-block;will-change:transform;animation:hg 1.6s cubic-bezier(.6,0,.4,1) infinite}@keyframes hg{0%{transform:rotate(0)}45%{transform:rotate(180deg)}50%{transform:rotate(180deg)}95%{transform:rotate(360deg)}100%{transform:rotate(360deg)}}
 #empty{max-width:640px;margin:40px auto;padding:0 16px}#empty ol{line-height:1.9;padding-left:20px}.lg{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 3px 0 8px;vertical-align:-1px}
 </style></head><body>
@@ -46,7 +47,7 @@ table{border-collapse:collapse;width:100%}td,th{padding:3px 4px;text-align:left;
   <div class="col" id="ed"></div>
   <div class="col" id="benchCol"><div class="row"><b>三维图</b><span class="mut"><span class="lg" style="background:#7fd3ab"></span>这一步装的<span class="lg" style="background:#f4f4f0;border:1px solid #999"></span>前面已装好<span class="lg" style="background:#8fa39b;opacity:.5"></span>还没轮到（半透明）</span></div>
     <div id="bench"><div id="bcap"></div><div id="tip"></div></div>
-    <div class="row"><button id="play" class="on">▶ 播放这一步</button><input type="range" id="t" min="0" max="1000" value="1000" style="flex:1"><button id="reset">回到镜头</button></div>
+    <div class="row"><button id="play" class="on">▶ 播放这一步</button><input type="range" id="t" min="0" max="1000" value="1000" style="flex:1"><button id="reset">回到镜头</button><button id="fPrev" class="fullOnly" title="上一步">◀ 上一步</button><button id="fNext" class="fullOnly" title="下一步">下一步 ▶</button><button id="full" title="把三维图放大到整个屏幕；再点一次或按 Esc 退出">⛶ 全屏</button></div>
     <div class="mut">点零件：放进当前步骤，再点一次拿出来。拖动转视角，滚轮或双指缩放。</div></div>
 </div>
 <div id="busy" hidden role="status" aria-live="polite"><div class="bx"><span class="hg" aria-hidden="true">⏳</span><span id="busyT">正在计算…</span></div></div>
@@ -63,6 +64,10 @@ async function work(label,fn){busyN++;busyText(label||'正在计算…');$('busy
 let M=null,P=null,rc=[],cur=0,t=1,playing=false,chain=false,az=0,elv=0,zoom=1,dirty=false,hover=-1;const cache=new Map();
 const bench=$('bench'),ren=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});ren.setPixelRatio(Math.min(devicePixelRatio,2));bench.prepend(ren.domElement);const cam=new THREE.PerspectiveCamera(32,1.5,1,2000);
 const size=()=>{const w=bench.clientWidth,h=bench.clientHeight;if(!w||!h)return;ren.setSize(w,h,false);const as=w/h;cam.aspect=as;cam.fov=as<1.5?2*Math.atan(Math.tan(16*Math.PI/180)*1.5/as)*180/Math.PI:32;cam.updateProjectionMatrix()};addEventListener('resize',size);
+/* the 3D view over the whole screen: the picture, the play bar and step buttons; Esc or the button brings the editor back */
+const setFull=on=>{const c=$('benchCol');if(on===c.classList.contains('full'))return;c.classList.toggle('full',on);$('full').textContent=on?'退出全屏':'⛶ 全屏';try{if(on){if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{})}else if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}size();if(P)draw();setTimeout(()=>{size();if(P)draw()},250)};
+$('full').onclick=()=>setFull(!$('benchCol').classList.contains('full'));addEventListener('keydown',e=>{if(e.key==='Escape')setFull(false)});document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)setFull(false);else{size();if(P)draw()}});
+$('fPrev').onclick=()=>{if(P&&cur>0)go(cur-1)};$('fNext').onclick=()=>{if(P&&cur<S().length-1)go(cur+1)};
 const PA=()=>M.asm.parts,S=()=>M.asm.steps,LB=()=>A.labels(M.asm),stepOf=i=>S().findIndex(s=>s.parts.includes(i));
 /* obstacles of a part: everything fitted in earlier steps, and the kinds chosen before it in its own step */
 let CX=[];const gw=g=>'组件“'+A.gname(M.asm,g)+'”';
