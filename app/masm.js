@@ -107,15 +107,36 @@ function blockers(T3,M,rc,i,obst,d){const p=M.asm.parts[i],O=samples(T3,rc[i].ge
    that is still there, comes off. Fitting them in the reverse order cannot collide. What never comes off is locked together.
    planStart gives the state, planRound takes one round off and says whether there may be more. */
 function planStart(M){return{rem:new Set(M.asm.parts.map((p,i)=>i)),layers:[],done:false}}
-function planRound(T3,M,rc,st){const D=[[0,1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1],[0,-1,0]],out=[];if(st.rem.size<=1){st.done=true;return false}
-  for(const i of st.rem){const p=M.asm.parts[i],o=[...st.rem].filter(j=>j!==i),near=o.map(j=>rc[j]),O=samples(T3,rc[i].geometry,p.c,180),tol=isSmall(M,p)?.05:.02;let best=null;for(const d of D){const r=ratioAlong(T3,O,near,new T3.Vector3(...d),travel(p,d));if(!best||r<best.r)best={i,d,r};if(r===0)break}if(best.r<=tol)out.push(best)}
-  if(!out.length||out.length===st.rem.size){st.done=true;if(out.length&&out.length===st.rem.size){const vl=x=>{const s=M.asm.parts[x.i].size;return s[0]*s[1]*s[2]};out.sort((a,b)=>vl(a)-vl(b));const keep=out.pop();st.layers.push(out);out.forEach(x=>st.rem.delete(x.i))}return false}
+/* seen from the other side: would any part that stays have to pass through the one that leaves? (a small pin through a big panel hardly
+   shows in the panel's own points, but all of the pin's points go through the panel.) mesh = the leaving part or body, d its way out. */
+const PLANK={v:8};
+function planBack(T3,M,rc,st,mesh,d,far,rest){const PA=M.asm.parts,vd=new T3.Vector3(-d[0],-d[1],-d[2]),O=st.O=st.O||{},bad=[],bs=mesh.geometry.boundingBox.getSize(new T3.Vector3()),bv=bs.x*bs.y*bs.z;for(const j of rest){const p=PA[j];if(p.size[0]*p.size[1]*p.size[2]>bv/PLANK.v)continue;const o=O[j]||(O[j]=samples(T3,rc[j].geometry,p.c,120));if(ratioAlong(T3,o,[mesh],vd,far)>(isSmall(M,p)?.05:.02))bad.push(j)}return bad}
+function planRound(T3,M,rc,st,flat){const D=[[0,1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1],[0,-1,0]],out=[];if(st.rem.size<=1){st.done=true;return false}
+  for(const i of st.rem){const p=M.asm.parts[i],o=[...st.rem].filter(j=>j!==i),near=o.map(j=>rc[j]),O=samples(T3,rc[i].geometry,p.c,180),tol=isSmall(M,p)?.05:.02;for(const d of D){const far=travel(p,d),r=ratioAlong(T3,O,near,new T3.Vector3(...d),far);if(r<=tol&&!planBack(T3,M,rc,st,rc[i],d,far,o).length){out.push({i,d,r});break}}}
+  if(!out.length){const g=flat?null:planGroup(T3,M,rc,st);if(g){st.layers.push([g]);g.u.forEach(x=>st.rem.delete(x));return true}st.done=true;return false}
+  if(out.length===st.rem.size){st.done=true;const vl=x=>{const s=M.asm.parts[x.i].size;return s[0]*s[1]*s[2]};out.sort((a,b)=>vl(a)-vl(b));out.pop();st.layers.push(out);out.forEach(x=>st.rem.delete(x.i));return false}
   st.layers.push(out);out.forEach(x=>st.rem.delete(x.i));return true}
+/* several parts as one body: all their triangles in one mesh, standing as one more part at the end of the list */
+function body(T3,M,rc,L){const PA=M.asm.parts,b=new T3.Box3();L.forEach(j=>{const p=PA[j];b.expandByPoint(new T3.Vector3(p.c[0]-p.size[0]/2,p.c[1]-p.size[1]/2,p.c[2]-p.size[2]/2));b.expandByPoint(new T3.Vector3(p.c[0]+p.size[0]/2,p.c[1]+p.size[1]/2,p.c[2]+p.size[2]/2))});
+  const C=b.getCenter(new T3.Vector3()),sz=b.getSize(new T3.Vector3());let nv=0,ni=0;L.forEach(j=>{const g=rc[j].geometry;nv+=g.attributes.position.count;ni+=g.index.count});const pos=new Float32Array(nv*3),idx=new Uint32Array(ni);let vo=0,io=0;
+  L.forEach(j=>{const g=rc[j].geometry,V=g.attributes.position,I=g.index,p=PA[j];for(let q=0;q<V.count;q++){pos[(vo+q)*3]=V.getX(q)+p.c[0]-C.x;pos[(vo+q)*3+1]=V.getY(q)+p.c[1]-C.y;pos[(vo+q)*3+2]=V.getZ(q)+p.c[2]-C.z}for(let q=0;q<I.count;q++)idx[io+q]=I.getX(q)+vo;vo+=V.count;io+=I.count});
+  const g=new T3.BufferGeometry();g.setAttribute('position',new T3.BufferAttribute(pos,3));g.setIndex(new T3.BufferAttribute(idx,1));g.computeBoundingBox();g.computeBoundingSphere();const o=new T3.Mesh(g,rc[L[0]].material);o.position.copy(C);o.updateMatrixWorld(true);
+  return{M:{asm:Object.assign({},M.asm,{parts:PA.concat([{c:C.toArray(),size:sz.toArray(),kind:'@'}])})},rc:rc.concat([o]),i:PA.length}}
+/* when no single part comes off: a few parts that only come off together. For a part and a way out, whatever stands in its way has to
+   come along, and whatever stands in their way too; if what is gathered like that comes away clear, and is not everything, it is a
+   component. The smallest one found is taken; how it is put together itself is found the same way, on its own. */
+function planGroup(T3,M,rc,st){const D=[[0,1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1],[0,-1,0]],rem=[...st.rem];if(rem.length<3||rem.length>40)return null;const seen=new Set();let best=null;
+  for(const d of D){const vd=new T3.Vector3(...d);for(const seed of rem){let S=[seed];for(let it=0;it<8;it++){const key=d.join()+'|'+S.slice().sort((a,b)=>a-b).join();if(seen.has(key))break;seen.add(key);const rest=rem.filter(j=>!S.includes(j));if(!rest.length||(best&&S.length>=best.u.length))break;
+        let MM=M,RC=rc,i=S[0];if(S.length>1){const B=body(T3,M,rc,S);MM=B.M;RC=B.rc;i=B.i}const p=MM.asm.parts[i],O=samples(T3,RC[i].geometry,p.c,S.length>1?260:180),far=travel(p,d),by=rest.filter(j=>ratioAlong(T3,O,[rc[j]],vd,far)>.02);planBack(T3,M,rc,st,RC[i],d,far,rest).forEach(j=>{if(!by.includes(j))by.push(j)});
+        if(!by.length){if(S.length>1&&ratioAlong(T3,O,rest.map(j=>rc[j]),vd,far)<=.02)best={u:S.slice(),d};break}S=S.concat(by)}}}
+  if(best){const sub={rem:new Set(best.u),layers:[],done:false};let n=0;while(!sub.done&&n++<60)planRound(T3,M,rc,sub,true);best.sub=sub}return best}
 /* the rounds turned into steps: what is locked together (or the last part left) is the base; each round, taken backwards, is one big
-   step, with a sub-step for each kind of part, big parts first */
-function planSteps(M,st){const A=M.asm,vol=i=>A.parts[i].size[0]*A.parts[i].size[1]*A.parts[i].size[2],steps=[],base=[...st.rem].sort((a,b)=>vol(b)-vol(a));
-  steps.push({title:'',tAuto:true,say:'',parts:base,pose:'up',move:{},auto:{},...(base.length>1?{fixed:true}:{}),by:'plan'});
-  st.layers.slice().reverse().forEach(L=>{const ks=[];L.map(x=>x.i).sort((a,b)=>vol(b)-vol(a)).forEach(i=>{const k=A.parts[i].kind;let g=ks.find(x=>x.k===k);if(!g)ks.push(g={k,parts:[]});g.parts.push(i)});ks.forEach((g,n)=>steps.push({title:'',tAuto:true,say:'',parts:g.parts,pose:'up',move:{},auto:{},...(n>0?{sub:true}:{}),by:'plan'}))});return steps}
+   step, with a sub-step for each kind of part, big parts first. A component gets its own steps first, then one step that fits it. */
+function planSteps(M,st){const A=M.asm,vol=i=>A.parts[i].size[0]*A.parts[i].size[1]*A.parts[i].size[2],steps=[],mk=(parts,x)=>Object.assign({title:'',tAuto:true,say:'',parts,pose:'up',move:{},auto:{},by:'plan'},x||{});let gn=0;A.groups={};
+  const lay=(L,x)=>{const ks=[];L.slice().sort((a,b)=>vol(b)-vol(a)).forEach(i=>{const k=A.parts[i].kind;let g=ks.find(y=>y.k===k);if(!g)ks.push(g={k,parts:[]});g.parts.push(i)});ks.forEach((g,n)=>steps.push(mk(g.parts,Object.assign(n>0?{sub:true}:{},x||{}))))};
+  const base=[...st.rem].sort((a,b)=>vol(b)-vol(a));steps.push(mk(base,base.length>1?{fixed:true}:{}));
+  st.layers.slice().reverse().forEach(L=>{L.filter(x=>x.u).forEach(x=>{const id='g'+(++gn);A.groups[id]={name:'组件 '+String.fromCharCode(65+(gn-1)%26)+(gn>26?Math.ceil(gn/26):'')};const b=[...x.sub.rem].sort((a,b)=>vol(b)-vol(a));steps.push(mk(b,Object.assign({grp:id},b.length>1?{fixed:true}:{})));x.sub.layers.slice().reverse().forEach(l=>lay(l.map(y=>y.i),{grp:id}));steps.push(mk([],{unit:id}))});
+    const s=L.filter(x=>!x.u).map(x=>x.i);if(s.length)lay(s)});if(!gn)delete A.groups;return steps}
 /* one sentence about how the parts of a step go in -> {kinds:[key…], a, b, spin, say}. Rules only, no AI. */
 const SAYDIR=[['U',/从上|往下|向下|朝下|下推|下压|放下|按下|落下/],['D',/从下|往上|向上|朝上|上推|托上|抬上/],['L',/从左|往右|向右|朝右/],['R',/从右|往左|向左|朝左/],['F',/从前|往后|向后|朝后|往里|向里|朝里/],['B',/从后|往前|向前|朝前|往外|向外/],['auto',/按进|靠上|贴上|对准|扣上|插进|放进|装上|卡进|推进|靠近|对上/]];
 function parseSay(text,kinds){const x=String(text||'').replace(/\s+/g,'');if(!x)return null;const hit=kinds.filter(k=>k.name&&x.includes(k.name)),tg=(hit.length?hit:kinds),mv=[];x.split(/[，,。；;、]|然后|接着|之后|再/).forEach(c=>{if(!c)return;const m=SAYDIR.find(d=>d[1].test(c));if(m)mv.push(m[0])});
@@ -124,37 +145,45 @@ function parseSay(text,kinds){const x=String(text||'').replace(/\s+/g,'');if(!x)
 /* how the steps are numbered for people: a step marked sub carries on the big step before it (7-1, 7-2 …) */
 function labels(A){const S=A.steps,out=[];let b=0,k=0;S.forEach((s,i)=>{if(i>0&&s.sub)k++;else{b++;k=1}const grp=k>1||(S[i+1]&&S[i+1].sub);out.push(grp?b+'-'+k:String(b))});return out}
 /* M.asm.steps -> M.steps (motion, tint, camera). Deterministic: uses the directions kept in each step. */
-function steps(M,T3){const A=M.asm,A_=A,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+v.toFixed(4),placed=new Set(),out=[],LB=labels(A);let prev=(A.steps[0]&&A.steps[0].pose)||'up';/* the first step simply starts the way it lies */M.warn=[];M.parts=PA.map((p,i)=>({id:'cp'+i,scene:0,node:p.node,name:kname(M,p.kind),...(A.kinds[p.kind]&&A.kinds[p.kind].code?{code:A.kinds[p.kind].code}:{}),src:p.src,size:p.size,steps:[]}));
+/* components: steps marked grp build a component on its own, beside the product; a step with unit fits the whole component into
+   the product in one go. For every step: what is there before it (and can be in the way), which parts it moves, and its role. */
+const gname=(A,g)=>(A.groups&&A.groups[g]&&A.groups[g].name)||g;
+function ctx(A){const main=[],bench={},fit=new Set(),out=[];A.steps.forEach(s=>{const u=s.unit&&!fit.has(s.unit)?s.unit:null,g=!u&&!s.unit&&s.grp&&!fit.has(s.grp)?s.grp:null,ps=s.unit?[]:(s.parts||[]).slice();
+  if(u){const m=(bench[u]||[]).slice();out.push({before:main.slice(),mine:m,unit:u});main.push(...m);fit.add(u)}
+  else if(g){const b=bench[g]=bench[g]||[];out.push({before:b.slice(),mine:ps,grp:g});b.push(...ps)}
+  else{out.push({before:main.slice(),mine:ps});main.push(...ps)}});return out}
+function steps(M,T3){const A=M.asm,A_=A,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+v.toFixed(4),placed=new Set(),out=[],LB=labels(A),CX=ctx(A);let prev=(A.steps[0]&&A.steps[0].pose)||'up';/* the first step simply starts the way it lies */M.warn=[];M.parts=PA.map((p,i)=>({id:'cp'+i,scene:0,node:p.node,name:kname(M,p.kind),...(A.kinds[p.kind]&&A.kinds[p.kind].code?{code:A.kinds[p.kind].code}:{}),src:p.src,size:p.size,steps:[]}));
   const H=q=>{const e=new T3.Matrix4().makeRotationFromQuaternion(q).elements;return Math.abs(e[1])*SZ[0]/2+Math.abs(e[5])*SZ[1]/2+Math.abs(e[9])*SZ[2]/2};
-  A.steps.forEach((s,si)=>{const id=String(si+1),pose=s.pose||'up',q1=Q(T3,pose),q0=Q(T3,prev),turn=pose!==prev,mine=(s.parts||[]).filter(i=>PA[i]&&!placed.has(i)),tEnd=turn?(mine.length?44:104):0,h1=H(q1);
-    const lab=LB[si],st={id,title:s.title||'',label:'第 '+lab+' 步',...(s.sub&&si>0?{sub:1}:{}),say:s.say||'',scene:0,dur:1.6,parts:[],nodes:{},mats:{},cam:[]};
+  A.steps.forEach((s,si)=>{const id=String(si+1),pose=s.pose||'up',q1=Q(T3,pose),q0=Q(T3,prev),turn=pose!==prev,cx=CX[si],unit=cx.unit||null,before=new Set(cx.before),mine=cx.mine.filter(i=>PA[i]&&(unit||!placed.has(i))),gn=unit||cx.grp?gname(A,unit||cx.grp):'',tEnd=turn?(mine.length?44:104):0,h1=H(q1);
+    const lab=LB[si],st={id,title:s.title||'',label:'第 '+lab+' 步',...(s.sub&&si>0?{sub:1}:{}),...(cx.grp?{group:gn}:{}),...(unit?{unit:gn}:{}),say:s.say||'',scene:0,dur:1.6,parts:[],nodes:{},mats:{},cam:[]};
     if(turn){const pk=[],qk=[],a=4;for(let k=0;k<=10;k++){const f=k/10,e=f*f*(3-2*f),q=q0.clone().slerp(q1,e),x=Math.round(a+(tEnd-a)*f);pk.push(x,0,r4(H(q)+Math.sin(Math.PI*f)*2),0);qk.push(x,r4(q.x),r4(q.y),r4(q.z),r4(q.w))}st.nodes[A.root]={p:pk,q:qk}}
     else if(pose!=='up')st.nodes[A.root]={p:[0,0,r4(h1),0],q:[0,r4(q1.x),r4(q1.y),r4(q1.z),r4(q1.w)]};
-    PA.forEach((p,i)=>{if(!placed.has(i)&&!mine.includes(i))st.nodes[p.node]={v:[0,0]}});
-    const kinds=[];mine.forEach(i=>{if(!kinds.includes(PA[i].kind))kinds.push(PA[i].kind)});const a0=tEnd?tEnd+6:6,L=(110-a0)/Math.max(1,kinds.length),inv=q1.clone().invert(),box=new T3.Box3(),aW=new T3.Vector3(),cnt={};
-    const grow=(c,sz)=>{box.expandByPoint(new T3.Vector3(c[0]-sz[0]/2,c[1]-sz[1]/2,c[2]-sz[2]/2));box.expandByPoint(new T3.Vector3(c[0]+sz[0]/2,c[1]+sz[1]/2,c[2]+sz[2]/2))};placed.forEach(i=>grow(PA[i].c,PA[i].size));
+    PA.forEach((p,i)=>{if(!before.has(i)&&!mine.includes(i))st.nodes[p.node]={v:[0,0]}});
+    const kinds=[];if(unit)kinds.push('@');else mine.forEach(i=>{if(!kinds.includes(PA[i].kind))kinds.push(PA[i].kind)});let U=null;if(unit&&mine.length){const ub=new T3.Box3();mine.forEach(i=>{const p=PA[i];ub.expandByPoint(new T3.Vector3(p.c[0]-p.size[0]/2,p.c[1]-p.size[1]/2,p.c[2]-p.size[2]/2));ub.expandByPoint(new T3.Vector3(p.c[0]+p.size[0]/2,p.c[1]+p.size[1]/2,p.c[2]+p.size[2]/2))});U={size:ub.getSize(new T3.Vector3()).toArray()}}const a0=tEnd?tEnd+6:6,L=(110-a0)/Math.max(1,kinds.length),inv=q1.clone().invert(),box=new T3.Box3(),aW=new T3.Vector3(),cnt={};
+    const grow=(c,sz)=>{box.expandByPoint(new T3.Vector3(c[0]-sz[0]/2,c[1]-sz[1]/2,c[2]-sz[2]/2));box.expandByPoint(new T3.Vector3(c[0]+sz[0]/2,c[1]+sz[1]/2,c[2]+sz[2]/2))};before.forEach(i=>grow(PA[i].c,PA[i].size));
     const loc=w=>new T3.Vector3(...WORLD[w]).applyQuaternion(inv).toArray().map(v=>Math.abs(v)<1e-9?0:+v.toFixed(6)),zero=v=>!v[0]&&!v[1]&&!v[2];
-    mine.forEach(i=>{const p=PA[i],k=kinds.indexOf(p.kind),a=Math.round(a0+k*L),b=Math.round(a0+(k+1)*L-(kinds.length>1?2:0)),mv=(s.move&&s.move[p.kind])||(s.dir&&s.dir[p.kind]?{a:s.dir[p.kind]}:{}),au=(s.auto&&s.auto[i]&&s.auto[i].d)||[0,0,0],byHand=!!((mv.a&&WORLD[mv.a])||(mv.b&&WORLD[mv.b]));
-      const dt=s.det&&s.det[i];let A=mv.a&&WORLD[mv.a]?loc(mv.a):au,B=mv.b&&WORLD[mv.b]?loc(mv.b):(mv.b!=='none'&&dt&&dt.b?dt.b:null),tbA=!(mv.b&&WORLD[mv.b])&&B?dt.tb:0;if(B&&zero(A)){A=B;B=null}if(B&&A.join()===B.join())B=null;
-      grow(p.c,p.size);const key=(A_.kinds[p.kind]&&A_.kinds[p.kind].code)||kname(M,p.kind);cnt[key]=(cnt[key]||0)+1;M.parts[i].steps.push(id);
+    mine.forEach(i=>{const p=PA[i],sl=unit?'@':i,pp=unit?U:p,nm=unit?'组件“'+gn+'”':'“'+kname(M,p.kind)+'”',k=unit?0:kinds.indexOf(p.kind),a=Math.round(a0+k*L),b=Math.round(a0+(k+1)*L-(kinds.length>1?2:0)),mv=(s.move&&s.move[unit?'@':p.kind])||(s.dir&&s.dir[p.kind]?{a:s.dir[p.kind]}:{}),au=(s.auto&&s.auto[sl]&&s.auto[sl].d)||[0,0,0],byHand=!!((mv.a&&WORLD[mv.a])||(mv.b&&WORLD[mv.b]));
+      const dt=s.det&&s.det[sl];let A=mv.a&&WORLD[mv.a]?loc(mv.a):au,B=mv.b&&WORLD[mv.b]?loc(mv.b):(mv.b!=='none'&&dt&&dt.b?dt.b:null),tbA=!(mv.b&&WORLD[mv.b])&&B?dt.tb:0;if(B&&zero(A)){A=B;B=null}if(B&&A.join()===B.join())B=null;
+      grow(p.c,p.size);const key=unit?'组件“'+gn+'”':(A_.kinds[p.kind]&&A_.kinds[p.kind].code)||kname(M,p.kind);cnt[key]=unit?1:(cnt[key]||0)+1;M.parts[i].steps.push(id);
       if(zero(A)){st.nodes[p.node]=tEnd?{v:[0,0,a,1]}:{v:[0,1]};st.mats[p.mat]={c:[0,GREEN,100,p.col]}}
-      else{const ta=travel(p,A),tb=B?(tbA||push(p,B)):0,mid=B?p.c.map((v,x)=>r4(v+B[x]*tb)):null,from=(mid||p.c).map((v,x)=>r4(v+A[x]*ta)),m=B?Math.round(a+(b-a)*.62):a,keys=[a,...from];if(B)keys.push(m,...mid);keys.push(b,...p.c.map(r4));grow(from,p.size);
+      else{const ta=travel(pp,A),tb=B?(tbA||push(pp,B)):0,mid=B?p.c.map((v,x)=>r4(v+B[x]*tb)):null,from=(mid||p.c).map((v,x)=>r4(v+A[x]*ta)),m=B?Math.round(a+(b-a)*.62):a,keys=[a,...from];if(B)keys.push(m,...mid);keys.push(b,...p.c.map(r4));grow(from,p.size);
         const nd={p:keys,v:a>0?[0,0,a,1]:[0,1]};if(mv.spin){const ax=new T3.Vector3(...(B||A)).normalize(),qk=[],n=12,q=new T3.Quaternion();for(let j=0;j<=n;j++){q.setFromAxisAngle(ax,-(1-j/n)*Math.PI*4);qk.push(r4(m+(b-m)*j/n),r4(q.x),r4(q.y),r4(q.z),r4(q.w))}nd.q=qk}
         st.nodes[p.node]=nd;st.mats[p.mat]={c:[0,GREEN,Math.min(119,b+6),p.col]};aW.add(new T3.Vector3(...A).applyQuaternion(q1));
-        const tight=byHand?(s.man&&s.man[i]&&s.man[i].tight):(s.auto&&s.auto[i]&&s.auto[i].tight);if(tight){const w='第 '+lab+' 步：“'+kname(M,p.kind)+'”装入方向外侧 '+(A_.tool||20)+' 厘米内有别的零件，手或工具可能伸不进去。请确认，或换个方向、调整步骤顺序。';if(!M.warn.includes(w))M.warn.push(w)}
-        if(dt&&dt.none&&dt.fine>.3&&mv.b!=='none'&&!(mv.b&&WORLD[mv.b])&&!(s.auto&&s.auto[i]&&s.auto[i].blocked)&&!(s.man&&s.man[i]&&s.man[i].blocked)){const w='第 '+lab+' 步：“'+kname(M,p.kind)+'”进去的途中会擦到别的零件，程序没有找到能绕开的走法。可以换个方向，或者自己分两段。';if(!M.warn.includes(w))M.warn.push(w)}
-        if(byHand){if(s.man&&s.man[i]&&s.man[i].blocked)M.warn.push('第 '+lab+' 步：按你指定的装法，“'+kname(M,p.kind)+'”在路上会穿过别的零件，请换个方向或分两段。')}
-        else if(s.auto&&s.auto[i]&&s.auto[i].under&&!s.auto[i].blocked){const w='第 '+lab+' 步：按现在的摆法，“'+kname(M,p.kind)+'”只能从正下方装入，手够不着。请换一个摆法（比如把产品立起来），或者调整步骤顺序。';if(!M.warn.includes(w))M.warn.push(w)}
-        else if(s.auto&&s.auto[i]&&s.auto[i].blocked){const by=(s.auto[i].by||[]).map(([j])=>{const q=A_.steps.findIndex(x=>x.parts.includes(j));return'“'+kname(M,PA[j].kind)+'”（第 '+LB[q]+' 步）'}).filter((x,k,L)=>L.indexOf(x)===k),w='第 '+lab+' 步：“'+kname(M,p.kind)+'”没有找到不被挡住的装入方向'+(by.length?'，挡住它的是'+by.join('、')+'。可以让它排在这些零件之前装，或者把它们编成一个组件':'')+'。';if(!M.warn.includes(w))M.warn.push(w)}}
+        const tight=byHand?(s.man&&s.man[sl]&&s.man[sl].tight):(s.auto&&s.auto[sl]&&s.auto[sl].tight);if(tight){const w='第 '+lab+' 步：'+nm+'装入方向外侧 '+(A_.tool||20)+' 厘米内有别的零件，手或工具可能伸不进去。请确认，或换个方向、调整步骤顺序。';if(!M.warn.includes(w))M.warn.push(w)}
+        if(dt&&dt.none&&dt.fine>.3&&mv.b!=='none'&&!(mv.b&&WORLD[mv.b])&&!(s.auto&&s.auto[sl]&&s.auto[sl].blocked)&&!(s.man&&s.man[sl]&&s.man[sl].blocked)){const w='第 '+lab+' 步：'+nm+'进去的途中会擦到别的零件，程序没有找到能绕开的走法。可以换个方向，或者自己分两段。';if(!M.warn.includes(w))M.warn.push(w)}
+        if(byHand){if(s.man&&s.man[sl]&&s.man[sl].blocked)M.warn.push('第 '+lab+' 步：按你指定的装法，'+nm+'在路上会穿过别的零件，请换个方向或分两段。')}
+        else if(s.auto&&s.auto[sl]&&s.auto[sl].under&&!s.auto[sl].blocked){const w='第 '+lab+' 步：按现在的摆法，'+nm+'只能从正下方装入，手够不着。请换一个摆法（比如把产品立起来），或者调整步骤顺序。';if(!M.warn.includes(w))M.warn.push(w)}
+        else if(s.auto&&s.auto[sl]&&s.auto[sl].blocked){const by=(s.auto[sl].by||[]).map(([j])=>{const q=A_.steps.findIndex(x=>x.parts.includes(j));return'“'+kname(M,PA[j].kind)+'”（第 '+LB[q]+' 步）'}).filter((x,k,L)=>L.indexOf(x)===k),w='第 '+lab+' 步：'+nm+'没有找到不被挡住的装入方向'+(by.length?'，挡住它的是'+by.join('、')+'。可以让它排在这些零件之前装，或者把它们编成一个组件':'')+'。';if(!M.warn.includes(w))M.warn.push(w)}}
       placed.add(i)});
     st.parts=Object.entries(cnt);if(box.isEmpty())grow([0,0,0],SZ);
     const tg=box.getCenter(new T3.Vector3()).applyQuaternion(q1).add(new T3.Vector3(0,h1,0)),rad=box.getSize(new T3.Vector3()).length()/2;let v,dist=Math.max(45,rad*2.9);
     if(s.cam&&s.cam.v){v=new T3.Vector3(...s.cam.v).normalize();dist=s.cam.dist||dist}else{if(aW.length()>1e-6)aW.normalize();const ah=new T3.Vector3(aW.x,0,aW.z);if(ah.length()>.35){ah.normalize();v=ah.clone().add(new T3.Vector3(0,.55,0)).add(new T3.Vector3(-ah.z,0,ah.x).multiplyScalar(.7))}else v=new T3.Vector3(.5,aW.y<-.5?.12:.6,1);v.normalize()}
     const pos=tg.clone().addScaledVector(v,dist),cq=new T3.Quaternion().setFromRotationMatrix(new T3.Matrix4().lookAt(pos,tg,new T3.Vector3(0,1,0)));st.cam=[0,r4(pos.x),r4(pos.y),r4(pos.z),r4(cq.x),r4(cq.y),r4(cq.z),r4(cq.w),r4(dist)];
     if(s.fixed&&mine.length>1){M.warn.push('第 '+lab+' 步：这 '+mine.length+' 个零件互相套住或包住，沿直线怎么也拆不开，所以作为一个整体直接放好，没有演示它们之间怎么装。实际装配时它们需要先组成组件，或者要转着装。')}
-    if(!mine.length&&!turn&&!(s.say||'').trim())M.warn.push('第 '+lab+' 步既没有零件，也没有说明。');out.push(st);prev=pose});
+    if(s.unit&&!mine.length)M.warn.push('第 '+lab+' 步要整体装入的组件“'+gname(A,s.unit)+'”'+(unit?'里还没有零件。请先排它自己的步骤。':'在前面已经装入过了。'));else if(!mine.length&&!turn&&!(s.say||'').trim())M.warn.push('第 '+lab+' 步既没有零件，也没有说明。');out.push(st);prev=pose});
   const un=A.steps.map((s,i)=>s.by==='ai'&&!s.ok?LB[i]:0).filter(Boolean);if(un.length)M.warn.push('有 '+un.length+' 步是 AI 排的，还没有人确认：第 '+un.join('、')+' 步。请逐步对照说明书核对后点“确认这一步”。');
   const left=PA.map((p,i)=>i).filter(i=>!placed.has(i));if(left.length){const c={};left.forEach(i=>{const n=kname(M,PA[i].kind);c[n]=(c[n]||0)+1});M.warn.unshift('还有 '+left.length+' 个零件没有排进任何一步：'+Object.entries(c).map(([n,v])=>n+(v>1?' ×'+v:'')).join('、')+'。')}
+  {const gs=[],fit=new Set(CX.map(c=>c.unit).filter(Boolean));CX.forEach(c=>{if(c.grp&&!fit.has(c.grp)&&!gs.includes(c.grp))gs.push(c.grp)});gs.forEach(g=>M.warn.push('组件“'+gname(A,g)+'”还没有装到产品上。请在它的步骤后面加一步，选“把组件整体装入产品”。'))}
   M.steps=out;return M}
 /* what is sent to the AI: every part with its number, kind, size and place; the manual goes along as a PDF when there is one */
 function aiPrompt(M,hasManual,extra){const A=M.asm,f=v=>(+v).toFixed(1),L=A.parts.map((p,i)=>'#'+i+'　种类 '+p.kind+(A.kinds[p.kind]&&A.kinds[p.kind].name!==p.kind?'（'+A.kinds[p.kind].name+'）':'')+'　尺寸 '+p.size.map(f).join('×')+'　中心 ('+p.c.map(f).join(', ')+')').join('\n');
@@ -175,5 +204,5 @@ function aiApply(M,o){const A=M.asm,n=A.parts.length,used=new Set(),notes=[],ste
   const left=n-used.size;if(left)notes.push('AI 没有排进去的零件有 '+left+' 个，采用后会在“检查”里列出来。');const kinds={};if(o.kinds&&typeof o.kinds==='object')Object.entries(o.kinds).forEach(([k,v])=>{if(A.kinds[k]&&typeof v==='string'&&v.trim())kinds[k]=v.trim().slice(0,24)});
   (Array.isArray(o.notes)?o.notes:[]).forEach(x=>{if(typeof x==='string'&&x.trim())notes.push('AI 说：'+x.trim().slice(0,300))});return{steps,kinds,notes}}
 const autoTitle=(M,s)=>{const PA=M.asm.parts,c=[];(s.parts||[]).forEach(i=>{const n=kname(M,PA[i].kind);if(!c.includes(n))c.push(n)});return c.length?'装'+c.slice(0,3).join('、')+(c.length>3?'等':''):(s.pose&&s.pose!=='up'?'':'')};
-root.MAsm={INSET,RULES:3,blockers,planStart,planRound,planSteps,UNITS,guessUnit,rescale,labels,KEY,parseGLB,base,aiPrompt,aiApply,steps,autoDir,detour,axisOf,pathCheck,parseSay,push,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
+root.MAsm={PLANK,INSET,RULES:3,ctx,gname,body,planGroup,blockers,planStart,planRound,planSteps,UNITS,guessUnit,rescale,labels,KEY,parseGLB,base,aiPrompt,aiApply,steps,autoDir,detour,axisOf,pathCheck,parseSay,push,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
 })(typeof window!=='undefined'?window:globalThis);

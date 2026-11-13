@@ -46,3 +46,8 @@ Phase 3 additions: a tool is a part with `kind:"tool"` and `tool:{type,at,dir,wi
 parts list). A recorded move is `path:{<step>:{pts:[[x,y,z,qx,qy,qz,qw]…],win,fin?}}` on the part; for a part of the original
 model `orig:{<step>:{p,q}}` keeps the keys it replaced. `win:[from,to]` on a made part is when it moves within its step. A step
 added in the workshop has `made:1` and an id `N<n>`.
+
+
+**components** — a step may carry `group:"name"` (it builds a component beside the product: everything else is hidden) or `unit:"name"`
+(it fits that whole component into the product: all its parts move together). In the editing data: `asm.groups:{id:{name}}`, step `grp:id` / `unit:id`,
+and the way in of a fitted component is kept under the key `'@'` in `move`, `auto`, `det`, `man`.
