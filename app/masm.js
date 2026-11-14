@@ -61,7 +61,9 @@ function tris(T3,mesh){const u=mesh.userData;if(u.tri)return u.tri;const g=mesh.
   const bb=[1e9,1e9,1e9,-1e9,-1e9,-1e9];for(let k=0;k<n;k++)for(let c=0;c<3;c++){if(B[k*6+c]<bb[c])bb[c]=B[k*6+c];if(B[k*6+3+c]>bb[3+c])bb[3+c]=B[k*6+3+c]}return u.tri={n,V,B,N,bb}}
 /* share of the points O that, going the way D for the length far, pass through more than `thick` cm of the meshes in near.
    Only the triangles inside the box swept by the points are looked at, which is what keeps this fast on detailed parts. */
-function ratioAlong(T3,O,near,D,far,off,thick){if(thick==null)thick=1;const dx=D.x,dy=D.y,dz=D.z,ox=off?off.x:0,oy=off?off.y:0,oz=off?off.z:0,sw=[1e9,1e9,1e9,-1e9,-1e9,-1e9],S=new Float32Array(O.length*3);
+/* how much of a part has to cross a thin wall before the way counts as closed: most of it, as a rule (snap-in hardware brushes past thin panels); a quarter where a whole component is fitted, because there one bolt head through a plate is what matters */
+const THIN={v:.7,strict:.25};
+function ratioAlong(T3,O,near,D,far,off,thick,thin){if(thick==null)thick=1;if(thin==null)thin=THIN.v;const dx=D.x,dy=D.y,dz=D.z,ox=off?off.x:0,oy=off?off.y:0,oz=off?off.z:0,sw=[1e9,1e9,1e9,-1e9,-1e9,-1e9],S=new Float32Array(O.length*3);
   O.forEach((o,q)=>{const x=o.x-dx*.05+ox,y=o.y-dy*.05+oy,z=o.z-dz*.05+oz;S[q*3]=x;S[q*3+1]=y;S[q*3+2]=z;const e=[x,y,z,x+dx*far,y+dy*far,z+dz*far];for(let c=0;c<3;c++){const lo=Math.min(e[c],e[3+c]),hi=Math.max(e[c],e[3+c]);if(lo<sw[c])sw[c]=lo;if(hi>sw[3+c])sw[3+c]=hi}});for(let c=0;c<3;c++){sw[c]-=.01;sw[3+c]+=.01}
   const C=[];near.forEach(m=>{const tr=tris(T3,m),b=tr.bb;if(b[0]>sw[3]||b[3]<sw[0]||b[1]>sw[4]||b[4]<sw[1]||b[2]>sw[5]||b[5]<sw[2])return;const L=[],B=tr.B;for(let k=0;k<tr.n;k++){const a=k*6;if(B[a]>sw[3]||B[a+3]<sw[0]||B[a+1]>sw[4]||B[a+4]<sw[1]||B[a+2]>sw[5]||B[a+5]<sw[2])continue;L.push(k)}if(L.length)C.push({tr,L,f:L.map(k=>tr.N[k*3]*dx+tr.N[k*3+1]*dy+tr.N[k*3+2]*dz)})});
   if(!C.length)return 0;let deep=0,any=0;const H=[];
@@ -71,7 +73,7 @@ function ratioAlong(T3,O,near,D,far,off,thick){if(thick==null)thick=1;const dx=D
       if(!H.length)continue;const idx=[];for(let k=0;k<H.length;k+=2)idx.push(k);idx.sort((x,y)=>H[x]-H[y]);let ent=-1;for(const k of idx){if(H[k+1]<0){if(ent<0)ent=H[k]}else if(ent>=0){ins+=H[k]-ent;ent=-1}}if(ent>=0)ins+=far-ent}
     if(ins>thick)deep++;if(ins>.05)any++}
   /* a thin sheet (a back panel of 3 mm) is thinner than what is forgiven for snap fits, but a part cannot go through it: when most of the part would cross something, however thin, the way is closed */
-  return any/O.length>=.7?Math.max(deep,any)/O.length:deep/O.length}
+  return any/O.length>=thin?Math.max(deep,any)/O.length:deep/O.length}
 /* how far a part (its points O) has to go along d to be clear of everything in near. A way in only counts as free when the part can
    come all the way from outside; a hand's width of free room inside a housing is not a way in. */
 function clearFar(T3,O,near,d){let hi=-1e9,lo=1e9;for(const m of near){const b=tris(T3,m).bb;for(let c=0;c<8;c++){const v=(c&1?b[3]:b[0])*d[0]+(c&2?b[4]:b[1])*d[1]+(c&4?b[5]:b[2])*d[2];if(v>hi)hi=v}}for(const o of O){const v=o.x*d[0]+o.y*d[1]+o.z*d[2];if(v<lo)lo=v}return Math.max(6,Math.min(150,hi-lo+1))}
@@ -103,8 +105,8 @@ function detour(T3,M,rc,i,obst,A){const p=M.asm.parts[i];if(!obst.length||(!A[0]
   for(const tb of[1.5,3,5,8]){for(const B of dirs){const vB=new T3.Vector3(...B),r2=ratioAlong(T3,O,near,vB,tb,null,.3);if(r2>tol)continue;const r1=ratioAlong(T3,O,near,vA,ta,vB.clone().multiplyScalar(tb),.3);if(r1>tol)continue;if(!best||r1+r2<best.r-1e-9)best={b:B,tb,r:r1+r2}}if(best)break}
   return best?{b:best.b,tb:best.tb,fine:+fine.toFixed(3)}:{fine:+fine.toFixed(3),none:1}}
 /* a way in chosen by a person (one stretch, or two: first from A, then from B into place): does it pass through anything? */
-function pathCheck(T3,M,rc,i,obst,A,B,tb0){const p=M.asm.parts[i];if(!obst.length)return{ratio:0};const O=samples(T3,rc[i].geometry,p.c,180),near=obst.map(j=>rc[j]),z=v=>!v||(!v[0]&&!v[1]&&!v[2]);let r=0;
-  if(B&&!z(B)){const tb=tb0||push(p,B),vb=new T3.Vector3(...B);r=ratioAlong(T3,O,near,vb,tb);if(!z(A))r=Math.max(r,ratioAlong(T3,O,near,new T3.Vector3(...A),travel(p,A),vb.clone().multiplyScalar(tb)))}else if(!z(A))r=ratioAlong(T3,O,near,new T3.Vector3(...A),travel(p,A));
+function pathCheck(T3,M,rc,i,obst,A,B,tb0,thin){const p=M.asm.parts[i];if(!obst.length)return{ratio:0};const O=samples(T3,rc[i].geometry,p.c,180),near=obst.map(j=>rc[j]),z=v=>!v||(!v[0]&&!v[1]&&!v[2]);let r=0;
+  if(B&&!z(B)){const tb=tb0||push(p,B),vb=new T3.Vector3(...B);r=ratioAlong(T3,O,near,vb,tb,null,null,thin);if(!z(A))r=Math.max(r,ratioAlong(T3,O,near,new T3.Vector3(...A),travel(p,A),vb.clone().multiplyScalar(tb),null,thin))}else if(!z(A))r=ratioAlong(T3,O,near,new T3.Vector3(...A),travel(p,A),null,null,thin);
   const last=B&&!z(B)?B:A,reach=isSmall(M,p)&&!z(last)?ratioAlong(T3,O,near,new T3.Vector3(...last),M.asm.tool||20):0;return{ratio:+r.toFixed(3),blocked:r>(isSmall(M,p)?.1:.03)?1:0,...(reach>.2?{tight:+reach.toFixed(2)}:{})}}
 /* which of the parts already there stand in a part's way along d: the worst three, with the share of the part each one blocks */
 function blockers(T3,M,rc,i,obst,d){const p=M.asm.parts[i],O=samples(T3,rc[i].geometry,p.c,180),D=new T3.Vector3(...d),far=travel(p,d),out=[];obst.forEach(j=>{const r=ratioAlong(T3,O,[rc[j]],D,far);if(r>.02)out.push([j,+r.toFixed(2)])});return out.sort((a,b)=>b[1]-a[1]).slice(0,3)}
@@ -177,7 +179,7 @@ function body(T3,M,rc,L){const PA=M.asm.parts,b=new T3.Box3();L.forEach(j=>{cons
 function planGroup(T3,M,rc,st){const D=[[0,1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1],[0,-1,0]],rem=[...st.rem];if(rem.length<3||rem.length>40)return null;const seen=new Set();let best=null;
   for(const d of D){const vd=new T3.Vector3(...d);for(const seed of rem){let S=[seed];for(let it=0;it<8;it++){const key=d.join()+'|'+S.slice().sort((a,b)=>a-b).join();if(seen.has(key))break;seen.add(key);const rest=rem.filter(j=>!S.includes(j));if(!rest.length||(best&&S.length>=best.u.length))break;
         let MM=M,RC=rc,i=S[0];if(S.length>1){const B=body(T3,M,rc,S);MM=B.M;RC=B.rc;i=B.i}const p=MM.asm.parts[i],O=samples(T3,RC[i].geometry,p.c,S.length>1?260:180),far=travel(p,d),by=rest.filter(j=>ratioAlong(T3,O,[rc[j]],vd,far)>.02);planBack(T3,M,rc,st,RC[i],d,far,rest).forEach(j=>{if(!by.includes(j))by.push(j)});
-        if(!by.length){if(S.length>1&&ratioAlong(T3,O,rest.map(j=>rc[j]),vd,far)<=.02)best={u:S.slice(),d};break}S=S.concat(by)}}}
+        if(!by.length){const nr=rest.map(j=>rc[j]);/* and every part of the group gets out along that way on its own, too */if(S.length>1&&ratioAlong(T3,O,nr,vd,far)<=.02&&S.every(j=>{const q=M.asm.parts[j];return ratioAlong(T3,samples(T3,rc[j].geometry,q.c,120),nr,vd,travel(q,d),null,null,THIN.strict)<=(isSmall(M,q)?.1:.03)}))best={u:S.slice(),d};break}S=S.concat(by)}}}
   if(best){const sub={rem:new Set(best.u),layers:[],done:false};let n=0;while(!sub.done&&n++<60)planRound(T3,M,rc,sub,true);best.sub=sub}return best}
 /* the rounds turned into steps: what is locked together (or the last part left) is the base; each round, taken backwards, is one big
    step, with a sub-step for each kind of part, big parts first. A component gets its own steps first, then one step that fits it. */
@@ -213,7 +215,7 @@ async function planTree(T3,M,rc,tick){const A=M.asm,PA=A.parts,D=[[0,1,0],[1,0,0
     const holds=(L,base)=>{const seen=new Set([base]),q=[base];while(q.length){const X=q.pop();for(const Y of L)if(!seen.has(Y)&&(touch(X,Y)||touch(Y,X))){seen.add(Y);q.push(Y)}}return seen};
     for(let guard=0;guard<600&&items.length>1;guard++){await tick('正在排“'+nm+'”这一级：还剩 '+items.length+' 件没拆开…');const free=[],base=pickBase(items);
       for(const X of items){const obst=[].concat(...items.filter(y=>y!==X).map(y=>y.parts)),near=obst.map(j=>rc[j]),O=X.O||(X.O=samples(T3,X.mesh.geometry,X.part.c,X.node?260:180)),tol=X.node?.02:(isSmall(M,X.part)?.05:.02);X.bd=null;
-        for(const d of D){const far=X.node?clearFar(T3,O,near,d):travel(X.part,d),r=ratioAlong(T3,O,near,new T3.Vector3(...d),far);if(!X.bd||r<X.bd.r)X.bd={d,r,far};if(r<=tol&&!planBack(T3,M,rc,bk,X.mesh,d,far,obst).length){if(X!==base){X.out={d,far,tol};free.push(X)}break}}}
+        for(const d of D){const far=X.node?clearFar(T3,O,near,d):travel(X.part,d),r=ratioAlong(T3,O,near,new T3.Vector3(...d),far);if(!X.bd||r<X.bd.r)X.bd={d,r,far};if(r<=tol&&!planBack(T3,M,rc,bk,X.mesh,d,far,obst).length&&(!X.node||X.parts.every(j=>{const q=PA[j],oj=(bk.O=bk.O||{})[j]||(bk.O[j]=samples(T3,rc[j].geometry,q.c,120));return ratioAlong(T3,oj,near,new T3.Vector3(...d),travel(q,d),null,null,THIN.strict)<=(isSmall(M,q)?.1:.03)}))){if(X!==base){X.out={d,far,tol};free.push(X)}break}}}
       /* taking X away must not leave anything hanging that was held before */let out=[],cur=items.slice(),held=holds(cur,base);for(const X of free){const next=cur.filter(y=>y!==X),h=holds(next,base);let ok=true;for(const y of held)if(y!==X&&!h.has(y)){ok=false;break}if(ok){out.push(X);cur=next;held=h}}
       if(!out.length&&free.length){out=free;info.loose=(info.loose||0)+free.length}
       if(out.length){layers.push(out);items=items.filter(y=>!out.includes(y));continue}
@@ -276,7 +278,7 @@ function steps(M,T3){const A=M.asm,A_=A,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+
       if(pt){/* a way found with a corner or a turn: in along C (turned), straighten, home along A */const A1=pt.a||[0,0,0],al=pt.a?pt.al||0:0,hasR=!!pt.th,hasA=al>0,mid=p.c.map((v,x)=>r4(v+A1[x]*al)),from=mid.map((v,x)=>r4(v+pt.c[x]*pt.cl)),w=[.55,hasR?.25:0,hasA?.2:0],W=w[0]+w[1]+w[2],t1=hasR||hasA?Math.round(a+(b-a)*w[0]/W):b,t2=hasR&&hasA?Math.round(a+(b-a)*(w[0]+w[1])/W):b,keys=[a,...from,t1,...mid];
         if(hasR&&hasA)keys.push(t2,...mid);if(hasR||hasA)keys.push(b,...p.c.map(r4));grow(from,p.size);const nd={p:keys,v:a>0?[0,0,a,1]:[0,1]};
         if(hasR){const q=new T3.Quaternion().setFromAxisAngle(new T3.Vector3(...pt.u).normalize(),pt.th*Math.PI/180),Q4=[r4(q.x),r4(q.y),r4(q.z),r4(q.w)];nd.q=[a,...Q4,t1,...Q4,t2,0,0,0,1];if(hasA)nd.q.push(b,0,0,0,1);nd.tilt=1}
-        st.nodes[p.node]=nd;st.mats[p.mat]={c:[0,GREEN,Math.min(119,b+6),p.col]};aW.add(new T3.Vector3(...pt.c).applyQuaternion(q1))}
+        st.nodes[p.node]=nd;st.mats[p.mat]={c:[0,GREEN,Math.min(119,b+6),p.col]};aW.add(new T3.Vector3(...pt.c).applyQuaternion(q1));if(pt.hand&&s.man&&s.man[i]&&s.man[i].blocked){const w='第 '+lab+' 步：按演示的路线，'+nm+'在路上会穿过别的零件。请换一条路线，或者调整步骤顺序。';if(!M.warn.includes(w))M.warn.push(w)}}
       else if(zero(A)){st.nodes[p.node]=tEnd?{v:[0,0,a,1]}:{v:[0,1]};st.mats[p.mat]={c:[0,GREEN,100,p.col]}}
       else{const ta=travel(pp,A),tb=B?(tbA||push(pp,B)):0,mid=B?p.c.map((v,x)=>r4(v+B[x]*tb)):null,from=(mid||p.c).map((v,x)=>r4(v+A[x]*ta)),m=B?Math.round(a+(b-a)*.62):a,keys=[a,...from];if(B)keys.push(m,...mid);keys.push(b,...p.c.map(r4));grow(from,p.size);
         const nd={p:keys,v:a>0?[0,0,a,1]:[0,1]};if(mv.spin){const ax=new T3.Vector3(...(B||A)).normalize(),qk=[],n=12,q=new T3.Quaternion();for(let j=0;j<=n;j++){q.setFromAxisAngle(ax,-(1-j/n)*Math.PI*4);qk.push(r4(m+(b-m)*j/n),r4(q.x),r4(q.y),r4(q.z),r4(q.w))}nd.q=qk}
@@ -286,6 +288,7 @@ function steps(M,T3){const A=M.asm,A_=A,N=M.samples,PA=A.parts,SZ=A.size,r4=v=>+
         if(byHand){if(s.man&&s.man[sl]&&s.man[sl].blocked)M.warn.push('第 '+lab+' 步：按你指定的装法，'+nm+'在路上会穿过别的零件，请换个方向或分两段。')}
         else if(s.auto&&s.auto[sl]&&s.auto[sl].under&&!s.auto[sl].blocked){const w='第 '+lab+' 步：按现在的摆法，'+nm+'只能从正下方装入，手够不着。请换一个摆法（比如把产品立起来），或者调整步骤顺序。';if(!M.warn.includes(w))M.warn.push(w)}
         if(!byHand&&s.auto&&s.auto[sl]&&s.auto[sl].shut){const tried=!unit&&s.path&&s.path[i]&&s.path[i].none,w='第 '+lab+' 步：'+nm+'旁边有空位，但四周被围住，沿直线从外面进不来。'+(tried?'程序试过拐弯和转动，也没有找到从外面进来的路。如果实际上手能把它送到位，可以不管这一条；否则请调整步骤顺序。':'可以点“给进不去的零件找路”，让程序找一条拐弯或转着进去的路；或者调整步骤顺序。');if(!M.warn.includes(w))M.warn.push(w)}
+        else if(unit&&s.auto&&s.auto[sl]&&s.auto[sl].inner){const c=[];s.auto[sl].inner.forEach(j=>{const n='“'+kname(M,PA[j].kind)+'”';if(!c.includes(n))c.push(n)});const w='第 '+lab+' 步：'+nm+'作为一个整体装不进去：它里面的'+c.join('、')+'在路上会穿过别的零件。可以把这个零件从组件里拿出来，等组件装上以后再单独装。';if(!M.warn.includes(w))M.warn.push(w)}
         else if(s.auto&&s.auto[sl]&&s.auto[sl].blocked){const by=(s.auto[sl].by||[]).map(([j])=>{const q=A_.steps.findIndex(x=>x.parts.includes(j));return'“'+kname(M,PA[j].kind)+'”（第 '+LB[q]+' 步）'}).filter((x,k,L)=>L.indexOf(x)===k),w='第 '+lab+' 步：'+nm+'没有找到不被挡住的装入方向'+(by.length?'，挡住它的是'+by.join('、')+'。可以让它排在这些零件之前装，或者把它们编成一个组件':'')+'。';if(!M.warn.includes(w))M.warn.push(w)}}
       placed.add(i)});
     st.parts=Object.entries(cnt);if(box.isEmpty())grow([0,0,0],SZ);
@@ -317,5 +320,5 @@ function aiApply(M,o){const A=M.asm,n=A.parts.length,used=new Set(),notes=[],ste
   const left=n-used.size;if(left)notes.push('AI 没有排进去的零件有 '+left+' 个，采用后会在“检查”里列出来。');const kinds={};if(o.kinds&&typeof o.kinds==='object')Object.entries(o.kinds).forEach(([k,v])=>{if(A.kinds[k]&&typeof v==='string'&&v.trim())kinds[k]=v.trim().slice(0,24)});
   (Array.isArray(o.notes)?o.notes:[]).forEach(x=>{if(typeof x==='string'&&x.trim())notes.push('AI 说：'+x.trim().slice(0,300))});Object.keys(groups).forEach(g=>{if(!steps.some(x=>x.grp===g))delete groups[g]});return{steps,kinds,notes,groups}}
 const autoTitle=(M,s)=>{const PA=M.asm.parts,c=[];(s.parts||[]).forEach(i=>{const n=kname(M,PA[i].kind);if(!c.includes(n))c.push(n)});return c.length?'装'+c.slice(0,3).join('、')+(c.length>3?'等':''):(s.pose&&s.pose!=='up'?'':'')};
-root.MAsm={planTree,subSteps,vox,poseShare,findPath,PLANK,INSET,RULES:4,ctx,gname,body,planGroup,blockers,planStart,planRound,planSteps,UNITS,guessUnit,rescale,labels,KEY,parseGLB,base,aiPrompt,aiApply,steps,autoDir,detour,axisOf,pathCheck,parseSay,push,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
+root.MAsm={ratioAlong,samples,isSmall,THIN,planTree,subSteps,vox,poseShare,findPath,PLANK,INSET,RULES:5,ctx,gname,body,planGroup,blockers,planStart,planRound,planSteps,UNITS,guessUnit,rescale,labels,KEY,parseGLB,base,aiPrompt,aiApply,steps,autoDir,detour,axisOf,pathCheck,parseSay,push,travel,Q,POSES,WORLD,DIRNAME,kname,autoTitle,GREEN};if(typeof module!=='undefined')module.exports=root.MAsm;
 })(typeof window!=='undefined'?window:globalThis);
